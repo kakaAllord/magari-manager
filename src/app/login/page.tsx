@@ -16,9 +16,6 @@ export default async function LoginPage() {
         <div className="mb-8 flex flex-col items-center text-center">
           <BrandMark className="size-14" />
           <h1 className="mt-4 text-2xl font-semibold tracking-tight">Karibu</h1>
-          <p className="mt-1 text-sm text-muted">
-            Dereva: ingia kwa namba ya gari lako na nenosiri ulilopewa na meneja.
-          </p>
         </div>
         <LoginForm demo={showDemo()} />
       </div>

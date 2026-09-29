@@ -43,7 +43,6 @@ export function LoginForm({ demo = false }: { demo?: boolean }) {
               defaultValue={state?.login}
               className="input font-mono tracking-wider placeholder:normal-case"
             />
-            <span className="mt-1 block text-xs text-muted">Meneja: tumia barua pepe yako.</span>
           </label>
           <label className="block">
             <span className="label">Nenosiri</span>
