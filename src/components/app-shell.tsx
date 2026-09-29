@@ -1,17 +1,14 @@
 import { logout } from "@/app/actions/auth";
 import type { User } from "@/lib/session";
-import { getTheme } from "@/lib/theme";
 import { BrandMark, Icon, type IconName } from "./icons";
 import { SideLinks, TabLinks } from "./nav-links";
-import { ThemeToggle } from "./theme-toggle";
 
 export type NavLink = { href: string; label: string; icon: IconName };
 
 const roleName = { driver: "Dereva", manager: "Meneja" } as const;
 
 // Desktop (lg and up): fixed sidebar. Phones and tablets: top bar with tabs.
-export async function AppShell({ user, links, children }: { user: User; links: NavLink[]; children: React.ReactNode }) {
-  const theme = await getTheme();
+export function AppShell({ user, links, children }: { user: User; links: NavLink[]; children: React.ReactNode }) {
   const initials = user.name
     .split(/\s+/)
     .map((w) => w[0])
@@ -52,7 +49,6 @@ export async function AppShell({ user, links, children }: { user: User; links: N
               <p className="text-xs text-muted">{roleName[user.role]}</p>
             </div>
           </div>
-          <ThemeToggle initial={theme} wide />
           {logoutButton(true)}
         </div>
       </aside>
@@ -67,7 +63,6 @@ export async function AppShell({ user, links, children }: { user: User; links: N
               {user.name} · {roleName[user.role]}
             </p>
           </div>
-          <ThemeToggle initial={theme} />
           {logoutButton(false)}
         </div>
         {links.length > 1 && <TabLinks links={links} />}

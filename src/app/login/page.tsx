@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { BrandMark } from "@/components/icons";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { getCurrentUser, homeFor } from "@/lib/session";
-import { getTheme } from "@/lib/theme";
 import { LoginForm } from "./login-form";
 
 // Demo logins show locally, and in production only when DEMO_MODE=1 is set.
@@ -13,10 +11,7 @@ export default async function LoginPage() {
   if (user) redirect(homeFor(user.role));
 
   return (
-    <main className="relative flex flex-1 flex-col items-center justify-center px-4 py-12">
-      <div className="absolute top-3 right-3">
-        <ThemeToggle initial={await getTheme()} />
-      </div>
+    <main className="flex flex-1 flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           <BrandMark className="size-14" />
