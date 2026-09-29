@@ -12,7 +12,8 @@
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.ts",
     "db:seed": "node --env-file-if-exists=.env.local scripts/seed.ts",
     "db:setup": "npm run db:migrate && npm run db:seed",
-    "test": "node --test src/**/*.test.ts"
+    "test": "node --test src/**/*.test.ts",
+    "create-manager": "node --env-file-if-exists=.env.local scripts/create-manager.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

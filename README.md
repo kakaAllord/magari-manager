@@ -1,8 +1,9 @@
 # Car Manager
 
-A small Next.js + Postgres app. Drivers sign in and request money with a reason;
-managers sign in, approve or reject requests, and manage cars. Drivers see the
-decision on their page (it refreshes every 15 seconds).
+A small Next.js + Postgres app. Drivers sign in with their car's plate number and
+request money with a reason; managers sign in with email, approve or reject
+requests, and manage cars and drivers. Drivers see the decision on their page
+(it refreshes every 15 seconds). Amounts are in Tanzanian shillings.
 
 ## Setup
 
@@ -26,13 +27,32 @@ Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgr
 
 3. Open http://localhost:3000.
 
-## Demo accounts
+## Demo accounts (local only)
 
-| Role    | Email               | Password   |
+| Role    | Sign in with        | Password   |
 | ------- | ------------------- | ---------- |
+| Driver  | plate `T103ABE`     | driver123  |
+| Driver  | plate `T456BCD`     | driver123  |
 | Manager | manager@example.com | manager123 |
-| Driver  | alice@example.com   | driver123  |
-| Driver  | bob@example.com     | driver123  |
+
+Never run `db:seed` against a production database; these passwords are public.
+
+## Deploy to Vercel
+
+1. Import the GitHub repo in Vercel. No build settings need changing.
+2. Add a Postgres database (Storage → Neon). This sets `DATABASE_URL` for the project.
+   Otherwise set `DATABASE_URL` yourself (use the pooled URL with `?sslmode=require`).
+3. From your machine, create the tables and your first manager in that database:
+
+   ```sh
+   export DATABASE_URL='postgres://…'   # the production URL from Vercel
+   npm run db:migrate
+   npm run create-manager -- "Your Name" you@example.com 'a-strong-password'
+   ```
+
+4. Sign in as that manager, add cars on **Cars**, then add drivers on **Drivers**.
+
+Run `npm run db:migrate` against production again whenever a commit adds a file to `db/migrations/`.
 
 ## Scripts
 
@@ -41,6 +61,7 @@ Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgr
 | `npm run dev`        | Apply new migrations, then start the dev server |
 | `npm run db:migrate` | Apply new files in `db/migrations/` in order   |
 | `npm run db:seed`    | Insert demo users and cars (safe to re-run)    |
+| `npm run create-manager -- "Name" email password` | Create a manager or reset their password |
 | `npm test`           | Unit tests (Node test runner)                  |
 | `npm run build`      | Production build                               |
 

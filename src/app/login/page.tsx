@@ -20,11 +20,13 @@ export default async function LoginPage() {
       <div className="card">
         <LoginForm />
       </div>
-      <div className="mt-6 text-xs text-muted">
-        <p className="font-medium">Demo accounts</p>
-        <p>Drivers: T103ABE or T456BCD / driver123</p>
-        <p>Manager: manager@example.com / manager123</p>
-      </div>
+      {process.env.NODE_ENV !== "production" && (
+        <div className="mt-6 text-xs text-muted">
+          <p className="font-medium">Demo accounts</p>
+          <p>Drivers: T103ABE or T456BCD / driver123</p>
+          <p>Manager: manager@example.com / manager123</p>
+        </div>
+      )}
     </main>
   );
 }
