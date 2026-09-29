@@ -1,3 +1,5 @@
+import { TIME_ZONE } from "@/lib/time";
+
 // Tanzanian shillings, shown without cents: "TSh 40,000".
 const money = new Intl.NumberFormat("en-TZ", {
   style: "currency",
@@ -5,8 +7,16 @@ const money = new Intl.NumberFormat("en-TZ", {
   maximumFractionDigits: 0,
 });
 
-const dateTime = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" });
+const dateTime = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: TIME_ZONE,
+});
 
 // pg returns numeric columns as strings to avoid precision loss.
-export const formatMoney = (amount: string) => money.format(Number(amount));
+export const formatMoney = (amount: string | number) => money.format(Number(amount));
 export const formatDateTime = (d: Date) => dateTime.format(d);
+
+// Compact axis labels: 1,250,000 -> "1.3M", 40,000 -> "40K".
+export const formatCompact = (amount: number) =>
+  new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(amount);

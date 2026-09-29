@@ -5,9 +5,9 @@ import { StatusBadge } from "@/components/status-badge";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { listRequestsByStatus, type MoneyRequest } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
-import { managerLinks } from "./nav";
+import { managerLinks } from "../nav";
 
-export default async function ManagerPage() {
+export default async function RequestsPage() {
   const user = await requireUser("manager");
   const [pending, reviewed] = await Promise.all([
     listRequestsByStatus(true),

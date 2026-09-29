@@ -28,7 +28,7 @@ export async function createRequest(
     [driver.id, parsed.amount, parsed.reason],
   );
   revalidatePath("/driver");
-  revalidatePath("/manager");
+  revalidatePath("/manager", "layout");
   return { ok: true };
 }
 
@@ -44,6 +44,6 @@ export async function reviewRequest(formData: FormData) {
       WHERE id = $1 AND status = 'pending'`,
     [id, decision, manager.id],
   );
-  revalidatePath("/manager");
+  revalidatePath("/manager", "layout");
   revalidatePath("/driver");
 }
