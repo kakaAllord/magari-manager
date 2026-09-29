@@ -20,8 +20,8 @@ Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgr
    ```sh
    cp .env.example .env.local   # edit DATABASE_URL if needed
    npm install
-   npm run db:setup             # runs migrations, then seeds demo data
-   npm run dev
+   npm run db:setup             # creates the tables and demo accounts (once)
+   npm run dev                  # also applies any new migrations on start
    ```
 
 3. Open http://localhost:3000.
@@ -38,7 +38,7 @@ Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgr
 
 | Command              | What it does                                   |
 | -------------------- | ---------------------------------------------- |
-| `npm run dev`        | Start the dev server                           |
+| `npm run dev`        | Apply new migrations, then start the dev server |
 | `npm run db:migrate` | Apply new files in `db/migrations/` in order   |
 | `npm run db:seed`    | Insert demo users and cars (safe to re-run)    |
 | `npm test`           | Unit tests (Node test runner)                  |
