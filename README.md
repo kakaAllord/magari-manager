@@ -31,8 +31,9 @@ Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgr
 
 ## Demo accounts
 
-The login page shows these as three cards that fill in the form. They appear
-locally, and in production only when `DEMO_MODE=1`.
+Below the login form, a box with three compartments (Meneja, Dereva 1, Dereva 2)
+fills in these details with one tap. It shows unless `DEMO_MODE=0`; set that once
+the site is used for real.
 
 | Role    | Sign in with        | Password   |
 | ------- | ------------------- | ---------- |
@@ -50,9 +51,9 @@ These passwords are public. Only seed a database that is meant to be a demo.
    Otherwise set `DATABASE_URL` yourself (use the pooled URL with `?sslmode=require`).
 3. Choose one:
    - **Demo site:** add `DEMO_MODE=1` and redeploy. The build loads the demo
-     accounts and history, and the login page shows the demo cards.
-   - **Real use:** create your first manager from your machine, then add cars and
-     drivers in the app:
+     accounts and history.
+   - **Real use:** set `DEMO_MODE=0` (hides the demo box), create your first
+     manager from your machine, then add cars and drivers in the app:
 
      ```sh
      DATABASE_URL='postgres://…' npm run create-manager -- "Your Name" you@example.com 'a-strong-password'

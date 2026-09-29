@@ -3,8 +3,8 @@ import { BrandMark } from "@/components/icons";
 import { getCurrentUser, homeFor } from "@/lib/session";
 import { LoginForm } from "./login-form";
 
-// Demo logins show locally, and in production only when DEMO_MODE=1 is set.
-const isDemo = () => process.env.NODE_ENV !== "production" || process.env.DEMO_MODE === "1";
+// Demo logins show unless DEMO_MODE=0 (set that once the site is used for real).
+const showDemo = () => process.env.DEMO_MODE !== "0";
 
 export default async function LoginPage() {
   const user = await getCurrentUser();
@@ -20,9 +20,7 @@ export default async function LoginPage() {
             Dereva: ingia kwa namba ya gari lako na nenosiri ulilopewa na meneja.
           </p>
         </div>
-        <div className="card p-5 sm:p-6">
-          <LoginForm demo={isDemo()} />
-        </div>
+        <LoginForm demo={showDemo()} />
       </div>
     </main>
   );
