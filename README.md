@@ -44,7 +44,7 @@ Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgr
 | `npm test`           | Unit tests (Node test runner)                  |
 | `npm run build`      | Production build                               |
 
-Set `CURRENCY` (ISO code, default `USD`) in `.env.local` to change how amounts display.
+Amounts are whole Tanzanian shillings (shown as `TSh 40,000`); drivers can type `40000` or `40,000`.
 
 ## How it fits together
 

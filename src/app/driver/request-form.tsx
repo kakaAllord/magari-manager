@@ -11,11 +11,11 @@ export function RequestForm() {
   return (
     <form action={action} className="space-y-4">
       <label className="block">
-        <span className="label">Amount</span>
+        <span className="label">Amount (TSh)</span>
         <input
           name="amount"
-          inputMode="decimal"
-          placeholder="0.00"
+          inputMode="numeric"
+          placeholder="40,000"
           required
           defaultValue={failed?.values.amount}
           className="input max-w-40"

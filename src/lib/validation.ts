@@ -3,18 +3,21 @@
 export type RequestInput = { amount: string; reason: string };
 export type RequestErrors = { amount?: string; reason?: string };
 
-const MAX_AMOUNT = 99_999_999.99; // numeric(10, 2)
+// Whole Tanzanian shillings; the numeric(10, 2) column tops out just under 100M.
+const MAX_AMOUNT = 99_999_999;
 export const MAX_REASON_LENGTH = 500;
 
 export function parseMoneyRequest(input: RequestInput):
   | { ok: true; amount: string; reason: string }
   | { ok: false; errors: RequestErrors } {
   const errors: RequestErrors = {};
-  const rawAmount = input.amount.trim();
+  // Accept "40000" or "40,000"; commas only as thousands separators.
+  const typed = input.amount.trim();
+  const rawAmount = /^\d{1,3}(,\d{3})+$/.test(typed) ? typed.replaceAll(",", "") : typed;
   const reason = input.reason.trim();
 
-  if (!/^\d+(\.\d{1,2})?$/.test(rawAmount)) {
-    errors.amount = "Enter an amount like 25 or 25.50.";
+  if (!/^\d+$/.test(rawAmount)) {
+    errors.amount = "Enter a whole number of shillings, like 40000 or 40,000.";
   } else if (Number(rawAmount) <= 0) {
     errors.amount = "Amount must be more than zero.";
   } else if (Number(rawAmount) > MAX_AMOUNT) {
@@ -27,5 +30,5 @@ export function parseMoneyRequest(input: RequestInput):
   }
 
   if (errors.amount || errors.reason) return { ok: false, errors };
-  return { ok: true, amount: Number(rawAmount).toFixed(2), reason };
+  return { ok: true, amount: String(Number(rawAmount)), reason };
 }
