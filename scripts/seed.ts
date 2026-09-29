@@ -39,18 +39,18 @@ try {
   const { rows: existing } = await client.query("SELECT 1 FROM money_requests LIMIT 1");
   if (existing.length === 0) {
     const history: [plate: string, daysAgo: number, amount: number, reason: string, status: string][] = [
-      ["T103ABE", 150, 45000, "Fuel", "approved"],
-      ["T456BCD", 140, 120000, "New tyres", "approved"],
-      ["T103ABE", 110, 38000, "Fuel", "approved"],
-      ["T456BCD", 95, 60000, "Oil change and filters", "approved"],
-      ["T103ABE", 80, 15000, "Parking fees at the port", "rejected"],
-      ["T456BCD", 70, 52000, "Fuel", "approved"],
-      ["T103ABE", 45, 250000, "Brake pads and labour", "approved"],
-      ["T456BCD", 35, 47000, "Fuel", "approved"],
-      ["T103ABE", 12, 40000, "Fuel for the airport run", "approved"],
-      ["T456BCD", 5, 30000, "Car wash and fuel", "approved"],
-      ["T456BCD", 1, 85000, "Replace headlight", "pending"],
-      ["T103ABE", 0, 20000, "Toll and parking", "pending"],
+      ["T103ABE", 150, 45000, "Mafuta", "approved"],
+      ["T456BCD", 140, 120000, "Matairi mapya", "approved"],
+      ["T103ABE", 110, 38000, "Mafuta", "approved"],
+      ["T456BCD", 95, 60000, "Kubadilisha oili na filta", "approved"],
+      ["T103ABE", 80, 15000, "Maegesho bandarini", "rejected"],
+      ["T456BCD", 70, 52000, "Mafuta", "approved"],
+      ["T103ABE", 45, 250000, "Breki na ufundi", "approved"],
+      ["T456BCD", 35, 47000, "Mafuta", "approved"],
+      ["T103ABE", 12, 40000, "Mafuta ya safari ya uwanja wa ndege", "approved"],
+      ["T456BCD", 5, 30000, "Usafi wa gari na mafuta", "approved"],
+      ["T456BCD", 1, 85000, "Kubadilisha taa ya mbele", "pending"],
+      ["T103ABE", 0, 20000, "Ushuru wa barabara na maegesho", "pending"],
     ];
     for (const [plate, daysAgo, amount, reason, status] of history) {
       await client.query(
