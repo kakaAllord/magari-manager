@@ -1,26 +1,58 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --background: #f6f7f9;
+  --surface: #ffffff;
+  --foreground: #16181d;
+  --muted: #5f6673;
+  --line: #e2e5ea;
+  --accent: #2563eb;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0e1014;
+    --surface: #171a20;
+    --foreground: #e8eaee;
+    --muted: #9aa1ad;
+    --line: #2a2f38;
+    --accent: #5b8cff;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-line bg-surface p-5;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium;
+  }
+  .input {
+    @apply w-full rounded-md border border-line bg-background px-3 py-2 text-sm outline-none focus:border-accent;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-accent text-white hover:opacity-90;
+  }
+  .btn-ghost {
+    @apply border border-line hover:bg-background;
+  }
 }
