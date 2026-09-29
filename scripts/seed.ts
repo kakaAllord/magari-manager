@@ -35,7 +35,36 @@ try {
     );
     await client.query("UPDATE cars SET driver_id = $1 WHERE id = $2", [user.rows[0].id, carId]);
   }
-  console.log("seeded demo users and cars");
+  // A few months of history so the dashboard and reports have something to show.
+  const { rows: existing } = await client.query("SELECT 1 FROM money_requests LIMIT 1");
+  if (existing.length === 0) {
+    const history: [plate: string, daysAgo: number, amount: number, reason: string, status: string][] = [
+      ["T103ABE", 150, 45000, "Fuel", "approved"],
+      ["T456BCD", 140, 120000, "New tyres", "approved"],
+      ["T103ABE", 110, 38000, "Fuel", "approved"],
+      ["T456BCD", 95, 60000, "Oil change and filters", "approved"],
+      ["T103ABE", 80, 15000, "Parking fees at the port", "rejected"],
+      ["T456BCD", 70, 52000, "Fuel", "approved"],
+      ["T103ABE", 45, 250000, "Brake pads and labour", "approved"],
+      ["T456BCD", 35, 47000, "Fuel", "approved"],
+      ["T103ABE", 12, 40000, "Fuel for the airport run", "approved"],
+      ["T456BCD", 5, 30000, "Car wash and fuel", "approved"],
+      ["T456BCD", 1, 85000, "Replace headlight", "pending"],
+      ["T103ABE", 0, 20000, "Toll and parking", "pending"],
+    ];
+    for (const [plate, daysAgo, amount, reason, status] of history) {
+      await client.query(
+        `INSERT INTO money_requests (driver_id, car_id, amount, reason, status, reviewed_by, reviewed_at, created_at)
+         SELECT c.driver_id, c.id, $2, $3, $4,
+                CASE WHEN $4 = 'pending' THEN NULL ELSE (SELECT id FROM users WHERE email = $5) END,
+                CASE WHEN $4 = 'pending' THEN NULL ELSE now() - make_interval(days => $6) + interval '3 hours' END,
+                now() - make_interval(days => $6)
+           FROM cars c WHERE c.plate = $1 AND c.driver_id IS NOT NULL`,
+        [plate, amount, reason, status, manager.email, daysAgo],
+      );
+    }
+  }
+  console.log("seeded demo users, cars and requests");
 } finally {
   await client.end();
 }
