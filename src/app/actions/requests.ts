@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
+import { driverChannel, MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
 import { parseMoneyRequest, type RequestErrors } from "@/lib/validation";
 
@@ -29,6 +30,7 @@ export async function createRequest(
   );
   revalidatePath("/driver");
   revalidatePath("/manager", "layout");
+  await notify([MANAGERS_CHANNEL]);
   return { ok: true };
 }
 
@@ -39,11 +41,13 @@ export async function reviewRequest(formData: FormData) {
   if (!Number.isInteger(id) || (decision !== "approved" && decision !== "rejected")) return;
 
   // Only pending requests can be reviewed, so a double click or a second manager is a no-op.
-  await query(
+  const updated = await query<{ driver_id: number }>(
     `UPDATE money_requests SET status = $2, reviewed_by = $3, reviewed_at = now()
-      WHERE id = $1 AND status = 'pending'`,
+      WHERE id = $1 AND status = 'pending' RETURNING driver_id`,
     [id, decision, manager.id],
   );
   revalidatePath("/manager", "layout");
   revalidatePath("/driver");
+  // Tell the driver, and other managers looking at the same list.
+  if (updated[0]) await notify([driverChannel(updated[0].driver_id), MANAGERS_CHANNEL]);
 }

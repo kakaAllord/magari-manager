@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
 import { formatMoney } from "@/lib/format";
+import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
 import { getMonthlySpend, getOverview, getSpendByCarThisMonth } from "@/lib/stats";
 import { TIME_ZONE } from "@/lib/time";
@@ -15,6 +17,7 @@ export default async function DashboardPage() {
 
   return (
       <main className="page">
+        <LiveUpdates channel={MANAGERS_CHANNEL} />
         <PageHeader title="Dashibodi" description={today.format(new Date())} />
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Muhtasari">

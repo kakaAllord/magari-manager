@@ -1,9 +1,10 @@
-import { AutoRefresh } from "@/components/auto-refresh";
 import { Icon } from "@/components/icons";
+import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { query } from "@/lib/db";
 import { formatDateTime, formatMoney } from "@/lib/format";
+import { driverChannel } from "@/lib/realtime";
 import { listRequestsForDriver } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
 import { RequestForm } from "./request-form";
@@ -22,7 +23,7 @@ export default async function DriverPage() {
 
   return (
     <main className="page">
-      <AutoRefresh />
+      <LiveUpdates channel={driverChannel(user.id)} />
       <PageHeader title={`Habari, ${user.name.split(" ")[0]}`} description="Omba pesa na ufuatilie majibu ya meneja hapa." />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">

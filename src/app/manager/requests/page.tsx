@@ -1,8 +1,9 @@
 import { reviewRequest } from "@/app/actions/requests";
-import { AutoRefresh } from "@/components/auto-refresh";
+import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { formatDateTime, formatMoney } from "@/lib/format";
+import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { listRequestsByStatus, type MoneyRequest } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
 
@@ -13,7 +14,7 @@ export default async function RequestsPage() {
 
   return (
     <main className="page">
-      <AutoRefresh />
+      <LiveUpdates channel={MANAGERS_CHANNEL} />
       <PageHeader
         title="Maombi"
         description={
