@@ -3,36 +3,37 @@
 import bcrypt from "bcryptjs";
 import pg from "pg";
 
-const users = [
-  { name: "Maria Manager", email: "manager@example.com", password: "manager123", role: "manager" },
-  { name: "Alice Driver", email: "alice@example.com", password: "driver123", role: "driver" },
-  { name: "Bob Driver", email: "bob@example.com", password: "driver123", role: "driver" },
-];
+const manager = { name: "Grace Mollel", email: "manager@example.com", password: "manager123" };
 
+// Each driver signs in with their car's plate and the password below.
 const cars = [
-  { plate: "ABC-123", make: "Toyota", model: "Corolla", driver: "alice@example.com" },
-  { plate: "XYZ-789", make: "Ford", model: "Transit", driver: "bob@example.com" },
-  { plate: "JKL-456", make: "Honda", model: "Civic", driver: null },
+  { plate: "T103ABE", make: "Toyota", model: "IST", driver: { name: "Juma Hassan", password: "driver123" } },
+  { plate: "T456BCD", make: "Toyota", model: "Hiace", driver: { name: "Neema Mushi", password: "driver123" } },
+  { plate: "T789CDE", make: "Suzuki", model: "Carry", driver: null },
 ];
 
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 try {
-  for (const u of users) {
-    const hash = await bcrypt.hash(u.password, 10);
-    await client.query(
-      `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)
-       ON CONFLICT (email) DO NOTHING`,
-      [u.name, u.email, hash, u.role],
-    );
-  }
+  await client.query(
+    `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'manager')
+     ON CONFLICT (email) DO NOTHING`,
+    [manager.name, manager.email, await bcrypt.hash(manager.password, 10)],
+  );
   for (const c of cars) {
-    await client.query(
-      `INSERT INTO cars (plate, make, model, driver_id)
-       VALUES ($1, $2, $3, (SELECT id FROM users WHERE email = $4))
-       ON CONFLICT (plate) DO NOTHING`,
-      [c.plate, c.make, c.model, c.driver],
+    const inserted = await client.query<{ id: number }>(
+      `INSERT INTO cars (plate, make, model) VALUES ($1, $2, $3)
+       ON CONFLICT (plate) DO NOTHING RETURNING id`,
+      [c.plate, c.make, c.model],
     );
+    // Only create the driver alongside a new car, so re-running doesn't duplicate drivers.
+    const carId = inserted.rows[0]?.id;
+    if (!carId || !c.driver) continue;
+    const user = await client.query<{ id: number }>(
+      `INSERT INTO users (name, password_hash, role) VALUES ($1, $2, 'driver') RETURNING id`,
+      [c.driver.name, await bcrypt.hash(c.driver.password, 10)],
+    );
+    await client.query("UPDATE cars SET driver_id = $1 WHERE id = $2", [user.rows[0].id, carId]);
   }
   console.log("seeded demo users and cars");
 } finally {

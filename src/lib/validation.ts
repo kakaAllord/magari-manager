@@ -32,3 +32,18 @@ export function parseMoneyRequest(input: RequestInput):
   if (errors.amount || errors.reason) return { ok: false, errors };
   return { ok: true, amount: String(Number(rawAmount)), reason };
 }
+
+// "t 103-abe" -> "T103ABE". Plates are stored and compared in this form.
+export const normalizePlate = (plate: string) => plate.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+export function checkPlate(plate: string): string | undefined {
+  if (plate.length < 2 || plate.length > 10) return "Enter a plate number like T103ABE.";
+}
+
+export const MIN_PASSWORD_LENGTH = 6;
+
+export function checkNewPassword(password: string): string | undefined {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+}

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { query, transaction } from "@/lib/db";
 import { requireUser } from "@/lib/session";
+import { checkPlate, normalizePlate } from "@/lib/validation";
 
 export type CarFormState = { ok: boolean; message: string } | undefined;
 
@@ -10,10 +11,12 @@ const UNIQUE_VIOLATION = "23505";
 
 export async function createCar(_prev: CarFormState, formData: FormData): Promise<CarFormState> {
   await requireUser("manager");
-  const plate = String(formData.get("plate") ?? "").trim().toUpperCase();
+  const plate = normalizePlate(String(formData.get("plate") ?? ""));
   const make = String(formData.get("make") ?? "").trim();
   const model = String(formData.get("model") ?? "").trim();
-  if (!plate || !make || !model) return { ok: false, message: "Plate, make and model are all required." };
+  const plateError = checkPlate(plate);
+  if (plateError) return { ok: false, message: plateError };
+  if (!make || !model) return { ok: false, message: "Make and model are both required." };
 
   try {
     await query("INSERT INTO cars (plate, make, model) VALUES ($1, $2, $3)", [plate, make, model]);

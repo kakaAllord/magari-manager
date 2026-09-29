@@ -9,15 +9,19 @@ export function LoginForm() {
   return (
     <form action={action} className="space-y-4">
       <label className="block">
-        <span className="label">Email</span>
+        <span className="label">Plate number</span>
         <input
-          name="email"
-          type="email"
+          name="login"
           required
           autoComplete="username"
-          defaultValue={state?.email}
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="T103ABE"
+          defaultValue={state?.login}
           className="input"
         />
+        <span className="mt-1 block text-xs text-muted">Managers: use your email.</span>
       </label>
       <label className="block">
         <span className="label">Password</span>

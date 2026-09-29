@@ -10,7 +10,7 @@ export function CarForm() {
     <form action={action} className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
       <label>
         <span className="label">Plate</span>
-        <input name="plate" required placeholder="ABC-123" className="input" />
+        <input name="plate" required placeholder="T103ABE" className="input" />
       </label>
       <label>
         <span className="label">Make</span>

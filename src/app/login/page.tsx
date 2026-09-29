@@ -9,14 +9,16 @@ export default async function LoginPage() {
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-12">
       <h1 className="text-2xl font-semibold">Car Manager</h1>
-      <p className="mb-6 mt-1 text-sm text-muted">Sign in as a driver or a manager.</p>
+      <p className="mb-6 mt-1 text-sm text-muted">
+        Drivers sign in with their car&apos;s plate number and the password from their manager.
+      </p>
       <div className="card">
         <LoginForm />
       </div>
       <div className="mt-6 text-xs text-muted">
         <p className="font-medium">Demo accounts</p>
+        <p>Drivers: T103ABE or T456BCD / driver123</p>
         <p>Manager: manager@example.com / manager123</p>
-        <p>Drivers: alice@example.com, bob@example.com / driver123</p>
       </div>
     </main>
   );

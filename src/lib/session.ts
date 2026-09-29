@@ -9,7 +9,7 @@ const COOKIE = "session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 export type Role = "driver" | "manager";
-export type User = { id: number; name: string; email: string; role: Role };
+export type User = { id: number; name: string; email: string | null; role: Role };
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
