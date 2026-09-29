@@ -20,7 +20,7 @@ export function RequestForm() {
           defaultValue={failed?.values.amount}
           className="input max-w-40"
         />
-        {failed?.errors.amount && <p className="mt-1 text-sm text-red-600">{failed.errors.amount}</p>}
+        {failed?.errors.amount && <p className="mt-1 text-sm text-danger">{failed.errors.amount}</p>}
       </label>
       <label className="block">
         <span className="label">Reason</span>
@@ -33,13 +33,13 @@ export function RequestForm() {
           defaultValue={failed?.values.reason}
           className="input"
         />
-        {failed?.errors.reason && <p className="mt-1 text-sm text-red-600">{failed.errors.reason}</p>}
+        {failed?.errors.reason && <p className="mt-1 text-sm text-danger">{failed.errors.reason}</p>}
       </label>
       <div className="flex items-center gap-3">
         <button type="submit" disabled={pending} className="btn btn-primary">
           {pending ? "Sending…" : "Send request"}
         </button>
-        {state?.ok && <p className="text-sm text-green-700 dark:text-green-400">Request sent.</p>}
+        {state?.ok && <p className="text-sm text-ok">Request sent.</p>}
       </div>
     </form>
   );

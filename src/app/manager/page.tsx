@@ -18,7 +18,7 @@ export default async function ManagerPage() {
     <>
       <Header user={user} links={managerLinks} />
       <AutoRefresh />
-      <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8">
+      <main className="page">
         <section className="card">
           <h2 className="mb-4 text-lg font-semibold">
             Waiting for approval <span className="text-muted">({pending.length})</span>
@@ -28,16 +28,16 @@ export default async function ManagerPage() {
           ) : (
             <ul className="divide-y divide-line">
               {pending.map((r) => (
-                <li key={r.id} className="flex flex-wrap items-start gap-x-4 gap-y-3 py-3">
+                <li key={r.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_auto] sm:items-start">
                   <RequestSummary request={r} />
-                  <div className="flex gap-2">
-                    <form action={reviewRequest}>
+                  <div className="grid grid-cols-2 gap-2 sm:flex">
+                    <form action={reviewRequest} className="grid">
                       <input type="hidden" name="id" value={r.id} />
                       <button name="decision" value="approved" className="btn btn-primary">
                         Approve
                       </button>
                     </form>
-                    <form action={reviewRequest}>
+                    <form action={reviewRequest} className="grid">
                       <input type="hidden" name="id" value={r.id} />
                       <button name="decision" value="rejected" className="btn btn-ghost">
                         Reject

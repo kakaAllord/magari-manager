@@ -17,7 +17,7 @@ export default async function CarsPage() {
   return (
     <>
       <Header user={user} links={managerLinks} />
-      <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8">
+      <main className="page">
         <section className="card">
           <h2 className="mb-4 text-lg font-semibold">Add a car</h2>
           <CarForm />
@@ -32,12 +32,12 @@ export default async function CarsPage() {
           ) : (
             <ul className="divide-y divide-line">
               {cars.map((c) => (
-                <li key={c.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+                <li key={c.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">
+                    <p className="flex flex-wrap items-center gap-2 font-medium">
+                      <span className="plate">{c.plate}</span>
                       {c.make} {c.model}
                     </p>
-                    <p className="font-mono text-sm text-muted">{c.plate}</p>
                   </div>
                   {/* key forces the select to pick up a new default after reassignment */}
                   <form action={assignDriver} key={c.driver_id ?? "none"} className="flex gap-2">
@@ -46,7 +46,7 @@ export default async function CarsPage() {
                       name="driverId"
                       defaultValue={c.driver_id ?? ""}
                       aria-label={`Driver for ${c.plate}`}
-                      className="input w-44"
+                      className="input min-w-0 flex-1 sm:w-48 sm:flex-none"
                     >
                       <option value="">No driver</option>
                       {drivers.map((d) => (
@@ -55,7 +55,7 @@ export default async function CarsPage() {
                         </option>
                       ))}
                     </select>
-                    <button type="submit" className="btn btn-ghost">
+                    <button type="submit" className="btn btn-ghost shrink-0">
                       Save
                     </button>
                   </form>

@@ -33,7 +33,7 @@ export function LoginForm() {
           className="input"
         />
       </label>
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && <p className="text-sm text-danger">{state.error}</p>}
       <button type="submit" disabled={pending} className="btn btn-primary w-full">
         {pending ? "Signing in…" : "Sign in"}
       </button>

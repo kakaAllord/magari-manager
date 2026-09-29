@@ -1,30 +1,33 @@
-import Link from "next/link";
 import { logout } from "@/app/actions/auth";
 import type { User } from "@/lib/session";
+import { getTheme } from "@/lib/theme";
+import { NavLinks } from "./nav-links";
+import { ThemeToggle } from "./theme-toggle";
 
-export function Header({ user, links }: { user: User; links: { href: string; label: string }[] }) {
+export async function Header({ user, links }: { user: User; links?: { href: string; label: string }[] }) {
+  const theme = await getTheme();
+
   return (
     <header className="border-b border-line bg-surface">
-      <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-        <span className="font-semibold">Car Manager</span>
-        <nav className="flex gap-4 text-sm">
-          {links.map((l) => (
-            <Link key={l.href} href={l.href} className="text-muted hover:text-foreground">
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="ml-auto flex items-center gap-3 text-sm">
-          <span className="text-muted">
+      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 pt-3 pb-2">
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">Car Manager</p>
+          <p className="truncate text-xs text-muted">
             {user.name} · <span className="capitalize">{user.role}</span>
-          </span>
-          <form action={logout}>
-            <button type="submit" className="btn btn-ghost">
-              Log out
-            </button>
-          </form>
+          </p>
         </div>
+        <ThemeToggle initial={theme} />
+        <form action={logout}>
+          <button type="submit" className="btn btn-ghost">
+            Log out
+          </button>
+        </form>
       </div>
+      {links && (
+        <div className="mx-auto max-w-5xl px-1 sm:px-2">
+          <NavLinks links={links} />
+        </div>
+      )}
     </header>
   );
 }

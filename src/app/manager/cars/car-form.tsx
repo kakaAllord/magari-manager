@@ -24,7 +24,7 @@ export function CarForm() {
         {pending ? "Adding…" : "Add car"}
       </button>
       {state && (
-        <p className={`text-sm sm:col-span-4 ${state.ok ? "text-green-700 dark:text-green-400" : "text-red-600"}`}>
+        <p className={`text-sm sm:col-span-4 ${state.ok ? "text-ok" : "text-danger"}`}>
           {state.message}
         </p>
       )}

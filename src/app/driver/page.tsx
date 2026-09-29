@@ -20,9 +20,9 @@ export default async function DriverPage() {
 
   return (
     <>
-      <Header user={user} links={[{ href: "/driver", label: "My requests" }]} />
+      <Header user={user} />
       <AutoRefresh />
-      <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8">
+      <main className="page">
         <section className="card">
           <h2 className="text-sm font-medium text-muted">Your car</h2>
           <p className="mt-1 text-lg font-semibold">
