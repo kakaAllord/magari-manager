@@ -15,7 +15,7 @@ export async function createDriver(_prev: DriverFormState, formData: FormData): 
   const rawCar = String(formData.get("carId") ?? "");
   const carId = rawCar === "" ? null : Number(rawCar);
 
-  if (name.length < 2) return { ok: false, message: "Enter the driver's name." };
+  if (name.length < 2) return { ok: false, message: "Andika jina la dereva." };
   const passwordError = checkNewPassword(password);
   if (passwordError) return { ok: false, message: passwordError };
 
@@ -38,14 +38,14 @@ export async function createDriver(_prev: DriverFormState, formData: FormData): 
   });
 
   if (plate instanceof CarTakenError) {
-    return { ok: false, message: "That car already has a driver. Pick another car or refresh the page." };
+    return { ok: false, message: "Gari hilo tayari lina dereva. Chagua gari lingine au fungua ukurasa upya." };
   }
   revalidatePath("/manager", "layout");
   return {
     ok: true,
     message: plate
-      ? `Added ${name}. They sign in with plate ${plate} and the password you chose.`
-      : `Added ${name}. Assign them a car on the Cars page so they can sign in.`,
+      ? `${name} ameongezwa. Ataingia kwa namba ${plate} na nenosiri ulilochagua.`
+      : `${name} ameongezwa. Mpe gari kwenye ukurasa wa Magari ili aweze kuingia.`,
   };
 }
 
@@ -58,7 +58,7 @@ export async function setDriverPassword(_prev: DriverFormState, formData: FormDa
   const password = String(formData.get("password") ?? "");
   const passwordError = checkNewPassword(password);
   if (passwordError) return { ok: false, message: passwordError };
-  if (!Number.isInteger(driverId)) return { ok: false, message: "Unknown driver." };
+  if (!Number.isInteger(driverId)) return { ok: false, message: "Dereva hajulikani." };
 
   const hash = await bcrypt.hash(password, 10);
   const updated = await transaction(async (client) => {
@@ -69,6 +69,6 @@ export async function setDriverPassword(_prev: DriverFormState, formData: FormDa
     await client.query("DELETE FROM sessions WHERE user_id = $1", [driverId]);
     return rowCount;
   });
-  if (!updated) return { ok: false, message: "Unknown driver." };
-  return { ok: true, message: "New password saved. Give it to the driver." };
+  if (!updated) return { ok: false, message: "Dereva hajulikani." };
+  return { ok: true, message: "Nenosiri jipya limehifadhiwa. Mpe dereva." };
 }

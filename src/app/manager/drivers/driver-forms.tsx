@@ -15,22 +15,22 @@ export function AddDriverForm({ freeCars }: { freeCars: { id: number; label: str
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2">
       <label>
-        <span className="label">Name</span>
+        <span className="label">Jina</span>
         <input name="name" required autoComplete="off" placeholder="Juma Hassan" className="input" />
       </label>
       <label>
-        <span className="label">Car (their login)</span>
+        <span className="label">Gari (namba yake ya kuingia)</span>
         <select name="carId" defaultValue={freeCars[0]?.id ?? ""} className="input">
           {freeCars.map((c) => (
             <option key={c.id} value={c.id}>
               {c.label}
             </option>
           ))}
-          <option value="">No car yet</option>
+          <option value="">Bado hana gari</option>
         </select>
       </label>
       <label>
-        <span className="label">Password to give them</span>
+        <span className="label">Nenosiri la kumpa</span>
         <input
           name="password"
           required
@@ -41,7 +41,7 @@ export function AddDriverForm({ freeCars }: { freeCars: { id: number; label: str
       </label>
       <div className="flex items-end">
         <button type="submit" disabled={pending} className="btn btn-primary w-full">
-          {pending ? "Adding…" : "Add driver"}
+          {pending ? "Inaongeza…" : "Ongeza dereva"}
         </button>
       </div>
       <div className="sm:col-span-2">
@@ -63,12 +63,12 @@ export function SetPasswordForm({ driverId, driverName }: { driverId: number; dr
           required
           minLength={MIN_PASSWORD_LENGTH}
           autoComplete="new-password"
-          placeholder="New password"
-          aria-label={`New password for ${driverName}`}
+          placeholder="Nenosiri jipya"
+          aria-label={`Nenosiri jipya la ${driverName}`}
           className="input min-w-0 flex-1"
         />
         <button type="submit" disabled={pending} className="btn btn-ghost shrink-0">
-          {pending ? "Saving…" : "Set password"}
+          {pending ? "Inahifadhi…" : "Weka nenosiri"}
         </button>
       </div>
       <Message state={state} />

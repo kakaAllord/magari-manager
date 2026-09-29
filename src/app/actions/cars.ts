@@ -16,18 +16,18 @@ export async function createCar(_prev: CarFormState, formData: FormData): Promis
   const model = String(formData.get("model") ?? "").trim();
   const plateError = checkPlate(plate);
   if (plateError) return { ok: false, message: plateError };
-  if (!make || !model) return { ok: false, message: "Make and model are both required." };
+  if (!make || !model) return { ok: false, message: "Andika aina na modeli ya gari." };
 
   try {
     await query("INSERT INTO cars (plate, make, model) VALUES ($1, $2, $3)", [plate, make, model]);
   } catch (err) {
     if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
-      return { ok: false, message: `A car with plate ${plate} already exists.` };
+      return { ok: false, message: `Gari lenye namba ${plate} tayari lipo.` };
     }
     throw err;
   }
   revalidatePath("/manager", "layout");
-  return { ok: true, message: `Added ${make} ${model} (${plate}).` };
+  return { ok: true, message: `${make} ${model} (${plate}) limeongezwa.` };
 }
 
 // Assigning a driver who already has a car moves them to this one. The driver who

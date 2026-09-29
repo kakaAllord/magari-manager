@@ -6,10 +6,16 @@ const styles: Record<RequestStatus, string> = {
   rejected: "bg-danger-soft text-danger",
 };
 
+const labels: Record<RequestStatus, string> = {
+  pending: "Linasubiri",
+  approved: "Limekubaliwa",
+  rejected: "Limekataliwa",
+};
+
 export function StatusBadge({ status }: { status: RequestStatus }) {
   return (
-    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize ${styles[status]}`}>
-      {status}
+    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status]}`}>
+      {labels[status]}
     </span>
   );
 }

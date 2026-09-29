@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { BrandMark } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getCurrentUser, homeFor } from "@/lib/session";
 import { getTheme } from "@/lib/theme";
@@ -9,24 +10,29 @@ export default async function LoginPage() {
   if (user) redirect(homeFor(user.role));
 
   return (
-    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-12">
-      <div className="fixed top-3 right-3">
+    <main className="relative flex flex-1 flex-col items-center justify-center px-4 py-12">
+      <div className="absolute top-3 right-3">
         <ThemeToggle initial={await getTheme()} />
       </div>
-      <h1 className="text-2xl font-semibold">Car Manager</h1>
-      <p className="mb-6 mt-1 text-sm text-muted">
-        Drivers sign in with their car&apos;s plate number and the password from their manager.
-      </p>
-      <div className="card">
-        <LoginForm />
-      </div>
-      {process.env.NODE_ENV !== "production" && (
-        <div className="mt-6 text-xs text-muted">
-          <p className="font-medium">Demo accounts</p>
-          <p>Drivers: T103ABE or T456BCD / driver123</p>
-          <p>Manager: manager@example.com / manager123</p>
+      <div className="w-full max-w-sm">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <BrandMark className="size-14" />
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight">Karibu Magari</h1>
+          <p className="mt-1 text-sm text-muted">
+            Dereva: ingia kwa namba ya gari lako na nenosiri ulilopewa na meneja.
+          </p>
         </div>
-      )}
+        <div className="card p-5 sm:p-6">
+          <LoginForm />
+        </div>
+        {process.env.NODE_ENV !== "production" && (
+          <div className="mt-6 rounded-lg border border-dashed border-line p-3 text-xs text-muted">
+            <p className="font-medium text-foreground">Akaunti za majaribio</p>
+            <p>Madereva: T103ABE au T456BCD / driver123</p>
+            <p>Meneja: manager@example.com / manager123</p>
+          </div>
+        )}
+      </div>
     </main>
   );
 }

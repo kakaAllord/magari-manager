@@ -1,5 +1,6 @@
 import "server-only";
 import { query } from "@/lib/db";
+import { periodLabel } from "@/lib/report-params";
 import { TIME_ZONE } from "@/lib/time";
 
 // An expense is an approved request, dated by when it was approved (Tanzanian time).
@@ -46,14 +47,14 @@ export async function getOverview() {
 }
 
 // Approved spend for each of the last `months` months, oldest first, including empty months.
-export function getMonthlySpend(months = 6) {
-  return query<{ month: Date; label: string; total: string }>(
+export async function getMonthlySpend(months = 6) {
+  const rows = await query<{ month_start: string; total: string }>(
     `WITH local AS (SELECT date_trunc('month', now() AT TIME ZONE $1) AS this_month),
      months AS (
        SELECT generate_series(this_month - ($2::int - 1) * interval '1 month', this_month, interval '1 month') AS month
          FROM local
      )
-     SELECT m.month, to_char(m.month, 'Mon YYYY') AS label,
+     SELECT to_char(m.month, 'YYYY-MM-DD') AS month_start,
             coalesce(sum(r.amount), 0) AS total
        FROM months m
        LEFT JOIN money_requests r
@@ -63,6 +64,7 @@ export function getMonthlySpend(months = 6) {
       GROUP BY m.month ORDER BY m.month`,
     [TIME_ZONE, months],
   );
+  return rows.map((r) => ({ label: periodLabel(r.month_start, "month"), total: r.total }));
 }
 
 // This month's approved spend per car, biggest first; cars with no spend are included.

@@ -17,16 +17,16 @@ export function parseMoneyRequest(input: RequestInput):
   const reason = input.reason.trim();
 
   if (!/^\d+$/.test(rawAmount)) {
-    errors.amount = "Enter a whole number of shillings, like 40000 or 40,000.";
+    errors.amount = "Andika kiasi kamili cha shilingi, mfano 40000 au 40,000.";
   } else if (Number(rawAmount) <= 0) {
-    errors.amount = "Amount must be more than zero.";
+    errors.amount = "Kiasi lazima kiwe zaidi ya sifuri.";
   } else if (Number(rawAmount) > MAX_AMOUNT) {
-    errors.amount = "Amount is too large.";
+    errors.amount = "Kiasi ni kikubwa mno.";
   }
 
-  if (reason.length < 3) errors.reason = "Tell the manager what the money is for.";
+  if (reason.length < 3) errors.reason = "Mweleze meneja pesa ni za nini.";
   else if (reason.length > MAX_REASON_LENGTH) {
-    errors.reason = `Keep the reason under ${MAX_REASON_LENGTH} characters.`;
+    errors.reason = `Sababu isizidi herufi ${MAX_REASON_LENGTH}.`;
   }
 
   if (errors.amount || errors.reason) return { ok: false, errors };
@@ -37,13 +37,13 @@ export function parseMoneyRequest(input: RequestInput):
 export const normalizePlate = (plate: string) => plate.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 export function checkPlate(plate: string): string | undefined {
-  if (plate.length < 2 || plate.length > 10) return "Enter a plate number like T103ABE.";
+  if (plate.length < 2 || plate.length > 10) return "Andika namba ya gari, mfano T103ABE.";
 }
 
 export const MIN_PASSWORD_LENGTH = 6;
 
 export function checkNewPassword(password: string): string | undefined {
   if (password.length < MIN_PASSWORD_LENGTH) {
-    return `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
+    return `Nenosiri liwe na herufi ${MIN_PASSWORD_LENGTH} au zaidi.`;
   }
 }

@@ -29,11 +29,11 @@ function findAccount(login: string) {
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const login = String(formData.get("login") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (!login || !password) return { error: "Enter your plate number (or email) and password.", login };
+  if (!login || !password) return { error: "Andika namba ya gari (au barua pepe) na nenosiri.", login };
 
   const user = (await findAccount(login))[0];
   if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-    return { error: "Wrong plate number, email or password.", login };
+    return { error: "Namba ya gari, barua pepe au nenosiri si sahihi.", login };
   }
 
   await createSession(user.id);

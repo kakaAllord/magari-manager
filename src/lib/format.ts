@@ -1,13 +1,13 @@
 import { TIME_ZONE } from "@/lib/time";
 
 // Tanzanian shillings, shown without cents: "TSh 40,000".
-const money = new Intl.NumberFormat("en-TZ", {
+const money = new Intl.NumberFormat("sw-TZ", {
   style: "currency",
   currency: "TZS",
   maximumFractionDigits: 0,
 });
 
-const dateTime = new Intl.DateTimeFormat("en-GB", {
+const dateTime = new Intl.DateTimeFormat("sw-TZ", {
   dateStyle: "medium",
   timeStyle: "short",
   timeZone: TIME_ZONE,

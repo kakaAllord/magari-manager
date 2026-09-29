@@ -1,6 +1,9 @@
-export const managerLinks = [
-  { href: "/manager", label: "Dashboard" },
-  { href: "/manager/requests", label: "Requests" },
-  { href: "/manager/cars", label: "Cars" },
-  { href: "/manager/drivers", label: "Drivers" },
+import type { NavLink } from "@/components/app-shell";
+
+export const managerLinks: NavLink[] = [
+  { href: "/manager", label: "Dashibodi", icon: "dashboard" },
+  { href: "/manager/requests", label: "Maombi", icon: "inbox" },
+  { href: "/manager/cars", label: "Magari", icon: "car" },
+  { href: "/manager/drivers", label: "Madereva", icon: "users" },
+  { href: "/manager/reports", label: "Ripoti", icon: "report" },
 ];

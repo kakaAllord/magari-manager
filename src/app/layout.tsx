@@ -14,15 +14,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Car Manager",
-  description: "Drivers request money, managers approve it.",
+  title: "Magari",
+  description: "Maombi ya pesa za magari na ripoti za matumizi",
+  appleWebApp: { title: "Magari", statusBarStyle: "default" },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const theme = await getTheme();
   return (
     <html
-      lang="en"
+      lang="sw"
       data-theme={theme === "system" ? undefined : theme}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >

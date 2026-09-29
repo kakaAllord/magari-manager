@@ -1,72 +1,66 @@
 import Link from "next/link";
-import { Header } from "@/components/header";
+import { PageHeader } from "@/components/page-header";
 import { formatMoney } from "@/lib/format";
 import { requireUser } from "@/lib/session";
 import { getMonthlySpend, getOverview, getSpendByCarThisMonth } from "@/lib/stats";
 import { TIME_ZONE } from "@/lib/time";
-import { managerLinks } from "./nav";
 import { SpendChart } from "./spend-chart";
 
-const today = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeZone: TIME_ZONE });
+const today = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "full", timeZone: TIME_ZONE });
 
 export default async function DashboardPage() {
-  const user = await requireUser("manager");
+  await requireUser("manager");
   const [o, monthly, byCar] = await Promise.all([getOverview(), getMonthlySpend(6), getSpendByCarThisMonth()]);
   const spentCars = byCar.filter((c) => Number(c.total) > 0).length;
 
   return (
-    <>
-      <Header user={user} links={managerLinks} />
       <main className="page">
-        <div>
-          <h1 className="text-xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted">{today.format(new Date())}</p>
-        </div>
+        <PageHeader title="Dashibodi" description={today.format(new Date())} />
 
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Summary">
-          <Tile label="Spent this month" value={formatMoney(o.this_month)}>
-            This week {formatMoney(o.this_week)}
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Muhtasari">
+          <Tile label="Matumizi mwezi huu" value={formatMoney(o.this_month)}>
+            Wiki hii {formatMoney(o.this_week)}
             <br />
-            Last month {formatMoney(o.last_month)}
+            Mwezi uliopita {formatMoney(o.last_month)}
           </Tile>
           <Tile
-            label="Waiting for approval"
+            label="Yanasubiri idhini"
             value={String(o.pending_count)}
             tone={o.pending_count > 0 ? "warn" : undefined}
             href="/manager/requests"
           >
-            {o.pending_count > 0 ? `${formatMoney(o.pending_total)} requested · Review` : "All caught up"}
+            {o.pending_count > 0 ? `${formatMoney(o.pending_total)} · Yashughulikie` : "Hakuna linalosubiri"}
           </Tile>
-          <Tile label="Cars" value={String(o.cars)} href="/manager/cars">
-            {o.cars_without_driver === 0 ? "All have a driver" : `${o.cars_without_driver} without a driver`}
+          <Tile label="Magari" value={String(o.cars)} href="/manager/cars">
+            {o.cars_without_driver === 0 ? "Yote yana madereva" : `${o.cars_without_driver} hayana dereva`}
           </Tile>
-          <Tile label="Drivers" value={String(o.drivers)} href="/manager/drivers">
-            {o.drivers_without_car === 0 ? "All have a car" : `${o.drivers_without_car} without a car`}
+          <Tile label="Madereva" value={String(o.drivers)} href="/manager/drivers">
+            {o.drivers_without_car === 0 ? "Wote wana magari" : `${o.drivers_without_car} hawana gari`}
           </Tile>
         </section>
 
         <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
           <section className="card">
-            <h2 className="font-semibold">Spending per month</h2>
+            <h2 className="font-semibold">Matumizi kwa mwezi</h2>
             <p className="mb-4 text-sm text-muted">
-              Approved requests, last 6 months · {formatMoney(o.all_time)} all time
+              Maombi yaliyokubaliwa, miezi 6 iliyopita · jumla {formatMoney(o.all_time)} tangu mwanzo
             </p>
             <SpendChart data={monthly} />
           </section>
 
           <section className="card">
-            <h2 className="font-semibold">This month by car</h2>
+            <h2 className="font-semibold">Mwezi huu kwa gari</h2>
             <p className="mb-3 text-sm text-muted">
-              {spentCars} of {byCar.length} cars have spending this month
+              Magari {spentCars} kati ya {byCar.length} yametumia pesa mwezi huu
             </p>
             {byCar.length === 0 ? (
-              <p className="text-sm text-muted">No cars yet.</p>
+              <p className="text-sm text-muted">Bado hakuna gari.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead className="sr-only">
                   <tr>
-                    <th>Car</th>
-                    <th>Spent</th>
+                    <th>Gari</th>
+                    <th>Matumizi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -75,13 +69,13 @@ export default async function DashboardPage() {
                       <td className="py-2 pr-2">
                         <span className="plate">{c.plate}</span>
                         <span className="mt-0.5 block text-xs text-muted">
-                          {c.car} · {c.driver ?? "No driver"}
+                          {c.car} · {c.driver ?? "Hakuna dereva"}
                         </span>
                       </td>
                       <td className="py-2 text-right align-top tabular-nums">
                         <span className="font-medium">{formatMoney(c.total)}</span>
                         <span className="block text-xs text-muted">
-                          {c.count} {c.count === 1 ? "request" : "requests"}
+                          {c.count === 1 ? "ombi 1" : `maombi ${c.count}`}
                         </span>
                       </td>
                     </tr>
@@ -92,7 +86,6 @@ export default async function DashboardPage() {
           </section>
         </div>
       </main>
-    </>
   );
 }
 
