@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Car Manager
 
-## Getting Started
+A small Next.js + Postgres app. Drivers sign in and request money with a reason;
+managers sign in, approve or reject requests, and manage cars. Drivers see the
+decision on their page (it refreshes every 15 seconds).
 
-First, run the development server:
+## Setup
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgres.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. Create a database role and database (once):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   ```sh
+   sudo -u postgres psql -c "CREATE ROLE carmanager LOGIN PASSWORD 'carmanager'" \
+                         -c "CREATE DATABASE carmanager OWNER carmanager"
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Configure and install:
 
-## Learn More
+   ```sh
+   cp .env.example .env.local   # edit DATABASE_URL if needed
+   npm install
+   npm run db:setup             # runs migrations, then seeds demo data
+   npm run dev
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+3. Open http://localhost:3000.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Demo accounts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Role    | Email               | Password   |
+| ------- | ------------------- | ---------- |
+| Manager | manager@example.com | manager123 |
+| Driver  | alice@example.com   | driver123  |
+| Driver  | bob@example.com     | driver123  |
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Command              | What it does                                   |
+| -------------------- | ---------------------------------------------- |
+| `npm run dev`        | Start the dev server                           |
+| `npm run db:migrate` | Apply new files in `db/migrations/` in order   |
+| `npm run db:seed`    | Insert demo users and cars (safe to re-run)    |
+| `npm test`           | Unit tests (Node test runner)                  |
+| `npm run build`      | Production build                               |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Set `CURRENCY` (ISO code, default `USD`) in `.env.local` to change how amounts display.
+
+## How it fits together
+
+- `db/migrations/` — plain SQL schema: `users`, `cars`, `sessions`, `money_requests`.
+- `src/lib/session.ts` — cookie sessions stored hashed in Postgres; `requireUser(role)`
+  guards every page and server action.
+- `src/app/actions/` — server actions for login, requests and cars.
+- `src/app/driver`, `src/app/manager` — the two role-specific areas.
+
+Review is only possible while a request is `pending`, so two managers clicking at
+once can't overwrite each other's decision.
