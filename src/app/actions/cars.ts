@@ -26,11 +26,12 @@ export async function createCar(_prev: CarFormState, formData: FormData): Promis
     }
     throw err;
   }
-  revalidatePath("/manager/cars");
-  return { ok: true, message: `Added ${make} ${model}.` };
+  revalidatePath("/manager", "layout");
+  return { ok: true, message: `Added ${make} ${model} (${plate}).` };
 }
 
-// Assigning a driver who already has a car moves them to this one.
+// Assigning a driver who already has a car moves them to this one. The driver who
+// loses this car is signed out, since their plate no longer signs them in.
 export async function assignDriver(formData: FormData) {
   await requireUser("manager");
   const carId = Number(formData.get("carId"));
@@ -39,13 +40,21 @@ export async function assignDriver(formData: FormData) {
   if (!Number.isInteger(carId) || (driverId !== null && !Number.isInteger(driverId))) return;
 
   await transaction(async (client) => {
+    const previous = await client.query<{ driver_id: number | null }>(
+      "SELECT driver_id FROM cars WHERE id = $1 FOR UPDATE",
+      [carId],
+    );
+    const previousDriver = previous.rows[0]?.driver_id;
     if (driverId !== null) {
       const { rowCount } = await client.query("SELECT 1 FROM users WHERE id = $1 AND role = 'driver'", [driverId]);
       if (!rowCount) return;
       await client.query("UPDATE cars SET driver_id = NULL WHERE driver_id = $1 AND id <> $2", [driverId, carId]);
     }
     await client.query("UPDATE cars SET driver_id = $1 WHERE id = $2", [driverId, carId]);
+    if (previousDriver && previousDriver !== driverId) {
+      await client.query("DELETE FROM sessions WHERE user_id = $1", [previousDriver]);
+    }
   });
-  revalidatePath("/manager/cars");
+  revalidatePath("/manager", "layout");
   revalidatePath("/driver");
 }
