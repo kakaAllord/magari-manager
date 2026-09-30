@@ -82,3 +82,25 @@ export function getSpendByCarThisMonth() {
     [TIME_ZONE],
   );
 }
+
+// Income and approved spend for each of the last `months` months, newest first.
+export async function getMonthlyIncomeAndSpend(months = 6) {
+  const rows = await query<{ month_start: string; income: string; spend: string }>(
+    `WITH local AS (SELECT date_trunc('month', now() AT TIME ZONE $1) AS this_month),
+     months AS (
+       SELECT generate_series(this_month - ($2::int - 1) * interval '1 month', this_month, interval '1 month') AS month
+         FROM local
+     )
+     SELECT to_char(m.month, 'YYYY-MM-DD') AS month_start,
+            (SELECT coalesce(sum(i.amount), 0) FROM incomes i
+              WHERE i.created_at AT TIME ZONE $1 >= m.month
+                AND i.created_at AT TIME ZONE $1 < m.month + interval '1 month') AS income,
+            (SELECT coalesce(sum(r.amount), 0) FROM money_requests r
+              WHERE r.status = 'approved'
+                AND r.reviewed_at AT TIME ZONE $1 >= m.month
+                AND r.reviewed_at AT TIME ZONE $1 < m.month + interval '1 month') AS spend
+       FROM months m ORDER BY m.month DESC`,
+    [TIME_ZONE, months],
+  );
+  return rows.map((r) => ({ label: periodLabel(r.month_start, "month"), income: r.income, spend: r.spend }));
+}

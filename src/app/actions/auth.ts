@@ -10,11 +10,11 @@ export type LoginState = { error?: string; login?: string } | undefined;
 
 type Candidate = { id: number; password_hash: string; role: Role };
 
-// Managers sign in with their email; drivers with the plate of the car assigned to them.
+// Managers and directors sign in with their email; drivers with the plate of their car.
 function findAccount(login: string) {
   if (login.includes("@")) {
     return query<Candidate>(
-      "SELECT id, password_hash, role FROM users WHERE email = $1 AND role = 'manager'",
+      "SELECT id, password_hash, role FROM users WHERE email = $1 AND role IN ('manager', 'director')",
       [login.toLowerCase()],
     );
   }

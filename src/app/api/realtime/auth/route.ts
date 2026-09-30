@@ -1,8 +1,8 @@
 import { driverChannel, MANAGERS_CHANNEL, pusher } from "@/lib/realtime";
 import { getCurrentUser } from "@/lib/session";
 
-// Pusher calls this before joining a private channel. Managers may join the managers'
-// channel; a driver may join only their own channel.
+// Pusher calls this before joining a private channel. Managers and directors may join
+// the managers' channel; a driver may join only their own channel.
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!pusher || !user) return new Response("Forbidden", { status: 403 });
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const socketId = String(form.get("socket_id") ?? "");
   const channel = String(form.get("channel_name") ?? "");
-  const allowed = user.role === "manager" ? channel === MANAGERS_CHANNEL : channel === driverChannel(user.id);
+  const allowed = user.role === "driver" ? channel === driverChannel(user.id) : channel === MANAGERS_CHANNEL;
   if (!socketId || !allowed) return new Response("Forbidden", { status: 403 });
 
   return Response.json(pusher.authorizeChannel(socketId, channel));

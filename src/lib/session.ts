@@ -8,7 +8,7 @@ import { query } from "@/lib/db";
 const COOKIE = "session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
-export type Role = "driver" | "manager";
+export type Role = "driver" | "manager" | "director";
 export type User = { id: number; name: string; email: string | null; role: Role };
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -58,4 +58,4 @@ export async function requireUser(role?: Role): Promise<User> {
   return user;
 }
 
-export const homeFor = (role: Role) => (role === "manager" ? "/manager" : "/driver");
+export const homeFor = (role: Role) => `/${role}`;

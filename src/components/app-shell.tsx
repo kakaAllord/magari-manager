@@ -5,7 +5,7 @@ import { SideLinks, TabLinks } from "./nav-links";
 
 export type NavLink = { href: string; label: string; icon: IconName };
 
-const roleName = { driver: "Dereva", manager: "Meneja" } as const;
+const roleName = { driver: "Dereva", manager: "Meneja", director: "Mkurugenzi" } as const;
 
 // Desktop (lg and up): fixed sidebar. Phones and tablets: top bar with tabs.
 export function AppShell({ user, links, children }: { user: User; links: NavLink[]; children: React.ReactNode }) {
