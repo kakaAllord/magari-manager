@@ -16,17 +16,24 @@ export type Income = {
   can_delete: boolean;
 };
 
+export const INCOME_PAGE_SIZE = 25;
+
 // Deleted entries are left out. `can_delete` marks the viewer's own entries from the last 24 hours.
-export const listIncomes = (viewerId: number, limit = 100) =>
-  query<Income>(
+// Newest first; `carId` narrows to one car.
+export async function listIncomes(viewerId: number, opts: { page?: number; limit?: number; carId?: number | null } = {}) {
+  const limit = opts.limit ?? INCOME_PAGE_SIZE;
+  const rows = await query<Income & { total_count: number }>(
     `SELECT i.id, i.source, i.amount, i.description, c.make || ' ' || c.model AS car, i.created_at,
             u.name AS recorder_name,
-            (i.recorded_by = $1 AND i.created_at > now() - make_interval(hours => $3)) AS can_delete
+            (i.recorded_by = $1 AND i.created_at > now() - make_interval(hours => $3)) AS can_delete,
+            count(*) OVER ()::int AS total_count
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
-      WHERE i.deleted_at IS NULL
-      ORDER BY i.created_at DESC LIMIT $2`,
-    [viewerId, limit, DELETE_WINDOW_HOURS],
+      WHERE i.deleted_at IS NULL AND ($5::int IS NULL OR i.car_id = $5)
+      ORDER BY i.created_at DESC LIMIT $2 OFFSET $4`,
+    [viewerId, limit, DELETE_WINDOW_HOURS, ((opts.page ?? 1) - 1) * limit, opts.carId ?? null],
   );
+  return { rows, total: rows[0]?.total_count ?? 0 };
+}
 
 // Income is dated by when it was recorded, in Tanzanian time.
 export async function getIncomeTotals() {

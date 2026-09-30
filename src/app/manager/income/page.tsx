@@ -1,17 +1,24 @@
 import Link from "next/link";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
-import { formatDateTime, formatMoney } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { DELETE_WINDOW_HOURS, getIncomeTotals, listIncomes } from "@/lib/incomes";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { listCars } from "@/lib/reports";
 import { requireUser } from "@/lib/session";
-import { DeleteIncome } from "./delete-income";
 import { IncomeForm } from "./income-form";
+import { IncomeList } from "./income-list";
 
+const RECENT = 5;
+
+// The form and the last few entries. Everything else lives on the history page.
 export default async function IncomePage() {
   const manager = await requireUser("manager");
-  const [incomes, totals, cars] = await Promise.all([listIncomes(manager.id), getIncomeTotals(), listCars()]);
+  const [recent, totals, cars] = await Promise.all([
+    listIncomes(manager.id, { limit: RECENT }),
+    getIncomeTotals(),
+    listCars(),
+  ]);
 
   return (
     <main className="page">
@@ -37,29 +44,13 @@ export default async function IncomePage() {
         <p className="mb-2 text-sm text-muted">
           Umekosea? Unaweza kufuta mapato uliyorekodi ndani ya saa {DELETE_WINDOW_HOURS}. Mkurugenzi ataona yaliyofutwa.
         </p>
-        {incomes.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted">Bado hakuna mapato. Rekodi ya kwanza hapo juu.</p>
-        ) : (
-          <ul className="divide-y divide-line">
-            {incomes.map((i) => (
-              <li key={i.id} className="grid gap-2 py-3.5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="font-medium break-words">
-                      {i.source}
-                      {i.car && <span className="font-normal text-muted"> · {i.car}</span>}
-                    </p>
-                    {i.description && <p className="text-sm break-words">{i.description}</p>}
-                    <p className="mt-1 text-xs text-muted">
-                      {formatDateTime(i.created_at)} · Imerekodiwa na {i.recorder_name ?? "meneja"}
-                    </p>
-                  </div>
-                  <p className="shrink-0 font-semibold text-ok tabular-nums">+{formatMoney(i.amount)}</p>
-                </div>
-                {i.can_delete && <DeleteIncome incomeId={i.id} source={i.source} />}
-              </li>
-            ))}
-          </ul>
+        <IncomeList incomes={recent.rows} empty="Bado hakuna mapato. Rekodi ya kwanza hapo juu." />
+        {recent.total > RECENT && (
+          <p className="mt-3 text-sm">
+            <Link href="/manager/income/history" className="font-medium text-accent underline">
+              Historia ya mapato yote ({recent.total}) →
+            </Link>
+          </p>
         )}
       </section>
     </main>
