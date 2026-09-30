@@ -2,8 +2,10 @@
 
 A Next.js + Postgres app for running a small fleet, in Swahili. Drivers sign in
 with their car's plate number and request money with a reason. Managers sign in
-with email, approve or reject requests, manage cars and drivers, watch spending
-on a dashboard and download Excel reports per car, month or week. Decisions reach
+with email, approve or reject requests, record income (source, amount, optional
+description), manage cars and drivers, watch spending on a dashboard and download
+Excel reports per car, month or week. A director signs in with email, adds
+managers, and watches income, spending and a live feed of everything that happens. Decisions reach
 the driver instantly (Pusher), or within 10 seconds without Pusher. Amounts are
 whole Tanzanian shillings.
 
@@ -31,12 +33,13 @@ Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgr
 
 ## Demo accounts
 
-Below the login form, a box with three compartments (Meneja, Dereva 1, Dereva 2)
-fills in these details with one tap. It shows unless `DEMO_MODE=0`; set that once
+Below the login form, a box with four compartments (Mkurugenzi, Meneja, Dereva 1,
+Dereva 2) fills in these details with one tap. It shows unless `DEMO_MODE=0`; set that once
 the site is used for real.
 
-| Role    | Sign in with        | Password   |
-| ------- | ------------------- | ---------- |
+| Role     | Sign in with         | Password    |
+| -------- | -------------------- | ----------- |
+| Director | director@example.com | director123 |
 | Driver  | plate `T103ABE`     | driver123  |
 | Driver  | plate `T456BCD`     | driver123  |
 | Manager | manager@example.com | manager123 |
@@ -52,11 +55,11 @@ These passwords are public. Only seed a database that is meant to be a demo.
 3. Choose one:
    - **Demo site:** add `DEMO_MODE=1` and redeploy. The build loads the demo
      accounts and history.
-   - **Real use:** set `DEMO_MODE=0` (hides the demo box), create your first
-     manager from your machine, then add cars and drivers in the app:
+   - **Real use:** set `DEMO_MODE=0` (hides the demo box), create the director
+     from your machine, then add managers, cars and drivers in the app:
 
      ```sh
-     DATABASE_URL='postgres://…' npm run create-manager -- "Your Name" you@example.com 'a-strong-password'
+     DATABASE_URL='postgres://…' npm run create-director -- "Your Name" you@example.com 'a-strong-password'
      ```
 
 ### Instant updates (Pusher)
@@ -73,7 +76,7 @@ approvals and rejections show up immediately.
 
 Events carry no data, only "requests changed"; pages then re-fetch through the
 normal signed-in path. Channels are private: `/api/realtime/auth` lets managers
-join `private-managers` and each driver only `private-driver-<their id>`.
+and directors join `private-managers` and each driver only `private-driver-<their id>`.
 
 ## Scripts
 
@@ -82,20 +85,23 @@ join `private-managers` and each driver only `private-driver-<their id>`.
 | `npm run dev`        | Apply new migrations, then start the dev server |
 | `npm run db:migrate` | Apply new files in `db/migrations/` in order   |
 | `npm run db:seed`    | Insert demo users, cars and history (safe to re-run) |
+| `npm run create-director -- "Name" email password` | Create a director or reset their password |
 | `npm run create-manager -- "Name" email password` | Create a manager or reset their password |
 | `npm test`           | Unit tests (Node test runner)                  |
 | `npm run build`      | Production build                               |
 
 ## How it fits together
 
-- `db/migrations/`: plain SQL schema for `users`, `cars`, `sessions` and `money_requests`.
+- `db/migrations/`: plain SQL schema for `users` (driver, manager or director), `cars`,
+  `sessions`, `money_requests` and `incomes`.
 - `src/lib/session.ts`: cookie sessions stored hashed in Postgres; `requireUser(role)`
   guards every page, layout and server action.
 - `src/app/actions/`: server actions for login, requests, cars and drivers.
-- `src/app/driver`, `src/app/manager`: the two role-specific areas, each wrapped in
+- `src/app/driver`, `src/app/manager`, `src/app/director`: the role-specific areas, each wrapped in
   `AppShell` (sidebar on desktop, top bar with tabs on phones).
 - `src/lib/stats.ts`, `src/lib/reports.ts`, `src/lib/workbook.ts`: dashboard figures,
-  report queries and the Excel file.
+  report queries and the Excel file. `src/lib/incomes.ts` and `src/lib/activity.ts`:
+  income totals and the director's timeline.
 - `src/lib/realtime.ts`, `src/components/live-updates.tsx`: Pusher signals and the
   client that refreshes on them.
 
