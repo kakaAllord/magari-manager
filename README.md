@@ -2,12 +2,16 @@
 
 A Next.js + Postgres app for running a small fleet, in Swahili. Drivers sign in
 with their car's plate number and request money with a reason. Managers sign in
-with email, approve or reject requests, record income (the car it came from, amount, optional
+with email, approve or reject requests, ask for money themselves (approved as they ask, for a
+car or none), record income (the car it came from, amount, optional
 description; the recorder can delete an entry within 24 hours), manage cars and
 drivers, watch income and spending on a dashboard, and see reports with separate
-spend and income tables plus every entry with its date, downloadable as Excel per car, month or week. A director signs in
-with email, adds managers, switches them off and on, reads the same reports, and watches
-income, spending and a live feed of everything that happens, deletions included.
+spend and income tables plus every entry with its date, downloadable as Excel per car, month or week.
+A mhasibu (accountant) signs in with email and pays out approved requests, with an optional
+note such as an M-Pesa reference. A director signs in with email, adds managers and mhasibu,
+switches them off and on, reads the same reports, and watches income, spending and a live
+feed of everything that happens, deletions and payouts included. Long lists (requests,
+payouts, income) live on their own Historia pages, 25 per page.
 Everyone can change their own password on the Akaunti page. Decisions reach
 the driver instantly (Pusher), or within 10 seconds without Pusher. Amounts are
 whole Tanzanian shillings.
@@ -36,7 +40,7 @@ Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgr
 
 ## Demo accounts
 
-Below the login form, a box with four compartments (Mkurugenzi, Meneja, Dereva 1,
+Below the login form, a box with five compartments (Mkurugenzi, Meneja, Mhasibu, Dereva 1,
 Dereva 2) fills in these details with one tap. It shows unless `DEMO_MODE=0`; set that once
 the site is used for real.
 
@@ -46,6 +50,7 @@ the site is used for real.
 | Driver  | plate `T103ABE`     | driver123  |
 | Driver  | plate `T456BCD`     | driver123  |
 | Manager | manager@example.com | manager123 |
+| Mhasibu | accountant@example.com | accountant123 |
 
 These passwords are public. Only seed a database that is meant to be a demo.
 
@@ -59,7 +64,7 @@ These passwords are public. Only seed a database that is meant to be a demo.
    - **Demo site:** add `DEMO_MODE=1` and redeploy. The build loads the demo
      accounts and history.
    - **Real use:** set `DEMO_MODE=0` (hides the demo box), create the director
-     from your machine, then add managers, cars and drivers in the app:
+     from your machine, then add managers, the mhasibu, cars and drivers in the app:
 
      ```sh
      DATABASE_URL='postgres://…' npm run create-director -- "Your Name" you@example.com 'a-strong-password'
@@ -78,8 +83,8 @@ approvals and rejections show up immediately.
    effect after a new build.
 
 Events carry no data, only "requests changed"; pages then re-fetch through the
-normal signed-in path. Channels are private: `/api/realtime/auth` lets managers
-and directors join `private-managers` and each driver only `private-driver-<their id>`.
+normal signed-in path. Channels are private: `/api/realtime/auth` lets managers,
+directors and the mhasibu join `private-managers` and each driver only `private-driver-<their id>`.
 
 ## Scripts
 
@@ -95,27 +100,31 @@ and directors join `private-managers` and each driver only `private-driver-<thei
 
 ## How it fits together
 
-- `db/migrations/`: plain SQL schema for `users` (driver, manager or director), `cars`,
+- `db/migrations/`: plain SQL schema for `users` (driver, manager, director or accountant), `cars`,
   `sessions`, `money_requests` and `incomes`.
 - `src/lib/session.ts`: cookie sessions stored hashed in Postgres; `requireUser(role)`
   guards every page, layout and server action.
 - `src/app/actions/`: server actions for login, requests, cars, drivers, income,
   managers and the signed-in person's own password.
-- `src/app/driver`, `src/app/manager`, `src/app/director`: the role-specific areas, each wrapped in
+- `src/app/driver`, `src/app/manager`, `src/app/accountant`, `src/app/director`: the role-specific areas, each wrapped in
   `AppShell` (sidebar on desktop, top bar with tabs on phones). `src/app/account` is
   shared by all roles.
 - `src/lib/stats.ts`, `src/lib/reports.ts`, `src/lib/workbook.ts`: dashboard figures,
   report queries and the Excel file. `src/components/report-view.tsx` and
-  `src/lib/report-export.ts` serve the report to managers and directors. `src/lib/incomes.ts` and `src/lib/activity.ts`:
+  `src/lib/report-export.ts` serve the report to managers, the mhasibu and directors. `src/lib/incomes.ts` and `src/lib/activity.ts`:
   income totals and the director's timeline.
 - `src/lib/realtime.ts`, `src/components/live-updates.tsx`: Pusher signals and the
   client that refreshes on them.
 
-Expenses are approved requests, dated by approval time in Tanzania
-(Africa/Dar_es_Salaam). Income is dated by when it was recorded and picked against a
+A request goes pending → approved or rejected (by a manager; a manager's own request is
+approved on creation) → paid by the mhasibu (`issued_at`, `issued_by`, `issue_note`).
+`money_requests.requester_id` is whoever asked. Expenses are paid requests, dated by
+payment time in Tanzania (Africa/Dar_es_Salaam); requests approved before the mhasibu
+existed were marked paid at their approval time. Income is dated by when it was recorded and picked against a
 car (`incomes.car_id`; `source` keeps the plate, and entries from before cars were
-picked keep their typed source). The report's car filter still narrows spend only,
-so a report filtered to some cars shows no balance. Deleted income and
-switched-off managers stay in the database (`deleted_at`, `deactivated_at`) so
-history keeps their names. Review is only possible while a request is pending, so two
-managers clicking at once can't overwrite each other's decision.
+picked keep their typed source). The report's car filter narrows both spend and
+income; income from before cars were picked shows only with all cars. Deleted income and
+switched-off staff stay in the database (`deleted_at`, `deactivated_at`) so
+history keeps their names. Review is only possible while a request is pending, and payment
+only while it is approved and unpaid, so two people clicking at once can't overwrite each
+other.
