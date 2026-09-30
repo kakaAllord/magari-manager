@@ -2,10 +2,10 @@
 
 A Next.js + Postgres app for running a small fleet, in Swahili. Drivers sign in
 with their car's plate number and request money with a reason. Managers sign in
-with email, approve or reject requests, record income (source, amount, optional
+with email, approve or reject requests, record income (the car it came from, amount, optional
 description; the recorder can delete an entry within 24 hours), manage cars and
 drivers, watch income and spending on a dashboard, and see reports with separate
-spend and income tables, downloadable as Excel per car, month or week. A director signs in
+spend and income tables plus every entry with its date, downloadable as Excel per car, month or week. A director signs in
 with email, adds managers, switches them off and on, reads the same reports, and watches
 income, spending and a live feed of everything that happens, deletions included.
 Everyone can change their own password on the Akaunti page. Decisions reach
@@ -112,8 +112,10 @@ and directors join `private-managers` and each driver only `private-driver-<thei
   client that refreshes on them.
 
 Expenses are approved requests, dated by approval time in Tanzania
-(Africa/Dar_es_Salaam). Income is dated by when it was recorded; it isn't tied to a
-car, so a report filtered to some cars shows no balance. Deleted income and
+(Africa/Dar_es_Salaam). Income is dated by when it was recorded and picked against a
+car (`incomes.car_id`; `source` keeps the plate, and entries from before cars were
+picked keep their typed source). The report's car filter still narrows spend only,
+so a report filtered to some cars shows no balance. Deleted income and
 switched-off managers stay in the database (`deleted_at`, `deactivated_at`) so
 history keeps their names. Review is only possible while a request is pending, so two
 managers clicking at once can't overwrite each other's decision.
