@@ -68,7 +68,7 @@ export default async function DirectorDashboard() {
 
         <section className="card">
           <h2 className="font-semibold">Kinachoendelea</h2>
-          <p className="mb-2 text-sm text-muted">Maombi, maamuzi, mapato (na yaliyofutwa) na mameneja wapya, vya karibuni juu</p>
+          <p className="mb-2 text-sm text-muted">Maombi, maamuzi, malipo ya mhasibu, mapato (na yaliyofutwa) na wafanyakazi wapya, vya karibuni juu</p>
           {activity.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted">Bado hakuna kilichotokea.</p>
           ) : (
@@ -86,11 +86,13 @@ export default async function DirectorDashboard() {
 
 const dot = {
   request: "bg-warn",
+  self_request: "bg-warn",
   approved: "bg-ok",
   rejected: "bg-danger",
+  issued: "bg-ok",
   income: "bg-accent",
   income_deleted: "bg-danger",
-  manager: "bg-muted",
+  staff: "bg-muted",
 } as const;
 
 function ActivityItem({ activity: a }: { activity: Activity }) {
@@ -99,6 +101,12 @@ function ActivityItem({ activity: a }: { activity: Activity }) {
   switch (a.kind) {
     case "request":
       text = <>{who} ameomba <b className="tabular-nums">{formatMoney(a.amount)}</b>: {a.detail}</>;
+      break;
+    case "self_request":
+      text = <>{who} (meneja) ameomba na kujikubalia <b className="tabular-nums">{formatMoney(a.amount)}</b>: {a.detail}</>;
+      break;
+    case "issued":
+      text = <>{who} amemlipa {a.subject} <b className="tabular-nums">{formatMoney(a.amount)}</b>: {a.detail}</>;
       break;
     case "approved":
       text = <>{who} amekubali ombi la <b className="tabular-nums">{formatMoney(a.amount)}</b>: {a.detail}</>;
@@ -112,8 +120,8 @@ function ActivityItem({ activity: a }: { activity: Activity }) {
     case "income_deleted":
       text = <>{who} amefuta mapato ya <b className="tabular-nums">{formatMoney(a.amount)}</b> kutoka {a.detail}</>;
       break;
-    case "manager":
-      text = <>{who} ameongezwa kama meneja ({a.detail})</>;
+    case "staff":
+      text = <>{who} ameongezwa kama {a.subject === "accountant" ? "mhasibu" : "meneja"} ({a.detail})</>;
       break;
   }
   return (
