@@ -1,7 +1,7 @@
 import "server-only";
 import ExcelJS from "exceljs";
 import { formatDay, type ReportParams } from "@/lib/report-params";
-import type { ExpenseRow, Summary } from "@/lib/reports";
+import type { ExpenseRow, IncomeRow, IncomeSummary, Summary } from "@/lib/reports";
 
 const MONEY = '"TSh" #,##0';
 const HEADER_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6EDFC" } };
@@ -17,26 +17,42 @@ const excelDate = (local: string) => {
 const groupName = { car: "gari", month: "mwezi", week: "wiki" } as const;
 
 export function reportFilename(p: ReportParams) {
-  return `matumizi-ya-magari_${p.from}_hadi_${p.to}_kwa-${groupName[p.group]}.xlsx`;
+  return `mapato-na-matumizi_${p.from}_hadi_${p.to}_kwa-${groupName[p.group]}.xlsx`;
 }
 
 export async function buildWorkbook(
   p: ReportParams,
   summary: Summary,
   expenses: ExpenseRow[],
+  income: IncomeSummary,
+  incomes: IncomeRow[],
   carsLabel: string,
 ) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Magari";
   wb.created = new Date();
 
-  // Summary sheet
-  const s = wb.addWorksheet("Muhtasari", { views: [{ state: "frozen", ySplit: 4 }] });
-  s.addRow([`Matumizi ya magari · ${formatDay(p.from)} hadi ${formatDay(p.to)}`]).font = { bold: true, size: 14 };
-  s.addRow([`Magari: ${carsLabel} · Kwa ${groupName[p.group]} · Maombi yaliyokubaliwa, kwa tarehe ya kukubaliwa (saa za Tanzania)`]).font = {
-    color: { argb: "FF5F6673" },
-  };
+  // Summary sheet: the totals, then the expenses table, then the income table.
+  const s = wb.addWorksheet("Muhtasari");
+  const note = { color: { argb: "FF5F6673" } };
+  s.addRow([`Mapato na matumizi · ${formatDay(p.from)} hadi ${formatDay(p.to)}`]).font = { bold: true, size: 14 };
+  s.addRow([`Magari: ${carsLabel} · Kwa ${groupName[p.group]} · Saa za Tanzania`]).font = note;
   s.addRow([]);
+  const allCars = p.carIds.length === 0;
+  const totals = [
+    s.addRow(["Mapato", income.total]),
+    s.addRow(["Matumizi", summary.grandTotal]),
+    ...(allCars ? [s.addRow(["Salio", income.total - summary.grandTotal])] : []),
+  ];
+  for (const r of totals) {
+    r.getCell(1).font = { bold: true };
+    r.getCell(2).numFmt = MONEY;
+  }
+  if (!allCars) s.addRow(["Salio halionyeshwi: mapato ni ya biashara nzima, matumizi ni ya magari yaliyochaguliwa."]).font = note;
+  s.addRow([]);
+
+  s.addRow(["Matumizi"]).font = { bold: true, size: 12 };
+  s.addRow(["Maombi yaliyokubaliwa, kwa tarehe ya kukubaliwa"]).font = note;
 
   if (p.group === "car") {
     const header = s.addRow(["Namba", "Gari", "Maombi", "Jumla"]);
@@ -51,6 +67,16 @@ export async function buildWorkbook(
     const total = s.addRow(["Jumla", ...summary.totals, summary.grandTotal]);
     const moneyCols = summary.columns.map((_, i) => i + 2).concat(summary.columns.length + 2);
     styleTable(s, header, total, [24, ...summary.columns.map(() => 16), 18], moneyCols);
+  }
+
+  s.addRow([]);
+  s.addRow(["Mapato"]).font = { bold: true, size: 12 };
+  s.addRow([p.group === "car" ? "Kwa chanzo, kwa tarehe ya kurekodiwa" : "Kwa tarehe ya kurekodiwa"]).font = note;
+  {
+    const header = s.addRow([p.group === "car" ? "Chanzo" : p.group === "month" ? "Mwezi" : "Wiki", "Mara", "Jumla"]);
+    for (const r of income.rows) s.addRow([r.label, r.count, r.total]);
+    const total = s.addRow(["Jumla", income.count, income.total]);
+    styleTable(s, header, total, [28, 10, 18], [3]);
   }
 
   // Expenses sheet: every approved request, filterable
@@ -82,11 +108,34 @@ export async function buildWorkbook(
   eh.eachCell((c) => (c.fill = HEADER_FILL));
   e.autoFilter = { from: { row: 1, column: 1 }, to: { row: Math.max(1, expenses.length + 1), column: 8 } };
 
+  // Income sheet: every entry in the period, filterable
+  const i = wb.addWorksheet("Mapato", { views: [{ state: "frozen", ySplit: 1 }] });
+  i.columns = [
+    { header: "Imerekodiwa", key: "recorded", width: 18, style: { numFmt: "dd mmm yyyy hh:mm" } },
+    { header: "Chanzo", key: "source", width: 30 },
+    { header: "Maelezo", key: "description", width: 40 },
+    { header: "Kiasi", key: "amount", width: 16, style: { numFmt: MONEY } },
+    { header: "Imerekodiwa na", key: "by", width: 20 },
+  ];
+  for (const x of incomes) {
+    i.addRow({
+      recorded: excelDate(x.recorded_at),
+      source: x.source,
+      description: x.description ?? "",
+      amount: Number(x.amount),
+      by: x.recorded_by ?? "",
+    });
+  }
+  const ih = i.getRow(1);
+  ih.font = { bold: true };
+  ih.eachCell((c) => (c.fill = HEADER_FILL));
+  i.autoFilter = { from: { row: 1, column: 1 }, to: { row: Math.max(1, incomes.length + 1), column: 5 } };
+
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
 
 function styleTable(s: ExcelJS.Worksheet, header: ExcelJS.Row, total: ExcelJS.Row, widths: number[], moneyCols: number[]) {
-  widths.forEach((w, i) => (s.getColumn(i + 1).width = w));
+  widths.forEach((w, i) => (s.getColumn(i + 1).width = Math.max(w, s.getColumn(i + 1).width ?? 0)));
   header.font = { bold: true };
   header.eachCell((c) => (c.fill = HEADER_FILL));
   total.font = { bold: true };

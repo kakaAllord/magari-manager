@@ -91,3 +91,56 @@ export function summarise(expenses: ExpenseRow[], cars: CarOption[], p: ReportPa
   const totals = columns.map((_, i) => rows.reduce((s, r) => s + r.values[i], 0));
   return { columns, rows, totals, grandTotal, count: expenses.length };
 }
+
+export type IncomeRow = {
+  recorded_at: string; // local "YYYY-MM-DD HH24:MI"
+  month_start: string;
+  week_start: string;
+  source: string;
+  description: string | null;
+  amount: string;
+  recorded_by: string | null;
+};
+
+// Income recorded (Tanzanian time) within [from, to], deleted entries left out. Income isn't tied
+// to a car, so the car filter doesn't apply.
+export function getIncomes(p: ReportParams) {
+  return query<IncomeRow>(
+    `SELECT to_char(i.created_at AT TIME ZONE $1, 'YYYY-MM-DD HH24:MI') AS recorded_at,
+            to_char(date_trunc('month', i.created_at AT TIME ZONE $1), 'YYYY-MM-DD') AS month_start,
+            to_char(date_trunc('week', i.created_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
+            i.source, i.description, i.amount, u.name AS recorded_by
+       FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by
+      WHERE i.deleted_at IS NULL
+        AND (i.created_at AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date
+      ORDER BY i.created_at`,
+    [TIME_ZONE, p.from, p.to],
+  );
+}
+
+export type IncomeSummary = {
+  rows: { label: string; count: number; total: number }[];
+  total: number;
+  count: number;
+};
+
+// Per car there is nothing to split by, so income is grouped by source, biggest first.
+// Per month/week: one row per period, including empty ones.
+export function summariseIncome(incomes: IncomeRow[], p: ReportParams): IncomeSummary {
+  const total = incomes.reduce((s, i) => s + Number(i.amount), 0);
+  const sum = (list: IncomeRow[]) => ({ count: list.length, total: list.reduce((s, i) => s + Number(i.amount), 0) });
+
+  if (p.group === "car") {
+    const bySource = new Map<string, IncomeRow[]>();
+    for (const i of incomes) bySource.set(i.source, [...(bySource.get(i.source) ?? []), i]);
+    const rows = [...bySource].map(([label, list]) => ({ label, ...sum(list) })).sort((a, b) => b.total - a.total);
+    return { rows, total, count: incomes.length };
+  }
+
+  const periodOf = (i: IncomeRow) => (p.group === "month" ? i.month_start : i.week_start);
+  const rows = periodStarts(p.from, p.to, p.group).map((start) => ({
+    label: periodLabel(start, p.group as "month" | "week"),
+    ...sum(incomes.filter((i) => periodOf(i) === start)),
+  }));
+  return { rows, total, count: incomes.length };
+}
