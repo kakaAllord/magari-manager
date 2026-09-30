@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatWallTime } from "@/lib/format";
 import { formatDay, parseReportParams, presets, toSearch, type Grouping } from "@/lib/report-params";
 import { getExpenses, getIncomes, listCars, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
 
@@ -222,6 +222,27 @@ export async function ReportView({
               </table>
             </div>
           )}
+
+          {expenses.length > 0 && (
+            <details open>
+              <summary className="cursor-pointer text-sm font-medium">Kila ombi na tarehe yake ({expenses.length})</summary>
+              <ul className="mt-2 divide-y divide-line">
+                {expenses.map((e, i) => (
+                  <li key={i} className="flex items-start justify-between gap-4 py-3">
+                    <div className="min-w-0">
+                      <p className="break-words">
+                        <span className="plate">{e.plate ?? "Hakuna gari"}</span> {e.reason}
+                      </p>
+                      <p className="mt-1 text-xs text-muted">
+                        Imekubaliwa {formatWallTime(e.approved_at)} · iliombwa {formatWallTime(e.requested_at)} · {e.driver}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-medium tabular-nums">{formatMoney(e.amount)}</p>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </section>
 
         <section className="card grid gap-4">
@@ -264,6 +285,30 @@ export async function ReportView({
                 </tfoot>
               </table>
             </div>
+          )}
+
+          {incomes.length > 0 && (
+            <details open>
+              <summary className="cursor-pointer text-sm font-medium">Kila rekodi na tarehe yake ({incomes.length})</summary>
+              <ul className="mt-2 divide-y divide-line">
+                {incomes.map((x, i) => (
+                  <li key={i} className="flex items-start justify-between gap-4 py-3">
+                    <div className="min-w-0">
+                      <p className="break-words">
+                        {x.car ? <span className="plate">{x.source}</span> : x.source}
+                        {x.car && <span className="text-muted"> {x.car}</span>}
+                      </p>
+                      {x.description && <p className="text-sm break-words">{x.description}</p>}
+                      <p className="mt-1 text-xs text-muted">
+                        Imerekodiwa {formatWallTime(x.recorded_at)}
+                        {x.recorded_by && ` · ${x.recorded_by}`}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-medium text-ok tabular-nums">+{formatMoney(x.amount)}</p>
+                  </li>
+                ))}
+              </ul>
+            </details>
           )}
         </section>
       </main>

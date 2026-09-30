@@ -17,6 +17,10 @@ const dateTime = new Intl.DateTimeFormat("sw-TZ", {
 export const formatMoney = (amount: string | number) => money.format(Number(amount));
 export const formatDateTime = (d: Date) => dateTime.format(d);
 
+// Report rows already carry Tanzanian wall time as "YYYY-MM-DD HH:MI"; read it as UTC so it isn't shifted again.
+const wallTime = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
+export const formatWallTime = (local: string) => wallTime.format(new Date(`${local.replace(" ", "T")}:00Z`));
+
 // Compact axis labels: 1,250,000 -> "1.3M", 40,000 -> "40K".
 export const formatCompact = (amount: number) =>
   new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(amount);

@@ -97,6 +97,7 @@ export type IncomeRow = {
   month_start: string;
   week_start: string;
   source: string;
+  car: string | null;
   description: string | null;
   amount: string;
   recorded_by: string | null;
@@ -109,8 +110,8 @@ export function getIncomes(p: ReportParams) {
     `SELECT to_char(i.created_at AT TIME ZONE $1, 'YYYY-MM-DD HH24:MI') AS recorded_at,
             to_char(date_trunc('month', i.created_at AT TIME ZONE $1), 'YYYY-MM-DD') AS month_start,
             to_char(date_trunc('week', i.created_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
-            i.source, i.description, i.amount, u.name AS recorded_by
-       FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by
+            i.source, c.make || ' ' || c.model AS car, i.description, i.amount, u.name AS recorded_by
+       FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
       WHERE i.deleted_at IS NULL
         AND (i.created_at AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date
       ORDER BY i.created_at`,
