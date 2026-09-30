@@ -46,27 +46,6 @@ export async function getOverview() {
   return rows[0];
 }
 
-// Approved spend for each of the last `months` months, oldest first, including empty months.
-export async function getMonthlySpend(months = 6) {
-  const rows = await query<{ month_start: string; total: string }>(
-    `WITH local AS (SELECT date_trunc('month', now() AT TIME ZONE $1) AS this_month),
-     months AS (
-       SELECT generate_series(this_month - ($2::int - 1) * interval '1 month', this_month, interval '1 month') AS month
-         FROM local
-     )
-     SELECT to_char(m.month, 'YYYY-MM-DD') AS month_start,
-            coalesce(sum(r.amount), 0) AS total
-       FROM months m
-       LEFT JOIN money_requests r
-         ON r.status = 'approved'
-        AND r.reviewed_at AT TIME ZONE $1 >= m.month
-        AND r.reviewed_at AT TIME ZONE $1 < m.month + interval '1 month'
-      GROUP BY m.month ORDER BY m.month`,
-    [TIME_ZONE, months],
-  );
-  return rows.map((r) => ({ label: periodLabel(r.month_start, "month"), total: r.total }));
-}
-
 // This month's approved spend per car, biggest first; cars with no spend are included.
 export function getSpendByCarThisMonth() {
   return query<{ id: number; plate: string; car: string; driver: string | null; count: number; total: string }>(

@@ -2,29 +2,42 @@ import Link from "next/link";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
 import { formatMoney } from "@/lib/format";
+import { getIncomeTotals } from "@/lib/incomes";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
-import { getMonthlySpend, getOverview, getSpendByCarThisMonth } from "@/lib/stats";
+import { getMonthlyIncomeAndSpend, getOverview, getSpendByCarThisMonth } from "@/lib/stats";
 import { TIME_ZONE } from "@/lib/time";
-import { SpendChart } from "./spend-chart";
+import { MoneyChart } from "./money-chart";
 
 const today = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "full", timeZone: TIME_ZONE });
 
 export default async function DashboardPage() {
   await requireUser("manager");
-  const [o, monthly, byCar] = await Promise.all([getOverview(), getMonthlySpend(6), getSpendByCarThisMonth()]);
+  const [o, income, monthly, byCar] = await Promise.all([
+    getOverview(),
+    getIncomeTotals(),
+    getMonthlyIncomeAndSpend(6),
+    getSpendByCarThisMonth(),
+  ]);
   const spentCars = byCar.filter((c) => Number(c.total) > 0).length;
+  const balance = Number(income.this_month) - Number(o.this_month);
 
   return (
       <main className="page">
         <LiveUpdates channel={MANAGERS_CHANNEL} />
         <PageHeader title="Dashibodi" description={today.format(new Date())} />
 
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Muhtasari">
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-3" aria-label="Muhtasari">
+          <Tile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok" href="/manager/income">
+            Mwezi uliopita {formatMoney(income.last_month)}
+          </Tile>
           <Tile label="Matumizi mwezi huu" value={formatMoney(o.this_month)}>
             Wiki hii {formatMoney(o.this_week)}
             <br />
             Mwezi uliopita {formatMoney(o.last_month)}
+          </Tile>
+          <Tile label="Salio mwezi huu" value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
+            Mapato toa matumizi
           </Tile>
           <Tile
             label="Yanasubiri idhini"
@@ -44,11 +57,11 @@ export default async function DashboardPage() {
 
         <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
           <section className="card">
-            <h2 className="font-semibold">Matumizi kwa mwezi</h2>
+            <h2 className="font-semibold">Mapato na matumizi kwa mwezi</h2>
             <p className="mb-4 text-sm text-muted">
-              Maombi yaliyokubaliwa, miezi 6 iliyopita · jumla {formatMoney(o.all_time)} tangu mwanzo
+              Miezi 6 iliyopita · tangu mwanzo mapato {formatMoney(income.all_time)}, matumizi {formatMoney(o.all_time)}
             </p>
-            <SpendChart data={monthly} />
+            <MoneyChart data={monthly.toReversed()} />
           </section>
 
           <section className="card">
@@ -92,6 +105,8 @@ export default async function DashboardPage() {
   );
 }
 
+const valueColor = { ok: "text-ok", warn: "text-warn", danger: "text-danger" };
+
 function Tile({
   label,
   value,
@@ -101,14 +116,14 @@ function Tile({
 }: {
   label: string;
   value: string;
-  tone?: "warn";
+  tone?: "ok" | "warn" | "danger";
   href?: string;
   children: React.ReactNode;
 }) {
   const body = (
     <>
       <p className="text-xs font-medium tracking-wide text-muted uppercase">{label}</p>
-      <p className={`mt-1 text-xl font-semibold tabular-nums sm:text-2xl ${tone === "warn" ? "text-warn" : ""}`}>
+      <p className={`mt-1 text-xl font-semibold tabular-nums sm:text-2xl ${tone ? valueColor[tone] : ""}`}>
         {value}
       </p>
       <p className="mt-1 text-xs text-muted">{children}</p>
