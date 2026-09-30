@@ -67,6 +67,11 @@ export function checkPlate(plate: string): string | undefined {
   if (plate.length < 2 || plate.length > 10) return "Andika namba ya gari, mfano T103ABE.";
 }
 
+// Deliberately loose: one @ with something on both sides and a dot in the domain.
+export function checkEmail(email: string): string | undefined {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Andika barua pepe sahihi, mfano jina@kampuni.co.tz.";
+}
+
 export const MIN_PASSWORD_LENGTH = 6;
 
 export function checkNewPassword(password: string): string | undefined {

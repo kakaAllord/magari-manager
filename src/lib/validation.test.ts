@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseIncome, parseMoneyRequest } from "./validation.ts";
+import { checkEmail, parseIncome, parseMoneyRequest } from "./validation.ts";
 
 test("accepts whole shillings and trims the reason", () => {
   assert.deepEqual(parseMoneyRequest({ amount: " 40000 ", reason: "  Fuel  " }), {
@@ -54,4 +54,11 @@ test("income reports each bad field", () => {
   assert.ok(!result.ok && result.errors.source && result.errors.amount && result.errors.description);
   assert.equal(parseIncome({ source: "x".repeat(121), amount: "1000", description: "" }).ok, false);
   assert.equal(parseIncome({ source: "Mteja", amount: "100,000,000", description: "" }).ok, false);
+});
+
+test("checks manager emails loosely", () => {
+  assert.equal(checkEmail("asha@kampuni.co.tz"), undefined);
+  for (const bad of ["", "asha", "asha@", "@kampuni.co.tz", "asha@kampuni", "a sha@kampuni.co.tz"]) {
+    assert.ok(checkEmail(bad), bad);
+  }
 });
