@@ -24,7 +24,7 @@ export async function createRequest(
   if (!parsed.ok) return { ok: false, errors: parsed.errors, values };
 
   await query(
-    `INSERT INTO money_requests (driver_id, car_id, amount, reason)
+    `INSERT INTO money_requests (requester_id, car_id, amount, reason)
      VALUES ($1, (SELECT id FROM cars WHERE driver_id = $1), $2, $3)`,
     [driver.id, parsed.amount, parsed.reason],
   );
@@ -41,13 +41,13 @@ export async function reviewRequest(formData: FormData) {
   if (!Number.isInteger(id) || (decision !== "approved" && decision !== "rejected")) return;
 
   // Only pending requests can be reviewed, so a double click or a second manager is a no-op.
-  const updated = await query<{ driver_id: number }>(
+  const updated = await query<{ requester_id: number }>(
     `UPDATE money_requests SET status = $2, reviewed_by = $3, reviewed_at = now()
-      WHERE id = $1 AND status = 'pending' RETURNING driver_id`,
+      WHERE id = $1 AND status = 'pending' RETURNING requester_id`,
     [id, decision, manager.id],
   );
   revalidatePath("/manager", "layout");
   revalidatePath("/driver");
   // Tell the driver, and other managers looking at the same list.
-  if (updated[0]) await notify([driverChannel(updated[0].driver_id), MANAGERS_CHANNEL]);
+  if (updated[0]) await notify([driverChannel(updated[0].requester_id), MANAGERS_CHANNEL]);
 }

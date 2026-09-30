@@ -35,7 +35,7 @@ export function getExpenses(p: ReportParams) {
             c.id AS car_id, c.plate, c.make || ' ' || c.model AS car,
             d.name AS driver, r.reason, r.amount, m.name AS approved_by
        FROM money_requests r
-       JOIN users d ON d.id = r.driver_id
+       JOIN users d ON d.id = r.requester_id
        LEFT JOIN users m ON m.id = r.reviewed_by
        LEFT JOIN cars c ON c.id = r.car_id
       WHERE r.status = 'approved'

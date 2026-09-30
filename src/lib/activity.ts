@@ -13,7 +13,7 @@ export const listActivity = (limit = 40) =>
     `SELECT * FROM (
        SELECT 'request' AS kind, r.created_at AS at, d.name AS actor, r.amount, r.reason AS detail, c.plate
          FROM money_requests r
-         JOIN users d ON d.id = r.driver_id
+         JOIN users d ON d.id = r.requester_id
          LEFT JOIN cars c ON c.id = r.car_id
        UNION ALL
        SELECT r.status, r.reviewed_at, m.name, r.amount, r.reason, c.plate

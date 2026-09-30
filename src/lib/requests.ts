@@ -20,12 +20,12 @@ const SELECT = `
          d.name AS driver_name, m.name AS reviewer_name,
          CASE WHEN c.id IS NULL THEN NULL ELSE c.make || ' ' || c.model || ' · ' || c.plate END AS car
     FROM money_requests r
-    JOIN users d ON d.id = r.driver_id
+    JOIN users d ON d.id = r.requester_id
     LEFT JOIN users m ON m.id = r.reviewed_by
     LEFT JOIN cars c ON c.id = r.car_id`;
 
 export const listRequestsForDriver = (driverId: number) =>
-  query<MoneyRequest>(`${SELECT} WHERE r.driver_id = $1 ORDER BY r.created_at DESC`, [driverId]);
+  query<MoneyRequest>(`${SELECT} WHERE r.requester_id = $1 ORDER BY r.created_at DESC`, [driverId]);
 
 export const listRequestsByStatus = (pending: boolean) =>
   query<MoneyRequest>(

@@ -57,7 +57,7 @@ try {
     ];
     for (const [plate, daysAgo, amount, reason, status] of history) {
       await client.query(
-        `INSERT INTO money_requests (driver_id, car_id, amount, reason, status, reviewed_by, reviewed_at, created_at)
+        `INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at, created_at)
          SELECT c.driver_id, c.id, $2, $3, $4,
                 CASE WHEN $4 = 'pending' THEN NULL ELSE (SELECT id FROM users WHERE email = $5) END,
                 CASE WHEN $4 = 'pending' THEN NULL ELSE now() - make_interval(days => $6) + interval '3 hours' END,
