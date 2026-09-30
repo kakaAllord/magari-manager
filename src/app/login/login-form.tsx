@@ -7,6 +7,7 @@ import { login } from "@/app/actions/auth";
 const demoAccounts = [
   { label: "Mkurugenzi", name: "Baraka Mushi", login: "director@example.com", password: "director123" },
   { label: "Meneja", name: "Grace Mollel", login: "manager@example.com", password: "manager123" },
+  { label: "Mhasibu", name: "Rehema Kweka", login: "accountant@example.com", password: "accountant123" },
   { label: "Dereva 1", name: "Juma Hassan", login: "T103ABE", password: "driver123" },
   { label: "Dereva 2", name: "Neema Mushi", login: "T456BCD", password: "driver123" },
 ];
@@ -72,7 +73,7 @@ export function LoginForm({ demo = false }: { demo?: boolean }) {
           <p id="demo-title" className="text-center text-xs font-medium tracking-wide text-muted uppercase">
             Akaunti za majaribio · gusa moja kujaza
           </p>
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-5 [&>:last-child:nth-child(odd)]:col-span-2 sm:[&>:last-child:nth-child(odd)]:col-span-1">
             {demoAccounts.map((a) => (
               <button
                 key={a.login}

@@ -5,6 +5,7 @@ import pg from "pg";
 
 const manager = { name: "Grace Mollel", email: "manager@example.com", password: "manager123" };
 const director = { name: "Baraka Mushi", email: "director@example.com", password: "director123" };
+const accountant = { name: "Rehema Kweka", email: "accountant@example.com", password: "accountant123" };
 
 // Each driver signs in with their car's plate and the password below.
 const cars = [
@@ -16,7 +17,7 @@ const cars = [
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 try {
-  for (const [user, role] of [[manager, "manager"], [director, "director"]] as const) {
+  for (const [user, role] of [[manager, "manager"], [director, "director"], [accountant, "accountant"]] as const) {
     await client.query(
       `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)
        ON CONFLICT (email) DO NOTHING`,
@@ -38,32 +39,37 @@ try {
     );
     await client.query("UPDATE cars SET driver_id = $1 WHERE id = $2", [user.rows[0].id, carId]);
   }
-  // A few months of history so the dashboard and reports have something to show.
+  // A few months of history so the dashboard and reports have something to show. "issued" was
+  // approved and paid by the mhasibu; "approved" is still waiting for the mhasibu.
   const { rows: existing } = await client.query("SELECT 1 FROM money_requests LIMIT 1");
   if (existing.length === 0) {
     const history: [plate: string, daysAgo: number, amount: number, reason: string, status: string][] = [
-      ["T103ABE", 150, 45000, "Mafuta", "approved"],
-      ["T456BCD", 140, 120000, "Matairi mapya", "approved"],
-      ["T103ABE", 110, 38000, "Mafuta", "approved"],
-      ["T456BCD", 95, 60000, "Kubadilisha oili na filta", "approved"],
+      ["T103ABE", 150, 45000, "Mafuta", "issued"],
+      ["T456BCD", 140, 120000, "Matairi mapya", "issued"],
+      ["T103ABE", 110, 38000, "Mafuta", "issued"],
+      ["T456BCD", 95, 60000, "Kubadilisha oili na filta", "issued"],
       ["T103ABE", 80, 15000, "Maegesho bandarini", "rejected"],
-      ["T456BCD", 70, 52000, "Mafuta", "approved"],
-      ["T103ABE", 45, 250000, "Breki na ufundi", "approved"],
-      ["T456BCD", 35, 47000, "Mafuta", "approved"],
-      ["T103ABE", 12, 40000, "Mafuta ya safari ya uwanja wa ndege", "approved"],
-      ["T456BCD", 5, 30000, "Usafi wa gari na mafuta", "approved"],
+      ["T456BCD", 70, 52000, "Mafuta", "issued"],
+      ["T103ABE", 45, 250000, "Breki na ufundi", "issued"],
+      ["T456BCD", 35, 47000, "Mafuta", "issued"],
+      ["T103ABE", 12, 40000, "Mafuta ya safari ya uwanja wa ndege", "issued"],
+      ["T456BCD", 5, 30000, "Usafi wa gari na mafuta", "issued"],
+      ["T103ABE", 2, 60000, "Kubadilisha oili", "approved"],
       ["T456BCD", 1, 85000, "Kubadilisha taa ya mbele", "pending"],
       ["T103ABE", 0, 20000, "Ushuru wa barabara na maegesho", "pending"],
     ];
     for (const [plate, daysAgo, amount, reason, status] of history) {
       await client.query(
-        `INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at, created_at)
-         SELECT c.driver_id, c.id, $2, $3, $4,
+        `INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at,
+                                    issued_by, issued_at, created_at)
+         SELECT c.driver_id, c.id, $2, $3, CASE WHEN $4 = 'issued' THEN 'approved' ELSE $4 END,
                 CASE WHEN $4 = 'pending' THEN NULL ELSE (SELECT id FROM users WHERE email = $5) END,
                 CASE WHEN $4 = 'pending' THEN NULL ELSE now() - make_interval(days => $6) + interval '3 hours' END,
+                CASE WHEN $4 = 'issued' THEN (SELECT id FROM users WHERE email = $7) END,
+                CASE WHEN $4 = 'issued' THEN now() - make_interval(days => $6) + interval '5 hours' END,
                 now() - make_interval(days => $6)
            FROM cars c WHERE c.plate = $1 AND c.driver_id IS NOT NULL`,
-        [plate, amount, reason, status, manager.email, daysAgo],
+        [plate, amount, reason, status, manager.email, daysAgo, accountant.email],
       );
     }
   }
