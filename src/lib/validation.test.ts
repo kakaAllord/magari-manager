@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkEmail, parseIncome, parseMoneyRequest } from "./validation.ts";
+import { checkEmail, parseCarChoice, parseIncome, parseMoneyRequest } from "./validation.ts";
 
 test("accepts whole shillings and trims the reason", () => {
   assert.deepEqual(parseMoneyRequest({ amount: " 40000 ", reason: "  Fuel  " }), {
@@ -36,6 +36,12 @@ test("requires a meaningful reason within the length limit", () => {
   assert.ok(!short.ok && short.errors.reason && !short.errors.amount);
   const long = parseMoneyRequest({ amount: "10000", reason: "x".repeat(501) });
   assert.ok(!long.ok && long.errors.reason);
+});
+
+test("a manager's request names a car or none", () => {
+  assert.deepEqual(parseCarChoice("4"), { carId: 4 });
+  assert.deepEqual(parseCarChoice("none"), { carId: null });
+  for (const bad of ["", "0", "-2", "abc", "1.5"]) assert.ok("error" in parseCarChoice(bad), bad);
 });
 
 test("income needs a car and amount; the description is optional", () => {

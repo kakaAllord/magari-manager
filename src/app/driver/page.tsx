@@ -1,14 +1,15 @@
 import Link from "next/link";
+import { createRequest } from "@/app/actions/requests";
 import { Icon } from "@/components/icons";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
+import { RequestForm } from "@/components/request-form";
 import { RequestSummary } from "@/components/request-item";
 import { StatusBadge } from "@/components/status-badge";
 import { query } from "@/lib/db";
 import { driverChannel } from "@/lib/realtime";
 import { listOpenForRequester } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
-import { RequestForm } from "./request-form";
 
 // The form and what's still moving. Finished requests live on Historia.
 export default async function DriverPage() {
@@ -48,7 +49,7 @@ export default async function DriverPage() {
 
           <section className="card">
             <h2 className="mb-4 text-lg font-semibold">Omba pesa</h2>
-            <RequestForm />
+            <RequestForm submit={createRequest} sent="Ombi limetumwa. Utaona jibu la meneja hapa, kisha mhasibu atakulipa." />
           </section>
         </div>
 

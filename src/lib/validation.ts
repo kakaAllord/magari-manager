@@ -34,6 +34,14 @@ export function parseMoneyRequest(input: RequestInput):
   return { ok: true, amount: amount.amount, reason };
 }
 
+// A manager's own request names the car it's for, or "none" for costs that aren't a car's.
+export function parseCarChoice(input: string): { carId: number | null } | { error: string } {
+  if (input === "none") return { carId: null };
+  const carId = Number(input);
+  if (!input || !Number.isInteger(carId) || carId <= 0) return { error: "Chagua gari, au “Bila gari”." };
+  return { carId };
+}
+
 export type IncomeInput = { carId: string; amount: string; description: string };
 export type IncomeErrors = { carId?: string; amount?: string; description?: string };
 

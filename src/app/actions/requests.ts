@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
 import { driverChannel, MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
-import { MAX_ISSUE_NOTE_LENGTH, parseMoneyRequest, type RequestErrors } from "@/lib/validation";
+import { MAX_ISSUE_NOTE_LENGTH, parseCarChoice, parseMoneyRequest, type RequestErrors } from "@/lib/validation";
 
 export type RequestFormState =
   | { ok: true }
-  | { ok: false; errors: RequestErrors; values: { amount: string; reason: string } }
+  | { ok: false; errors: RequestErrors & { carId?: string }; values: { amount: string; reason: string; carId?: string } }
   | undefined;
 
 export async function createRequest(
@@ -30,6 +30,44 @@ export async function createRequest(
   );
   revalidatePath("/driver");
   revalidatePath("/manager", "layout");
+  await notify([MANAGERS_CHANNEL]);
+  return { ok: true };
+}
+
+// A manager's own request is approved as it's made and goes straight to the mhasibu.
+export async function createManagerRequest(
+  _prev: RequestFormState,
+  formData: FormData,
+): Promise<RequestFormState> {
+  const manager = await requireUser("manager");
+  const values = {
+    amount: String(formData.get("amount") ?? ""),
+    reason: String(formData.get("reason") ?? ""),
+    carId: String(formData.get("carId") ?? ""),
+  };
+  const parsed = parseMoneyRequest(values);
+  const car = parseCarChoice(values.carId);
+  if (!parsed.ok || "error" in car) {
+    return {
+      ok: false,
+      errors: { ...(parsed.ok ? {} : parsed.errors), ...("error" in car ? { carId: car.error } : {}) },
+      values,
+    };
+  }
+
+  const inserted = await query(
+    `INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at)
+     SELECT $1, $2::int, $3, $4, 'approved', $1, now()
+      WHERE $2::int IS NULL OR EXISTS (SELECT 1 FROM cars WHERE id = $2::int)
+     RETURNING id`,
+    [manager.id, car.carId, parsed.amount, parsed.reason],
+  );
+  if (inserted.length === 0) {
+    return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." }, values };
+  }
+  revalidatePath("/manager", "layout");
+  revalidatePath("/accountant", "layout");
+  revalidatePath("/director", "layout");
   await notify([MANAGERS_CHANNEL]);
   return { ok: true };
 }
