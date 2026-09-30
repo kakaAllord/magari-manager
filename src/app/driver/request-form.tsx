@@ -65,7 +65,7 @@ export function RequestForm() {
       </button>
       {state?.ok && (
         <p role="status" className="rounded-md bg-ok-soft px-3 py-2 text-sm text-ok">
-          Ombi limetumwa. Utaona jibu la meneja hapa.
+          Ombi limetumwa. Utaona jibu la meneja hapa, kisha mhasibu atakulipa.
         </p>
       )}
     </form>

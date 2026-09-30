@@ -9,6 +9,8 @@ const paths = {
   account: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-7 9v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1",
   logout: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9",
   download: "M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2",
+  history: "M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5m4-1v5l3 2",
+  send: "M22 2 11 13m11-11-7 20-4-9-9-4z",
 } as const;
 
 export type IconName = keyof typeof paths;

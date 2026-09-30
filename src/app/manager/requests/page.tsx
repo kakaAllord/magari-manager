@@ -1,15 +1,17 @@
+import Link from "next/link";
 import { reviewRequest } from "@/app/actions/requests";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
-import { StatusBadge } from "@/components/status-badge";
-import { formatDateTime, formatMoney } from "@/lib/format";
+import { RequestSummary } from "@/components/request-item";
+import { formatMoney } from "@/lib/format";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
-import { listRequestsByStatus, type MoneyRequest } from "@/lib/requests";
+import { listPending } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
 
+// Only what needs a decision. Everything decided lives on Historia.
 export default async function RequestsPage() {
   await requireUser("manager");
-  const [pending, reviewed] = await Promise.all([listRequestsByStatus(true), listRequestsByStatus(false)]);
+  const pending = await listPending();
   const pendingTotal = pending.reduce((s, r) => s + Number(r.amount), 0);
 
   return (
@@ -19,7 +21,7 @@ export default async function RequestsPage() {
         title="Maombi"
         description={
           pending.length > 0
-            ? `Maombi ${pending.length} yanasubiri idhini yako, jumla ${formatMoney(pendingTotal)}.`
+            ? `Maombi ${pending.length} yanasubiri idhini yako, jumla ${formatMoney(pendingTotal)}. Ukikubali, yanakwenda kwa mhasibu.`
             : "Hakuna ombi linalosubiri kwa sasa."
         }
       />
@@ -53,38 +55,12 @@ export default async function RequestsPage() {
             ))}
           </ul>
         )}
-      </section>
-
-      <section className="card">
-        <h2 className="mb-2 text-lg font-semibold">Yaliyoshughulikiwa karibuni</h2>
-        {reviewed.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted">Bado hakuna ombi lililoshughulikiwa.</p>
-        ) : (
-          <ul className="divide-y divide-line">
-            {reviewed.map((r) => (
-              <li key={r.id} className="flex items-start gap-4 py-3.5">
-                <RequestSummary request={r} />
-                <StatusBadge status={r.status} />
-              </li>
-            ))}
-          </ul>
-        )}
+        <p className="mt-3 text-sm">
+          <Link href="/manager/history" className="font-medium text-accent underline">
+            Historia ya maombi yote →
+          </Link>
+        </p>
       </section>
     </main>
-  );
-}
-
-function RequestSummary({ request: r }: { request: MoneyRequest }) {
-  return (
-    <div className="min-w-0 flex-1">
-      <p className="font-semibold tabular-nums">
-        {formatMoney(r.amount)} <span className="font-normal text-muted">· {r.driver_name}</span>
-      </p>
-      <p className="text-sm break-words">{r.reason}</p>
-      <p className="mt-1 text-xs text-muted">
-        {r.car ?? "Hakuna gari"} · Imetumwa {formatDateTime(r.created_at)}
-        {r.reviewed_at && ` · Imeshughulikiwa na ${r.reviewer_name ?? "meneja"} ${formatDateTime(r.reviewed_at)}`}
-      </p>
-    </div>
   );
 }

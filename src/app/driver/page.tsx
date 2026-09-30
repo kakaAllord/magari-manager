@@ -1,30 +1,31 @@
+import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
+import { RequestSummary } from "@/components/request-item";
 import { StatusBadge } from "@/components/status-badge";
 import { query } from "@/lib/db";
-import { formatDateTime, formatMoney } from "@/lib/format";
 import { driverChannel } from "@/lib/realtime";
-import { listRequestsForDriver } from "@/lib/requests";
+import { listOpenForRequester } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
 import { RequestForm } from "./request-form";
 
+// The form and what's still moving. Finished requests live on Historia.
 export default async function DriverPage() {
   const user = await requireUser("driver");
-  const [cars, requests] = await Promise.all([
+  const [cars, open] = await Promise.all([
     query<{ plate: string; make: string; model: string }>(
       "SELECT plate, make, model FROM cars WHERE driver_id = $1",
       [user.id],
     ),
-    listRequestsForDriver(user.id),
+    listOpenForRequester(user.id),
   ]);
   const car = cars[0];
-  const pending = requests.filter((r) => r.status === "pending").length;
 
   return (
     <main className="page">
       <LiveUpdates channel={driverChannel(user.id)} />
-      <PageHeader title={`Habari, ${user.name.split(" ")[0]}`} description="Omba pesa na ufuatilie majibu ya meneja hapa." />
+      <PageHeader title={`Habari, ${user.name.split(" ")[0]}`} description="Omba pesa na ufuatilie majibu hapa." />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
         <div className="grid gap-6">
@@ -52,30 +53,25 @@ export default async function DriverPage() {
         </div>
 
         <section className="card">
-          <div className="mb-2 flex items-baseline justify-between gap-3">
-            <h2 className="text-lg font-semibold">Maombi yangu</h2>
-            {pending > 0 && <span className="text-sm text-warn">{pending} yanasubiri</span>}
-          </div>
-          {requests.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted">Bado hujatuma ombi lolote.</p>
+          <h2 className="text-lg font-semibold">Yanayoendelea</h2>
+          <p className="mb-2 text-sm text-muted">Yanasubiri meneja, au yamekubaliwa na yanasubiri mhasibu akulipe.</p>
+          {open.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted">Hakuna ombi linaloendelea.</p>
           ) : (
             <ul className="divide-y divide-line">
-              {requests.map((r) => (
+              {open.map((r) => (
                 <li key={r.id} className="flex items-start gap-4 py-3.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold tabular-nums">{formatMoney(r.amount)}</p>
-                    <p className="text-sm break-words">{r.reason}</p>
-                    <p className="mt-1 text-xs text-muted">
-                      Imetumwa {formatDateTime(r.created_at)}
-                      {r.reviewed_at &&
-                        ` · ${r.status === "approved" ? "Imekubaliwa" : "Imekataliwa"} na ${r.reviewer_name ?? "meneja"} ${formatDateTime(r.reviewed_at)}`}
-                    </p>
-                  </div>
+                  <RequestSummary request={r} mine />
                   <StatusBadge status={r.status} />
                 </li>
               ))}
             </ul>
           )}
+          <p className="mt-3 text-sm">
+            <Link href="/driver/history" className="font-medium text-accent underline">
+              Historia ya maombi yako →
+            </Link>
+          </p>
         </section>
       </div>
     </main>
