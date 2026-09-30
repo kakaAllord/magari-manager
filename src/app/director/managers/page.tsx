@@ -2,28 +2,36 @@ import { PageHeader } from "@/components/page-header";
 import { query } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { requireUser } from "@/lib/session";
-import { AddManagerForm, SetManagerPasswordForm } from "./manager-forms";
+import { AddManagerForm, ManagerActiveForm, SetManagerPasswordForm } from "./manager-forms";
 
-type ManagerRow = { id: number; name: string; email: string; reviewed: number; last_active: Date | null };
+type ManagerRow = {
+  id: number;
+  name: string;
+  email: string;
+  reviewed: number;
+  last_active: Date | null;
+  deactivated_at: Date | null;
+};
 
 export default async function ManagersPage() {
   await requireUser("director");
   // "Last active" is the latest request decision or income entry the manager made.
   const managers = await query<ManagerRow>(
-    `SELECT u.id, u.name, u.email,
+    `SELECT u.id, u.name, u.email, u.deactivated_at,
             (SELECT count(*)::int FROM money_requests r WHERE r.reviewed_by = u.id) AS reviewed,
             greatest(
               (SELECT max(reviewed_at) FROM money_requests r WHERE r.reviewed_by = u.id),
               (SELECT max(created_at) FROM incomes i WHERE i.recorded_by = u.id)
             ) AS last_active
-       FROM users u WHERE u.role = 'manager' ORDER BY u.name`,
+       FROM users u WHERE u.role = 'manager'
+      ORDER BY u.deactivated_at IS NOT NULL, u.name`,
   );
 
   return (
     <main className="page">
       <PageHeader
         title="Mameneja"
-        description="Meneja anaingia kwa barua pepe na nenosiri unaloweka hapa."
+        description="Meneja anaingia kwa barua pepe na nenosiri unaloweka hapa. Ukimzima, hataweza kuingia lakini jina lake linabaki kwenye historia."
       />
 
       <section className="card">
@@ -41,7 +49,7 @@ export default async function ManagersPage() {
           <ul className="divide-y divide-line">
             {managers.map((m) => (
               <li key={m.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_minmax(0,22rem)] sm:items-center">
-                <div className="flex min-w-0 items-center gap-3">
+                <div className={`flex min-w-0 items-center gap-3 ${m.deactivated_at ? "opacity-60" : ""}`}>
                   <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
                     {m.name
                       .split(/\s+/)
@@ -51,7 +59,14 @@ export default async function ManagersPage() {
                       .toUpperCase()}
                   </span>
                   <div className="min-w-0">
-                    <p className="font-medium">{m.name}</p>
+                    <p className="flex flex-wrap items-center gap-2 font-medium">
+                      {m.name}
+                      {m.deactivated_at && (
+                        <span className="rounded-full bg-danger-soft px-2 py-0.5 text-xs font-medium text-danger">
+                          Amezimwa
+                        </span>
+                      )}
+                    </p>
                     <p className="truncate text-sm text-muted">{m.email}</p>
                     <p className="text-xs text-muted">
                       Ameshughulikia maombi {m.reviewed}
@@ -59,7 +74,17 @@ export default async function ManagersPage() {
                     </p>
                   </div>
                 </div>
-                <SetManagerPasswordForm managerId={m.id} managerName={m.name} />
+                {m.deactivated_at ? (
+                  <div className="grid gap-1 sm:justify-items-end">
+                    <p className="text-xs text-muted">Alizimwa {formatDateTime(m.deactivated_at)}</p>
+                    <ManagerActiveForm managerId={m.id} managerName={m.name} active={false} />
+                  </div>
+                ) : (
+                  <div className="grid gap-2">
+                    <SetManagerPasswordForm managerId={m.id} managerName={m.name} />
+                    <ManagerActiveForm managerId={m.id} managerName={m.name} active />
+                  </div>
+                )}
               </li>
             ))}
           </ul>

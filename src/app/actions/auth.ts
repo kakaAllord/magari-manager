@@ -11,17 +11,18 @@ export type LoginState = { error?: string; login?: string } | undefined;
 type Candidate = { id: number; password_hash: string; role: Role };
 
 // Managers and directors sign in with their email; drivers with the plate of their car.
+// Switched-off accounts are treated as unknown.
 function findAccount(login: string) {
   if (login.includes("@")) {
     return query<Candidate>(
-      "SELECT id, password_hash, role FROM users WHERE email = $1 AND role IN ('manager', 'director')",
+      "SELECT id, password_hash, role FROM users WHERE email = $1 AND role IN ('manager', 'director') AND deactivated_at IS NULL",
       [login.toLowerCase()],
     );
   }
   return query<Candidate>(
     `SELECT u.id, u.password_hash, u.role
        FROM cars c JOIN users u ON u.id = c.driver_id
-      WHERE c.plate = $1`,
+      WHERE c.plate = $1 AND u.deactivated_at IS NULL`,
     [normalizePlate(login)],
   );
 }

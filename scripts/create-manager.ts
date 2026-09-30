@@ -20,7 +20,8 @@ try {
   const { rows } = await client.query<{ created: boolean }>(
     `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)
      ON CONFLICT (email) DO UPDATE
-       SET name = EXCLUDED.name, password_hash = EXCLUDED.password_hash, role = EXCLUDED.role
+       SET name = EXCLUDED.name, password_hash = EXCLUDED.password_hash, role = EXCLUDED.role,
+           deactivated_at = NULL
      RETURNING (xmax = 0) AS created`,
     [name, email, await bcrypt.hash(password, 10), role],
   );

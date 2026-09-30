@@ -59,3 +59,23 @@ export async function setManagerPassword(_prev: ManagerFormState, formData: Form
   if (!updated) return { ok: false, message: "Meneja hajulikani." };
   return { ok: true, message: "Nenosiri jipya limehifadhiwa. Mpe meneja." };
 }
+
+// Switching a manager off signs them out and blocks sign-in; their past decisions and income keep their name.
+export async function setManagerActive(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
+  await requireUser("director");
+  const managerId = Number(formData.get("managerId"));
+  const active = formData.get("active") === "1";
+  if (!Number.isInteger(managerId)) return { ok: false, message: "Meneja hajulikani." };
+
+  const updated = await transaction(async (client) => {
+    const { rowCount } = await client.query(
+      `UPDATE users SET deactivated_at = CASE WHEN $2 THEN NULL ELSE coalesce(deactivated_at, now()) END
+        WHERE id = $1 AND role = 'manager'`,
+      [managerId, active],
+    );
+    if (!active) await client.query("DELETE FROM sessions WHERE user_id = $1", [managerId]);
+    return rowCount;
+  });
+  if (!updated) return { ok: false, message: "Meneja hajulikani." };
+  revalidatePath("/director", "layout");
+}

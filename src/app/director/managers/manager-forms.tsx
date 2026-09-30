@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { createManager, setManagerPassword } from "@/app/actions/managers";
+import { useActionState, useState } from "react";
+import { createManager, setManagerActive, setManagerPassword } from "@/app/actions/managers";
 import { MIN_PASSWORD_LENGTH } from "@/lib/validation";
 
 function Message({ state }: { state: { ok: boolean; message: string } | undefined }) {
@@ -73,6 +73,49 @@ export function SetManagerPasswordForm({ managerId, managerName }: { managerId: 
           {pending ? "Inahifadhi…" : "Weka nenosiri"}
         </button>
       </div>
+      <Message state={state} />
+    </form>
+  );
+}
+
+// Switching off takes two taps; switching back on takes one.
+export function ManagerActiveForm({ managerId, managerName, active }: { managerId: number; managerName: string; active: boolean }) {
+  const [state, action, pending] = useActionState(setManagerActive, undefined);
+  const [confirming, setConfirming] = useState(false);
+
+  if (active && !confirming) {
+    return (
+      <div className="flex justify-end">
+        <button type="button" onClick={() => setConfirming(true)} className="btn btn-ghost text-danger">
+          Zima
+        </button>
+      </div>
+    );
+  }
+  return (
+    <form
+      action={action}
+      className={active ? "flex flex-wrap items-center justify-end gap-2 rounded-lg bg-danger-soft p-2" : "grid gap-1"}
+    >
+      <input type="hidden" name="managerId" value={managerId} />
+      <input type="hidden" name="active" value={active ? "0" : "1"} />
+      {active ? (
+        <>
+          <p className="mr-auto text-sm">Zima {managerName}? Hataweza kuingia hadi umwashe tena.</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setConfirming(false)} className="btn btn-ghost">
+              Hapana
+            </button>
+            <button type="submit" disabled={pending} className="btn bg-danger text-white hover:opacity-90">
+              {pending ? "Inazima…" : "Ndiyo, zima"}
+            </button>
+          </div>
+        </>
+      ) : (
+        <button type="submit" disabled={pending} className="btn btn-primary">
+          {pending ? "Inawasha…" : "Washa tena"}
+        </button>
+      )}
       <Message state={state} />
     </form>
   );

@@ -44,7 +44,7 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   const rows = await query<User>(
     `SELECT u.id, u.name, u.email, u.role
        FROM sessions s JOIN users u ON u.id = s.user_id
-      WHERE s.id = $1 AND s.expires_at > now()`,
+      WHERE s.id = $1 AND s.expires_at > now() AND u.deactivated_at IS NULL`,
     [hashToken(token)],
   );
   return rows[0] ?? null;
