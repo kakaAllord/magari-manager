@@ -38,22 +38,23 @@ test("requires a meaningful reason within the length limit", () => {
   assert.ok(!long.ok && long.errors.reason);
 });
 
-test("income needs a source and amount; the description is optional", () => {
-  assert.deepEqual(parseIncome({ source: " Safari ya Arusha ", amount: "350,000", description: "  " }), {
+test("income needs a car and amount; the description is optional", () => {
+  assert.deepEqual(parseIncome({ carId: "3", amount: "350,000", description: "  " }), {
     ok: true,
-    source: "Safari ya Arusha",
+    carId: 3,
     amount: "350000",
     description: null,
   });
-  const described = parseIncome({ source: "Kukodisha Hiace", amount: "120000", description: " Siku 2 " });
-  assert.equal(described.ok && described.description, "Siku 2");
+  const described = parseIncome({ carId: "1", amount: "120000", description: " Safari ya Arusha " });
+  assert.equal(described.ok && described.description, "Safari ya Arusha");
 });
 
 test("income reports each bad field", () => {
-  const result = parseIncome({ source: " ", amount: "12.50", description: "x".repeat(501) });
-  assert.ok(!result.ok && result.errors.source && result.errors.amount && result.errors.description);
-  assert.equal(parseIncome({ source: "x".repeat(121), amount: "1000", description: "" }).ok, false);
-  assert.equal(parseIncome({ source: "Mteja", amount: "100,000,000", description: "" }).ok, false);
+  const result = parseIncome({ carId: "", amount: "12.50", description: "x".repeat(501) });
+  assert.ok(!result.ok && result.errors.carId && result.errors.amount && result.errors.description);
+  assert.equal(parseIncome({ carId: "abc", amount: "1000", description: "" }).ok, false);
+  assert.equal(parseIncome({ carId: "0", amount: "1000", description: "" }).ok, false);
+  assert.equal(parseIncome({ carId: "2", amount: "100,000,000", description: "" }).ok, false);
 });
 
 test("checks manager emails loosely", () => {

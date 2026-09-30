@@ -2,26 +2,28 @@
 
 import { useActionState } from "react";
 import { createIncome } from "@/app/actions/incomes";
-import { MAX_DESCRIPTION_LENGTH, MAX_SOURCE_LENGTH } from "@/lib/validation";
+import type { CarOption } from "@/lib/reports";
+import { MAX_DESCRIPTION_LENGTH } from "@/lib/validation";
 
-export function IncomeForm() {
+export function IncomeForm({ cars }: { cars: CarOption[] }) {
   const [state, action, pending] = useActionState(createIncome, undefined);
   const failed = state && !state.ok ? state : undefined;
 
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2">
       <label className="block">
-        <span className="label">Chanzo</span>
-        <input
-          name="source"
-          required
-          maxLength={MAX_SOURCE_LENGTH}
-          autoComplete="off"
-          placeholder="Mfano: Safari ya Arusha"
-          defaultValue={failed?.values.source}
-          className="input"
-        />
-        {failed?.errors.source && <p className="mt-1 text-sm text-danger">{failed.errors.source}</p>}
+        <span className="label">Gari</span>
+        <select name="carId" required defaultValue={failed?.values.carId ?? ""} className="input">
+          <option value="" disabled>
+            Chagua namba ya gari
+          </option>
+          {cars.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.plate} · {c.car}
+            </option>
+          ))}
+        </select>
+        {failed?.errors.carId && <p className="mt-1 text-sm text-danger">{failed.errors.carId}</p>}
       </label>
       <label className="block">
         <span className="label">Kiasi</span>
@@ -46,7 +48,7 @@ export function IncomeForm() {
           name="description"
           rows={2}
           maxLength={MAX_DESCRIPTION_LENGTH}
-          placeholder="Mfano: Mteja amelipa safari ya siku mbili"
+          placeholder="Mfano: Safari ya Arusha, mteja amelipa siku mbili"
           defaultValue={failed?.values.description}
           className="input"
         />

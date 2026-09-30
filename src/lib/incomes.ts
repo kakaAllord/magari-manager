@@ -10,6 +10,7 @@ export type Income = {
   source: string;
   amount: string;
   description: string | null;
+  car: string | null;
   created_at: Date;
   recorder_name: string | null;
   can_delete: boolean;
@@ -18,9 +19,10 @@ export type Income = {
 // Deleted entries are left out. `can_delete` marks the viewer's own entries from the last 24 hours.
 export const listIncomes = (viewerId: number, limit = 100) =>
   query<Income>(
-    `SELECT i.id, i.source, i.amount, i.description, i.created_at, u.name AS recorder_name,
+    `SELECT i.id, i.source, i.amount, i.description, c.make || ' ' || c.model AS car, i.created_at,
+            u.name AS recorder_name,
             (i.recorded_by = $1 AND i.created_at > now() - make_interval(hours => $3)) AS can_delete
-       FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by
+       FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
       WHERE i.deleted_at IS NULL
       ORDER BY i.created_at DESC LIMIT $2`,
     [viewerId, limit, DELETE_WINDOW_HOURS],

@@ -34,30 +34,29 @@ export function parseMoneyRequest(input: RequestInput):
   return { ok: true, amount: amount.amount, reason };
 }
 
-export type IncomeInput = { source: string; amount: string; description: string };
-export type IncomeErrors = { source?: string; amount?: string; description?: string };
+export type IncomeInput = { carId: string; amount: string; description: string };
+export type IncomeErrors = { carId?: string; amount?: string; description?: string };
 
-export const MAX_SOURCE_LENGTH = 120;
 export const MAX_DESCRIPTION_LENGTH = 500;
 
+// The car comes from a selector, so only its id is checked here; the action confirms it exists.
 // The description is optional; an empty one is stored as null.
 export function parseIncome(input: IncomeInput):
-  | { ok: true; source: string; amount: string; description: string | null }
+  | { ok: true; carId: number; amount: string; description: string | null }
   | { ok: false; errors: IncomeErrors } {
   const errors: IncomeErrors = {};
-  const source = input.source.trim();
+  const carId = Number(input.carId);
   const description = input.description.trim();
   const amount = parseAmount(input.amount);
   if ("error" in amount) errors.amount = amount.error;
 
-  if (source.length < 2) errors.source = "Andika pesa zimetoka wapi.";
-  else if (source.length > MAX_SOURCE_LENGTH) errors.source = `Chanzo kisizidi herufi ${MAX_SOURCE_LENGTH}.`;
+  if (!input.carId || !Number.isInteger(carId) || carId <= 0) errors.carId = "Chagua gari lililoleta mapato.";
   if (description.length > MAX_DESCRIPTION_LENGTH) {
     errors.description = `Maelezo yasizidi herufi ${MAX_DESCRIPTION_LENGTH}.`;
   }
 
-  if ("error" in amount || errors.source || errors.description) return { ok: false, errors };
-  return { ok: true, source, amount: amount.amount, description: description || null };
+  if ("error" in amount || errors.carId || errors.description) return { ok: false, errors };
+  return { ok: true, carId, amount: amount.amount, description: description || null };
 }
 
 // "t 103-abe" -> "T103ABE". Plates are stored and compared in this form.

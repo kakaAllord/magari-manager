@@ -15,24 +15,28 @@ export type IncomeFormState =
 export async function createIncome(_prev: IncomeFormState, formData: FormData): Promise<IncomeFormState> {
   const manager = await requireUser("manager");
   const values = {
-    source: String(formData.get("source") ?? ""),
+    carId: String(formData.get("carId") ?? ""),
     amount: String(formData.get("amount") ?? ""),
     description: String(formData.get("description") ?? ""),
   };
   const parsed = parseIncome(values);
   if (!parsed.ok) return { ok: false, errors: parsed.errors, values };
 
-  await query("INSERT INTO incomes (source, amount, description, recorded_by) VALUES ($1, $2, $3, $4)", [
-    parsed.source,
-    parsed.amount,
-    parsed.description,
-    manager.id,
-  ]);
+  // `source` keeps the plate as it is now, so lists and the feed read the same as older entries.
+  const inserted = await query<{ source: string }>(
+    `INSERT INTO incomes (car_id, source, amount, description, recorded_by)
+     SELECT id, plate, $2, $3, $4 FROM cars WHERE id = $1
+     RETURNING source`,
+    [parsed.carId, parsed.amount, parsed.description, manager.id],
+  );
+  if (inserted.length === 0) {
+    return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." }, values };
+  }
   revalidatePath("/manager", "layout");
   revalidatePath("/director", "layout");
   // Directors and other managers listen on the managers' channel.
   await notify([MANAGERS_CHANNEL]);
-  return { ok: true, message: `Mapato kutoka "${parsed.source}" yamehifadhiwa.` };
+  return { ok: true, message: `Mapato ya gari ${inserted[0].source} yamehifadhiwa.` };
 }
 
 export type DeleteIncomeState = { ok: false; message: string } | undefined;

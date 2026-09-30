@@ -1,15 +1,17 @@
+import Link from "next/link";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { DELETE_WINDOW_HOURS, getIncomeTotals, listIncomes } from "@/lib/incomes";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
+import { listCars } from "@/lib/reports";
 import { requireUser } from "@/lib/session";
 import { DeleteIncome } from "./delete-income";
 import { IncomeForm } from "./income-form";
 
 export default async function IncomePage() {
   const manager = await requireUser("manager");
-  const [incomes, totals] = await Promise.all([listIncomes(manager.id), getIncomeTotals()]);
+  const [incomes, totals, cars] = await Promise.all([listIncomes(manager.id), getIncomeTotals(), listCars()]);
 
   return (
     <main className="page">
@@ -21,7 +23,13 @@ export default async function IncomePage() {
 
       <section className="card">
         <h2 className="mb-4 text-lg font-semibold">Rekodi mapato</h2>
-        <IncomeForm />
+        {cars.length === 0 ? (
+          <p className="text-sm text-muted">
+            Mapato yanarekodiwa kwa gari. <Link href="/manager/cars" className="font-medium text-accent underline">Ongeza gari</Link> kwanza.
+          </p>
+        ) : (
+          <IncomeForm cars={cars} />
+        )}
       </section>
 
       <section className="card">
@@ -37,7 +45,10 @@ export default async function IncomePage() {
               <li key={i.id} className="grid gap-2 py-3.5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="font-medium break-words">{i.source}</p>
+                    <p className="font-medium break-words">
+                      {i.source}
+                      {i.car && <span className="font-normal text-muted"> · {i.car}</span>}
+                    </p>
                     {i.description && <p className="text-sm break-words">{i.description}</p>}
                     <p className="mt-1 text-xs text-muted">
                       {formatDateTime(i.created_at)} · Imerekodiwa na {i.recorder_name ?? "meneja"}
