@@ -24,8 +24,6 @@ export async function ReportView({
   const [cars, expenses, incomes] = await Promise.all([listCars(), getExpenses(params), getIncomes(params)]);
   const summary = summarise(expenses, cars, params);
   const income = summariseIncome(incomes, params);
-  // Income isn't tied to a car, so a balance only makes sense across all cars.
-  const allCars = params.carIds.length === 0;
   const balance = income.total - summary.grandTotal;
   const search = toSearch(params);
 
@@ -84,7 +82,7 @@ export async function ReportView({
               ))}
             </div>
             <p className="text-xs text-muted">
-              Usipochagua gari lolote, magari yote yanajumuishwa. Magari yanachuja matumizi tu; mapato ni ya biashara nzima.
+              Usipochagua gari lolote, magari yote yanajumuishwa. Ukichagua magari, mapato na matumizi ni ya magari hayo tu; mapato ya zamani yasiyo na gari yanaonekana ukiwa na magari yote.
             </p>
           </fieldset>
 
@@ -131,13 +129,9 @@ export async function ReportView({
             </div>
             <div className="col-span-2 sm:col-span-1">
               <dt className="text-xs font-medium tracking-wide text-muted uppercase">Salio</dt>
-              {allCars ? (
-                <dd className={`text-xl font-semibold tabular-nums sm:text-2xl ${balance < 0 ? "text-danger" : "text-ok"}`}>
-                  {formatMoney(balance)}
-                </dd>
-              ) : (
-                <dd className="text-sm text-muted">Linaonyeshwa ukichagua magari yote</dd>
-              )}
+              <dd className={`text-xl font-semibold tabular-nums sm:text-2xl ${balance < 0 ? "text-danger" : "text-ok"}`}>
+                {formatMoney(balance)}
+              </dd>
             </div>
           </dl>
         </section>

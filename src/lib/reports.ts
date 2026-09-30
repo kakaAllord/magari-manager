@@ -103,8 +103,8 @@ export type IncomeRow = {
   recorded_by: string | null;
 };
 
-// Income recorded (Tanzanian time) within [from, to], deleted entries left out. Income isn't tied
-// to a car, so the car filter doesn't apply.
+// Income recorded (Tanzanian time) within [from, to], deleted entries left out. Picking cars keeps
+// only their income, so entries from before income had a car show only with all cars.
 export function getIncomes(p: ReportParams) {
   return query<IncomeRow>(
     `SELECT to_char(i.created_at AT TIME ZONE $1, 'YYYY-MM-DD HH24:MI') AS recorded_at,
@@ -114,8 +114,9 @@ export function getIncomes(p: ReportParams) {
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
       WHERE i.deleted_at IS NULL
         AND (i.created_at AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date
+        AND (cardinality($4::int[]) = 0 OR i.car_id = ANY($4::int[]))
       ORDER BY i.created_at`,
-    [TIME_ZONE, p.from, p.to],
+    [TIME_ZONE, p.from, p.to, p.carIds],
   );
 }
 

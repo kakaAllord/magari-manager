@@ -38,17 +38,16 @@ export async function buildWorkbook(
   s.addRow([`Mapato na matumizi · ${formatDay(p.from)} hadi ${formatDay(p.to)}`]).font = { bold: true, size: 14 };
   s.addRow([`Magari: ${carsLabel} · Kwa ${groupName[p.group]} · Saa za Tanzania`]).font = note;
   s.addRow([]);
-  const allCars = p.carIds.length === 0;
   const totals = [
     s.addRow(["Mapato", income.total]),
     s.addRow(["Matumizi", summary.grandTotal]),
-    ...(allCars ? [s.addRow(["Salio", income.total - summary.grandTotal])] : []),
+    s.addRow(["Salio", income.total - summary.grandTotal]),
   ];
   for (const r of totals) {
     r.getCell(1).font = { bold: true };
     r.getCell(2).numFmt = MONEY;
   }
-  if (!allCars) s.addRow(["Salio halionyeshwi: mapato ni ya biashara nzima, matumizi ni ya magari yaliyochaguliwa."]).font = note;
+  if (p.carIds.length) s.addRow(["Mapato na matumizi ni ya magari yaliyochaguliwa tu."]).font = note;
   s.addRow([]);
 
   s.addRow(["Matumizi"]).font = { bold: true, size: 12 };
