@@ -93,7 +93,8 @@ export async function getMonthlyIncomeAndSpend(months = 6) {
      )
      SELECT to_char(m.month, 'YYYY-MM-DD') AS month_start,
             (SELECT coalesce(sum(i.amount), 0) FROM incomes i
-              WHERE i.created_at AT TIME ZONE $1 >= m.month
+              WHERE i.deleted_at IS NULL
+                AND i.created_at AT TIME ZONE $1 >= m.month
                 AND i.created_at AT TIME ZONE $1 < m.month + interval '1 month') AS income,
             (SELECT coalesce(sum(r.amount), 0) FROM money_requests r
               WHERE r.status = 'approved'

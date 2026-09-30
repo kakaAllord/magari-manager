@@ -5,7 +5,7 @@ import { query } from "@/lib/db";
 export type Activity =
   | { kind: "request"; at: Date; actor: string | null; amount: string; detail: string; plate: string | null }
   | { kind: "approved" | "rejected"; at: Date; actor: string | null; amount: string; detail: string; plate: string | null }
-  | { kind: "income"; at: Date; actor: string | null; amount: string; detail: string; plate: null }
+  | { kind: "income" | "income_deleted"; at: Date; actor: string | null; amount: string; detail: string; plate: null }
   | { kind: "manager"; at: Date; actor: string | null; amount: null; detail: string; plate: null };
 
 export const listActivity = (limit = 40) =>
@@ -24,6 +24,10 @@ export const listActivity = (limit = 40) =>
        UNION ALL
        SELECT 'income', i.created_at, u.name, i.amount, i.source, NULL
          FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by
+       UNION ALL
+       SELECT 'income_deleted', i.deleted_at, u.name, i.amount, i.source, NULL
+         FROM incomes i LEFT JOIN users u ON u.id = i.deleted_by
+        WHERE i.deleted_at IS NOT NULL
        UNION ALL
        SELECT 'manager', created_at, name, NULL, email, NULL
          FROM users WHERE role = 'manager'

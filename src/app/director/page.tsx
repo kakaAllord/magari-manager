@@ -66,7 +66,7 @@ export default async function DirectorDashboard() {
 
         <section className="card">
           <h2 className="font-semibold">Kinachoendelea</h2>
-          <p className="mb-2 text-sm text-muted">Maombi, maamuzi, mapato na mameneja wapya, vya karibuni juu</p>
+          <p className="mb-2 text-sm text-muted">Maombi, maamuzi, mapato (na yaliyofutwa) na mameneja wapya, vya karibuni juu</p>
           {activity.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted">Bado hakuna kilichotokea.</p>
           ) : (
@@ -87,6 +87,7 @@ const dot = {
   approved: "bg-ok",
   rejected: "bg-danger",
   income: "bg-accent",
+  income_deleted: "bg-danger",
   manager: "bg-muted",
 } as const;
 
@@ -105,6 +106,9 @@ function ActivityItem({ activity: a }: { activity: Activity }) {
       break;
     case "income":
       text = <>{who} amerekodi mapato ya <b className="tabular-nums">{formatMoney(a.amount)}</b> kutoka {a.detail}</>;
+      break;
+    case "income_deleted":
+      text = <>{who} amefuta mapato ya <b className="tabular-nums">{formatMoney(a.amount)}</b> kutoka {a.detail}</>;
       break;
     case "manager":
       text = <>{who} ameongezwa kama meneja ({a.detail})</>;
