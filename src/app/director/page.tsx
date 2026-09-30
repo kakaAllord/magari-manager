@@ -16,7 +16,7 @@ export default async function DirectorDashboard() {
     getOverview(),
     getIncomeTotals(),
     getMonthlyIncomeAndSpend(6),
-    listActivity(),
+    listActivity(25),
   ]);
   const balance = Number(income.this_month) - Number(o.this_month);
 
@@ -43,30 +43,25 @@ export default async function DirectorDashboard() {
       <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
         <section className="card">
           <h2 className="font-semibold">Mapato na matumizi kwa mwezi</h2>
-          <p className="mb-3 text-sm text-muted">Miezi 6 iliyopita · matumizi ni maombi yaliyokubaliwa</p>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Mwezi</th>
-                <th className="num">Mapato</th>
-                <th className="num">Matumizi</th>
-                <th className="num">Salio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {months.map((m) => {
-                const net = Number(m.income) - Number(m.spend);
-                return (
-                  <tr key={m.label}>
-                    <td className="whitespace-nowrap">{m.label}</td>
-                    <td className="num">{formatMoney(m.income)}</td>
-                    <td className="num">{formatMoney(m.spend)}</td>
-                    <td className={`num font-medium ${net < 0 ? "text-danger" : "text-ok"}`}>{formatMoney(net)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <p className="mb-1 text-sm text-muted">Salio la kila mwezi, miezi 6 iliyopita. Matumizi ni maombi yaliyokubaliwa.</p>
+          <ul className="divide-y divide-line">
+            {months.map((m) => {
+              const net = Number(m.income) - Number(m.spend);
+              return (
+                <li key={m.label} className="flex items-start justify-between gap-3 py-2.5 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium">{m.label}</p>
+                    <p className="text-xs text-muted tabular-nums">
+                      Mapato {formatMoney(m.income)} · Matumizi {formatMoney(m.spend)}
+                    </p>
+                  </div>
+                  <p className={`shrink-0 font-semibold tabular-nums ${net < 0 ? "text-danger" : "text-ok"}`}>
+                    {formatMoney(net)}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
         </section>
 
         <section className="card">
