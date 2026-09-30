@@ -3,9 +3,12 @@
 A Next.js + Postgres app for running a small fleet, in Swahili. Drivers sign in
 with their car's plate number and request money with a reason. Managers sign in
 with email, approve or reject requests, record income (source, amount, optional
-description), manage cars and drivers, watch spending on a dashboard and download
-Excel reports per car, month or week. A director signs in with email, adds
-managers, and watches income, spending and a live feed of everything that happens. Decisions reach
+description; the recorder can delete an entry within 24 hours), manage cars and
+drivers, watch income and spending on a dashboard, and see reports with separate
+spend and income tables, downloadable as Excel per car, month or week. A director signs in
+with email, adds managers, switches them off and on, reads the same reports, and watches
+income, spending and a live feed of everything that happens, deletions included.
+Everyone can change their own password on the Akaunti page. Decisions reach
 the driver instantly (Pusher), or within 10 seconds without Pusher. Amounts are
 whole Tanzanian shillings.
 
@@ -96,15 +99,21 @@ and directors join `private-managers` and each driver only `private-driver-<thei
   `sessions`, `money_requests` and `incomes`.
 - `src/lib/session.ts`: cookie sessions stored hashed in Postgres; `requireUser(role)`
   guards every page, layout and server action.
-- `src/app/actions/`: server actions for login, requests, cars and drivers.
+- `src/app/actions/`: server actions for login, requests, cars, drivers, income,
+  managers and the signed-in person's own password.
 - `src/app/driver`, `src/app/manager`, `src/app/director`: the role-specific areas, each wrapped in
-  `AppShell` (sidebar on desktop, top bar with tabs on phones).
+  `AppShell` (sidebar on desktop, top bar with tabs on phones). `src/app/account` is
+  shared by all roles.
 - `src/lib/stats.ts`, `src/lib/reports.ts`, `src/lib/workbook.ts`: dashboard figures,
-  report queries and the Excel file. `src/lib/incomes.ts` and `src/lib/activity.ts`:
+  report queries and the Excel file. `src/components/report-view.tsx` and
+  `src/lib/report-export.ts` serve the report to managers and directors. `src/lib/incomes.ts` and `src/lib/activity.ts`:
   income totals and the director's timeline.
 - `src/lib/realtime.ts`, `src/components/live-updates.tsx`: Pusher signals and the
   client that refreshes on them.
 
 Expenses are approved requests, dated by approval time in Tanzania
-(Africa/Dar_es_Salaam). Review is only possible while a request is pending, so two
+(Africa/Dar_es_Salaam). Income is dated by when it was recorded; it isn't tied to a
+car, so a report filtered to some cars shows no balance. Deleted income and
+switched-off managers stay in the database (`deleted_at`, `deactivated_at`) so
+history keeps their names. Review is only possible while a request is pending, so two
 managers clicking at once can't overwrite each other's decision.
