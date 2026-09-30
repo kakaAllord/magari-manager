@@ -1,5 +1,6 @@
 import { logout } from "@/app/actions/auth";
 import type { User } from "@/lib/session";
+import Link from "next/link";
 import { BrandMark, Icon, type IconName } from "./icons";
 import { SideLinks, TabLinks } from "./nav-links";
 
@@ -40,15 +41,19 @@ export function AppShell({ user, links, children }: { user: User; links: NavLink
           <SideLinks links={links} />
         </div>
         <div className="grid gap-3 border-t border-line pt-4">
-          <div className="flex items-center gap-3 px-1">
+          <Link
+            href="/account"
+            className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-background"
+            title="Akaunti yangu"
+          >
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
               {initials}
             </span>
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{user.name}</p>
-              <p className="text-xs text-muted">{roleName[user.role]}</p>
+              <p className="text-xs text-muted">{roleName[user.role]} · Akaunti</p>
             </div>
-          </div>
+          </Link>
           {logoutButton(true)}
         </div>
       </aside>
@@ -63,6 +68,9 @@ export function AppShell({ user, links, children }: { user: User; links: NavLink
               {user.name} · {roleName[user.role]}
             </p>
           </div>
+          <Link href="/account" className="btn btn-ghost" aria-label="Akaunti yangu">
+            <Icon name="account" className="size-4" />
+          </Link>
           {logoutButton(false)}
         </div>
         {links.length > 1 && <TabLinks links={links} />}

@@ -30,6 +30,12 @@ export async function createSession(userId: number) {
   });
 }
 
+// After a password change: keep the session in use, end every other one.
+export async function deleteOtherSessions(userId: number) {
+  const token = (await cookies()).get(COOKIE)?.value;
+  await query("DELETE FROM sessions WHERE user_id = $1 AND id <> $2", [userId, token ? hashToken(token) : ""]);
+}
+
 export async function deleteSession() {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
