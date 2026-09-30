@@ -1,9 +1,10 @@
-// Creates demo accounts and cars. Safe to re-run: existing rows are left alone.
+// Creates demo accounts, cars, requests and income. Safe to re-run: existing rows are left alone.
 // Usage: npm run db:seed
 import bcrypt from "bcryptjs";
 import pg from "pg";
 
 const manager = { name: "Grace Mollel", email: "manager@example.com", password: "manager123" };
+const director = { name: "Baraka Mushi", email: "director@example.com", password: "director123" };
 
 // Each driver signs in with their car's plate and the password below.
 const cars = [
@@ -15,11 +16,13 @@ const cars = [
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 try {
-  await client.query(
-    `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'manager')
-     ON CONFLICT (email) DO NOTHING`,
-    [manager.name, manager.email, await bcrypt.hash(manager.password, 10)],
-  );
+  for (const [user, role] of [[manager, "manager"], [director, "director"]] as const) {
+    await client.query(
+      `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (email) DO NOTHING`,
+      [user.name, user.email, await bcrypt.hash(user.password, 10), role],
+    );
+  }
   for (const c of cars) {
     const inserted = await client.query<{ id: number }>(
       `INSERT INTO cars (plate, make, model) VALUES ($1, $2, $3)
@@ -64,7 +67,27 @@ try {
       );
     }
   }
-  console.log("seeded demo users, cars and requests");
+  const { rows: existingIncome } = await client.query("SELECT 1 FROM incomes LIMIT 1");
+  if (existingIncome.length === 0) {
+    const income: [daysAgo: number, amount: number, source: string, description: string | null][] = [
+      [148, 600000, "Safari ya Arusha", "Mteja wa utalii, siku 3"],
+      [120, 250000, "Kukodisha Hiace", null],
+      [100, 420000, "Kusafirisha mzigo Morogoro", "Kampuni ya vifaa vya ujenzi"],
+      [75, 180000, "Safari za uwanja wa ndege", "Wageni 4 wa hoteli"],
+      [50, 520000, "Kukodisha Hiace", "Harusi, siku 2"],
+      [30, 300000, "Kusafirisha mzigo Karagwe", null],
+      [14, 220000, "Safari za uwanja wa ndege", null],
+      [3, 450000, "Mkataba wa shule", "Usafiri wa wanafunzi, mwezi mmoja"],
+    ];
+    for (const [daysAgo, amount, source, description] of income) {
+      await client.query(
+        `INSERT INTO incomes (source, amount, description, recorded_by, created_at)
+         VALUES ($1, $2, $3, (SELECT id FROM users WHERE email = $4), now() - make_interval(days => $5))`,
+        [source, amount, description, manager.email, daysAgo],
+      );
+    }
+  }
+  console.log("seeded demo users, cars, requests and income");
 } finally {
   await client.end();
 }

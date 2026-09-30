@@ -5,6 +5,7 @@ import { login } from "@/app/actions/auth";
 
 // Matches scripts/seed.ts. Only shown when the page passes `demo`.
 const demoAccounts = [
+  { label: "Mkurugenzi", name: "Baraka Mushi", login: "director@example.com", password: "director123" },
   { label: "Meneja", name: "Grace Mollel", login: "manager@example.com", password: "manager123" },
   { label: "Dereva 1", name: "Juma Hassan", login: "T103ABE", password: "driver123" },
   { label: "Dereva 2", name: "Neema Mushi", login: "T456BCD", password: "driver123" },
@@ -71,14 +72,14 @@ export function LoginForm({ demo = false }: { demo?: boolean }) {
           <p id="demo-title" className="text-center text-xs font-medium tracking-wide text-muted uppercase">
             Akaunti za majaribio · gusa moja kujaza
           </p>
-          <div className="grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
             {demoAccounts.map((a) => (
               <button
                 key={a.login}
                 type="button"
                 onClick={() => fill(a)}
                 aria-pressed={chosen === a.login}
-                className="grid min-w-0 gap-0.5 px-2 py-3 text-center hover:bg-background aria-pressed:bg-accent-soft"
+                className="grid min-w-0 gap-0.5 bg-surface px-2 py-3 text-center hover:bg-background aria-pressed:bg-accent-soft"
               >
                 <span className="text-sm font-semibold">{a.label}</span>
                 <span className="truncate text-xs text-muted">{a.name.split(" ")[0]}</span>
