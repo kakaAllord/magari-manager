@@ -14,6 +14,19 @@ export function AddManagerForm() {
 
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2">
+      <fieldset className="grid gap-2 sm:col-span-2">
+        <legend className="label">Nafasi</legend>
+        <div className="flex flex-wrap gap-2">
+          <label className="chip has-checked:chip-on cursor-pointer">
+            <input type="radio" name="role" value="manager" defaultChecked className="size-4 accent-accent" />
+            Meneja <span className="text-muted">· anakubali maombi, anarekodi mapato</span>
+          </label>
+          <label className="chip has-checked:chip-on cursor-pointer">
+            <input type="radio" name="role" value="accountant" className="size-4 accent-accent" />
+            Mhasibu <span className="text-muted">· analipa maombi yaliyokubaliwa</span>
+          </label>
+        </div>
+      </fieldset>
       <label>
         <span className="label">Jina</span>
         <input name="name" required autoComplete="off" placeholder="Asha Said" className="input" />
@@ -43,7 +56,7 @@ export function AddManagerForm() {
       </label>
       <div className="flex items-end">
         <button type="submit" disabled={pending} className="btn btn-primary w-full">
-          {pending ? "Inaongeza…" : "Ongeza meneja"}
+          {pending ? "Inaongeza…" : "Ongeza"}
         </button>
       </div>
       <div className="sm:col-span-2">

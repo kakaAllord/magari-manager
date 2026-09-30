@@ -4,47 +4,53 @@ import { formatDateTime } from "@/lib/format";
 import { requireUser } from "@/lib/session";
 import { AddManagerForm, ManagerActiveForm, SetManagerPasswordForm } from "./manager-forms";
 
-type ManagerRow = {
+type StaffRow = {
   id: number;
   name: string;
   email: string;
-  reviewed: number;
+  role: "manager" | "accountant";
+  handled: number;
   last_active: Date | null;
   deactivated_at: Date | null;
 };
 
 export default async function ManagersPage() {
   await requireUser("director");
-  // "Last active" is the latest request decision or income entry the manager made.
-  const managers = await query<ManagerRow>(
-    `SELECT u.id, u.name, u.email, u.deactivated_at,
-            (SELECT count(*)::int FROM money_requests r WHERE r.reviewed_by = u.id) AS reviewed,
+  // "Handled" is requests decided (manager) or paid (mhasibu). "Last active" is the latest of those,
+  // or income recorded.
+  const managers = await query<StaffRow>(
+    `SELECT u.id, u.name, u.email, u.role, u.deactivated_at,
+            CASE WHEN u.role = 'manager'
+                 THEN (SELECT count(*)::int FROM money_requests r WHERE r.reviewed_by = u.id AND r.requester_id <> u.id)
+                 ELSE (SELECT count(*)::int FROM money_requests r WHERE r.issued_by = u.id)
+            END AS handled,
             greatest(
               (SELECT max(reviewed_at) FROM money_requests r WHERE r.reviewed_by = u.id),
+              (SELECT max(issued_at) FROM money_requests r WHERE r.issued_by = u.id),
               (SELECT max(created_at) FROM incomes i WHERE i.recorded_by = u.id)
             ) AS last_active
-       FROM users u WHERE u.role = 'manager'
-      ORDER BY u.deactivated_at IS NOT NULL, u.name`,
+       FROM users u WHERE u.role IN ('manager', 'accountant')
+      ORDER BY u.deactivated_at IS NOT NULL, u.role DESC, u.name`,
   );
 
   return (
     <main className="page">
       <PageHeader
-        title="Mameneja"
-        description="Meneja anaingia kwa barua pepe na nenosiri unaloweka hapa. Ukimzima, hataweza kuingia lakini jina lake linabaki kwenye historia."
+        title="Wafanyakazi"
+        description="Mameneja na wahasibu wanaingia kwa barua pepe na nenosiri unaloweka hapa. Ukimzima mtu, hataweza kuingia lakini jina lake linabaki kwenye historia."
       />
 
       <section className="card">
-        <h2 className="mb-4 text-lg font-semibold">Ongeza meneja</h2>
+        <h2 className="mb-4 text-lg font-semibold">Ongeza mfanyakazi</h2>
         <AddManagerForm />
       </section>
 
       <section className="card">
         <h2 className="mb-2 text-lg font-semibold">
-          Mameneja wote <span className="text-muted">({managers.length})</span>
+          Wafanyakazi wote <span className="text-muted">({managers.length})</span>
         </h2>
         {managers.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted">Bado hakuna meneja. Ongeza wa kwanza hapo juu.</p>
+          <p className="py-6 text-center text-sm text-muted">Bado hakuna mfanyakazi. Ongeza wa kwanza hapo juu.</p>
         ) : (
           <ul className="divide-y divide-line">
             {managers.map((m) => (
@@ -61,6 +67,9 @@ export default async function ManagersPage() {
                   <div className="min-w-0">
                     <p className="flex flex-wrap items-center gap-2 font-medium">
                       {m.name}
+                      <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+                        {m.role === "manager" ? "Meneja" : "Mhasibu"}
+                      </span>
                       {m.deactivated_at && (
                         <span className="rounded-full bg-danger-soft px-2 py-0.5 text-xs font-medium text-danger">
                           Amezimwa
@@ -69,7 +78,7 @@ export default async function ManagersPage() {
                     </p>
                     <p className="truncate text-sm text-muted">{m.email}</p>
                     <p className="text-xs text-muted">
-                      Ameshughulikia maombi {m.reviewed}
+                      {m.role === "manager" ? "Ameamua maombi" : "Amelipa maombi"} {m.handled}
                       {m.last_active && ` · Mara ya mwisho ${formatDateTime(m.last_active)}`}
                     </p>
                   </div>
