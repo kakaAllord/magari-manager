@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseMoneyRequest } from "./validation.ts";
+import { parseIncome, parseMoneyRequest } from "./validation.ts";
 
 test("accepts whole shillings and trims the reason", () => {
   assert.deepEqual(parseMoneyRequest({ amount: " 40000 ", reason: "  Fuel  " }), {
@@ -36,4 +36,22 @@ test("requires a meaningful reason within the length limit", () => {
   assert.ok(!short.ok && short.errors.reason && !short.errors.amount);
   const long = parseMoneyRequest({ amount: "10000", reason: "x".repeat(501) });
   assert.ok(!long.ok && long.errors.reason);
+});
+
+test("income needs a source and amount; the description is optional", () => {
+  assert.deepEqual(parseIncome({ source: " Safari ya Arusha ", amount: "350,000", description: "  " }), {
+    ok: true,
+    source: "Safari ya Arusha",
+    amount: "350000",
+    description: null,
+  });
+  const described = parseIncome({ source: "Kukodisha Hiace", amount: "120000", description: " Siku 2 " });
+  assert.equal(described.ok && described.description, "Siku 2");
+});
+
+test("income reports each bad field", () => {
+  const result = parseIncome({ source: " ", amount: "12.50", description: "x".repeat(501) });
+  assert.ok(!result.ok && result.errors.source && result.errors.amount && result.errors.description);
+  assert.equal(parseIncome({ source: "x".repeat(121), amount: "1000", description: "" }).ok, false);
+  assert.equal(parseIncome({ source: "Mteja", amount: "100,000,000", description: "" }).ok, false);
 });
