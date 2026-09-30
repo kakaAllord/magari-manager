@@ -13,7 +13,15 @@ export function IncomeForm({ cars }: { cars: CarOption[] }) {
     <form action={action} className="grid gap-3 sm:grid-cols-2">
       <label className="block">
         <span className="label">Gari</span>
-        <select name="carId" required defaultValue={failed?.values.carId ?? ""} className="input">
+        {/* React doesn't apply a new defaultValue to a mounted select, so remount it to keep the car
+            picked when the form comes back with an error. */}
+        <select
+          key={failed ? `car-${failed.values.carId}` : "fresh"}
+          name="carId"
+          required
+          defaultValue={failed?.values.carId ?? ""}
+          className="input"
+        >
           <option value="" disabled>
             Chagua namba ya gari
           </option>
