@@ -69,21 +69,22 @@ try {
   }
   const { rows: existingIncome } = await client.query("SELECT 1 FROM incomes LIMIT 1");
   if (existingIncome.length === 0) {
-    const income: [daysAgo: number, amount: number, source: string, description: string | null][] = [
-      [148, 600000, "Safari ya Arusha", "Mteja wa utalii, siku 3"],
-      [120, 250000, "Kukodisha Hiace", null],
-      [100, 420000, "Kusafirisha mzigo Morogoro", "Kampuni ya vifaa vya ujenzi"],
-      [75, 180000, "Safari za uwanja wa ndege", "Wageni 4 wa hoteli"],
-      [50, 520000, "Kukodisha Hiace", "Harusi, siku 2"],
-      [30, 300000, "Kusafirisha mzigo Karagwe", null],
-      [14, 220000, "Safari za uwanja wa ndege", null],
-      [3, 450000, "Mkataba wa shule", "Usafiri wa wanafunzi, mwezi mmoja"],
+    const income: [daysAgo: number, amount: number, plate: string, description: string | null][] = [
+      [148, 600000, "T103ABE", "Safari ya Arusha, mteja wa utalii siku 3"],
+      [120, 250000, "T456BCD", "Kukodisha Hiace"],
+      [100, 420000, "T103ABE", "Kusafirisha mzigo Morogoro"],
+      [75, 180000, "T456BCD", "Safari za uwanja wa ndege, wageni 4 wa hoteli"],
+      [50, 520000, "T456BCD", "Harusi, siku 2"],
+      [30, 300000, "T103ABE", null],
+      [14, 220000, "T456BCD", "Safari za uwanja wa ndege"],
+      [3, 450000, "T103ABE", "Mkataba wa shule, usafiri wa wanafunzi mwezi mmoja"],
     ];
-    for (const [daysAgo, amount, source, description] of income) {
+    for (const [daysAgo, amount, plate, description] of income) {
       await client.query(
-        `INSERT INTO incomes (source, amount, description, recorded_by, created_at)
-         VALUES ($1, $2, $3, (SELECT id FROM users WHERE email = $4), now() - make_interval(days => $5))`,
-        [source, amount, description, manager.email, daysAgo],
+        `INSERT INTO incomes (car_id, source, amount, description, recorded_by, created_at)
+         SELECT c.id, c.plate, $2, $3, (SELECT id FROM users WHERE email = $4), now() - make_interval(days => $5)
+           FROM cars c WHERE c.plate = $1`,
+        [plate, amount, description, manager.email, daysAgo],
       );
     }
   }
