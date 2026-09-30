@@ -16,7 +16,7 @@ export async function ReportView({
   base,
   searchParams,
 }: {
-  base: "/manager/reports" | "/director/reports";
+  base: "/manager/reports" | "/director/reports" | "/accountant/reports";
   searchParams: Record<string, string | string[] | undefined>;
 }) {
   const today = todayInTanzania();

@@ -38,6 +38,7 @@ export type IncomeInput = { carId: string; amount: string; description: string }
 export type IncomeErrors = { carId?: string; amount?: string; description?: string };
 
 export const MAX_DESCRIPTION_LENGTH = 500;
+export const MAX_ISSUE_NOTE_LENGTH = 120;
 
 // The car comes from a selector, so only its id is checked here; the action confirms it exists.
 // The description is optional; an empty one is stored as null.

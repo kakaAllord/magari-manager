@@ -1,9 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { query } from "@/lib/db";
-import { requireUser } from "@/lib/session";
+import { requireUser, roleName } from "@/lib/session";
 import { PasswordForm } from "./password-form";
-
-const roleName = { driver: "Dereva", manager: "Meneja", director: "Mkurugenzi" } as const;
 
 export default async function AccountPage() {
   const user = await requireUser();

@@ -1,7 +1,7 @@
 import { driverChannel, MANAGERS_CHANNEL, pusher } from "@/lib/realtime";
 import { getCurrentUser } from "@/lib/session";
 
-// Pusher calls this before joining a private channel. Managers and directors may join
+// Pusher calls this before joining a private channel. Managers, directors and the mhasibu may join
 // the managers' channel; a driver may join only their own channel.
 export async function POST(request: Request) {
   const user = await getCurrentUser();

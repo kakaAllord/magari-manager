@@ -1,12 +1,10 @@
 import { logout } from "@/app/actions/auth";
-import type { User } from "@/lib/session";
+import { roleName, type User } from "@/lib/session";
 import Link from "next/link";
 import { BrandMark, Icon, type IconName } from "./icons";
 import { SideLinks, TabLinks } from "./nav-links";
 
 export type NavLink = { href: string; label: string; icon: IconName };
-
-const roleName = { driver: "Dereva", manager: "Meneja", director: "Mkurugenzi" } as const;
 
 // Desktop (lg and up): fixed sidebar. Phones and tablets: top bar with tabs.
 export function AppShell({ user, links, children }: { user: User; links: NavLink[]; children: React.ReactNode }) {
