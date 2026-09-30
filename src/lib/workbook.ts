@@ -51,7 +51,7 @@ export async function buildWorkbook(
   s.addRow([]);
 
   s.addRow(["Matumizi"]).font = { bold: true, size: 12 };
-  s.addRow(["Maombi yaliyokubaliwa, kwa tarehe ya kukubaliwa"]).font = note;
+  s.addRow(["Pesa zilizotolewa na mhasibu, kwa tarehe ya kutolewa"]).font = note;
 
   if (p.group === "car") {
     const header = s.addRow(["Namba", "Gari", "Maombi", "Jumla"]);
@@ -78,34 +78,40 @@ export async function buildWorkbook(
     styleTable(s, header, total, [28, 10, 18], [3]);
   }
 
-  // Expenses sheet: every approved request, filterable
+  // Expenses sheet: every issued request, filterable
   const e = wb.addWorksheet("Matumizi", { views: [{ state: "frozen", ySplit: 1 }] });
   e.columns = [
+    { header: "Imetolewa", key: "issued", width: 18, style: { numFmt: "dd mmm yyyy hh:mm" } },
     { header: "Imekubaliwa", key: "approved", width: 18, style: { numFmt: "dd mmm yyyy hh:mm" } },
     { header: "Iliombwa", key: "requested", width: 18, style: { numFmt: "dd mmm yyyy hh:mm" } },
     { header: "Namba", key: "plate", width: 12 },
     { header: "Gari", key: "car", width: 20 },
-    { header: "Dereva", key: "driver", width: 20 },
+    { header: "Aliyeomba", key: "requester", width: 20 },
     { header: "Sababu", key: "reason", width: 40 },
     { header: "Kiasi", key: "amount", width: 16, style: { numFmt: MONEY } },
-    { header: "Imekubaliwa na", key: "by", width: 20 },
+    { header: "Imekubaliwa na", key: "approvedBy", width: 20 },
+    { header: "Imetolewa na", key: "issuedBy", width: 20 },
+    { header: "Kumbukumbu", key: "note", width: 24 },
   ];
   for (const x of expenses) {
     e.addRow({
+      issued: excelDate(x.issued_at),
       approved: excelDate(x.approved_at),
       requested: excelDate(x.requested_at),
       plate: x.plate ?? "Hakuna gari",
       car: x.car ?? "",
-      driver: x.driver,
+      requester: x.requester,
       reason: x.reason,
       amount: Number(x.amount),
-      by: x.approved_by ?? "",
+      approvedBy: x.approved_by ?? "",
+      issuedBy: x.issued_by ?? "",
+      note: x.issue_note ?? "",
     });
   }
   const eh = e.getRow(1);
   eh.font = { bold: true };
   eh.eachCell((c) => (c.fill = HEADER_FILL));
-  e.autoFilter = { from: { row: 1, column: 1 }, to: { row: Math.max(1, expenses.length + 1), column: 8 } };
+  e.autoFilter = { from: { row: 1, column: 1 }, to: { row: Math.max(1, expenses.length + 1), column: 11 } };
 
   // Income sheet: every entry in the period, filterable
   const i = wb.addWorksheet("Mapato", { views: [{ state: "frozen", ySplit: 1 }] });

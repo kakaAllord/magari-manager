@@ -4,17 +4,20 @@ import { periodLabel, periodStarts, type ReportParams } from "@/lib/report-param
 import { TIME_ZONE } from "@/lib/time";
 
 export type ExpenseRow = {
-  approved_at: string; // local "YYYY-MM-DD HH24:MI"
+  issued_at: string; // local "YYYY-MM-DD HH24:MI"
+  approved_at: string;
   requested_at: string;
   month_start: string;
   week_start: string;
   car_id: number | null;
   plate: string | null;
   car: string | null;
-  driver: string;
+  requester: string;
   reason: string;
   amount: string;
   approved_by: string | null;
+  issued_by: string | null;
+  issue_note: string | null;
 };
 
 export type CarOption = { id: number; plate: string; car: string };
@@ -25,23 +28,25 @@ export const listCars = () =>
 export const todayInTanzania = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(new Date());
 
-// Approved requests whose approval date (Tanzanian time) falls within [from, to].
+// Issued requests whose issue date (Tanzanian time) falls within [from, to].
 export function getExpenses(p: ReportParams) {
   return query<ExpenseRow>(
-    `SELECT to_char(r.reviewed_at AT TIME ZONE $1, 'YYYY-MM-DD HH24:MI') AS approved_at,
+    `SELECT to_char(r.issued_at AT TIME ZONE $1, 'YYYY-MM-DD HH24:MI') AS issued_at,
+            to_char(r.reviewed_at AT TIME ZONE $1, 'YYYY-MM-DD HH24:MI') AS approved_at,
             to_char(r.created_at AT TIME ZONE $1, 'YYYY-MM-DD HH24:MI') AS requested_at,
-            to_char(date_trunc('month', r.reviewed_at AT TIME ZONE $1), 'YYYY-MM-DD') AS month_start,
-            to_char(date_trunc('week', r.reviewed_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
+            to_char(date_trunc('month', r.issued_at AT TIME ZONE $1), 'YYYY-MM-DD') AS month_start,
+            to_char(date_trunc('week', r.issued_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
             c.id AS car_id, c.plate, c.make || ' ' || c.model AS car,
-            d.name AS driver, r.reason, r.amount, m.name AS approved_by
+            d.name AS requester, r.reason, r.amount, m.name AS approved_by, a.name AS issued_by, r.issue_note
        FROM money_requests r
        JOIN users d ON d.id = r.requester_id
        LEFT JOIN users m ON m.id = r.reviewed_by
+       LEFT JOIN users a ON a.id = r.issued_by
        LEFT JOIN cars c ON c.id = r.car_id
-      WHERE r.status = 'approved'
-        AND (r.reviewed_at AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date
+      WHERE r.issued_at IS NOT NULL
+        AND (r.issued_at AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date
         AND (cardinality($4::int[]) = 0 OR r.car_id = ANY($4::int[]))
-      ORDER BY r.reviewed_at`,
+      ORDER BY r.issued_at`,
     [TIME_ZONE, p.from, p.to, p.carIds],
   );
 }
@@ -61,7 +66,7 @@ export function summarise(expenses: ExpenseRow[], cars: CarOption[], p: ReportPa
   const chosen = p.carIds.length ? cars.filter((c) => p.carIds.includes(c.id)) : cars;
   const columns = chosen.map((c) => ({ key: String(c.id), label: c.plate, sub: c.car }));
   if (!p.carIds.length && expenses.some((e) => e.car_id === null)) {
-    columns.push({ key: NO_CAR, label: "Hakuna gari", sub: "Dereva hakuwa na gari" });
+    columns.push({ key: NO_CAR, label: "Hakuna gari", sub: "Ombi halikuwa la gari lolote" });
   }
   const carKey = (e: ExpenseRow) => (e.car_id === null ? NO_CAR : String(e.car_id));
   const grandTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);

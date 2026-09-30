@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { listActivity, type Activity } from "@/lib/activity";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { getIncomeTotals } from "@/lib/incomes";
+import { AwaitingIssue } from "@/components/awaiting-issue";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
 import { getMonthlyIncomeAndSpend, getOverview } from "@/lib/stats";
@@ -37,13 +38,14 @@ export default async function DirectorDashboard() {
         </Tile>
         <Tile label="Yanasubiri idhini" value={String(o.pending_count)} tone={o.pending_count > 0 ? "warn" : undefined}>
           {o.pending_count > 0 ? `Jumla ${formatMoney(o.pending_total)}` : "Hakuna linalosubiri"}
+          <AwaitingIssue count={o.awaiting_issue_count} total={o.awaiting_issue_total} />
         </Tile>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
         <section className="card">
           <h2 className="font-semibold">Mapato na matumizi kwa mwezi</h2>
-          <p className="mb-1 text-sm text-muted">Salio la kila mwezi, miezi 6 iliyopita. Matumizi ni maombi yaliyokubaliwa.</p>
+          <p className="mb-1 text-sm text-muted">Salio la kila mwezi, miezi 6 iliyopita. Matumizi ni pesa zilizotolewa na mhasibu.</p>
           <ul className="divide-y divide-line">
             {months.map((m) => {
               const net = Number(m.income) - Number(m.spend);

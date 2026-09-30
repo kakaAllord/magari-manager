@@ -31,7 +31,7 @@ export async function ReportView({
       <main className="page">
         <PageHeader
           title="Ripoti"
-          description="Mapato na matumizi kwa kipindi unachochagua. Matumizi ni maombi yaliyokubaliwa, kwa tarehe ya kukubaliwa; mapato ni kwa tarehe ya kurekodiwa."
+          description="Mapato na matumizi kwa kipindi unachochagua. Matumizi ni pesa zilizotolewa na mhasibu, kwa tarehe ya kutolewa; mapato ni kwa tarehe ya kurekodiwa."
         />
 
         <form className="card grid gap-5" method="get">
@@ -228,7 +228,10 @@ export async function ReportView({
                         <span className="plate">{e.plate ?? "Hakuna gari"}</span> {e.reason}
                       </p>
                       <p className="mt-1 text-xs text-muted">
-                        Imekubaliwa {formatWallTime(e.approved_at)} · iliombwa {formatWallTime(e.requested_at)} · {e.driver}
+                        Imetolewa {formatWallTime(e.issued_at)}
+                        {e.issued_by && ` na ${e.issued_by}`} · imekubaliwa {formatWallTime(e.approved_at)} · iliombwa{" "}
+                        {formatWallTime(e.requested_at)} · {e.requester}
+                        {e.issue_note && ` · ${e.issue_note}`}
                       </p>
                     </div>
                     <p className="shrink-0 font-medium tabular-nums">{formatMoney(e.amount)}</p>

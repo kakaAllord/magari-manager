@@ -3,6 +3,7 @@ import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
 import { formatMoney } from "@/lib/format";
 import { getIncomeTotals } from "@/lib/incomes";
+import { AwaitingIssue } from "@/components/awaiting-issue";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
 import { getMonthlyIncomeAndSpend, getOverview, getSpendByCarThisMonth } from "@/lib/stats";
@@ -46,6 +47,7 @@ export default async function DashboardPage() {
             href="/manager/requests"
           >
             {o.pending_count > 0 ? `${formatMoney(o.pending_total)} · Yashughulikie` : "Hakuna linalosubiri"}
+            <AwaitingIssue count={o.awaiting_issue_count} total={o.awaiting_issue_total} />
           </Tile>
           <Tile label="Magari" value={String(o.cars)} href="/manager/cars">
             {o.cars_without_driver === 0 ? "Yote yana madereva" : `${o.cars_without_driver} hayana dereva`}
