@@ -12,7 +12,8 @@ workbook (formulas, tables and native charts) per car, month or week. On Mafuta 
 car's first reading, set fuel prices and tank sizes, and see km per litre by car, by driver and
 per stretch between readings, with suspicious stretches flagged.
 A mhasibu (accountant) signs in with email and pays out approved requests, with an optional
-note such as an M-Pesa reference. A director signs in with email, adds managers and mhasibu,
+note such as an M-Pesa reference. Each payment then waits on Kulipa's Risiti tab until the
+mhasibu adds a photo of its receipt; everyone who can see the request can open it. A director signs in with email, adds managers and mhasibu,
 switches them off and on, reads the same reports and Mafuta, and sees an overview of income,
 spending, the balance, each car and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
@@ -111,7 +112,7 @@ directors and the mhasibu join `private-managers` and each driver only `private-
 ## How it fits together
 
 - `db/migrations/`: plain SQL schema for `users` (driver, manager, director or accountant), `cars`,
-  `sessions`, `money_requests`, `incomes`, `fuel_readings` and `fuel_prices`.
+  `sessions`, `money_requests`, `incomes`, `fuel_readings`, `fuel_prices` and `receipts`.
 - `src/lib/session.ts`: cookie sessions stored hashed in Postgres; `requireUser(role)`
   guards every page, layout and server action.
 - `src/app/actions/`: server actions for login, requests, cars, drivers, income,
@@ -129,11 +130,17 @@ directors and the mhasibu join `private-managers` and each driver only `private-
   used (`tank × gauge/8` at the first reading + litres paid for in between − at the second;
   litres = amount ÷ the request's price per litre), km per litre and flags. `src/lib/fuel.ts`
   loads readings and paid fuel requests for the Mafuta pages and reports.
+- Receipts are photos stored in Postgres (`receipts.data`). The browser shrinks them to at most
+  1600 px before upload (`src/app/accountant/add-receipt.tsx`) to stay under the 1 MB server
+  action limit; `checkReceiptImage` in `src/lib/validation.ts` accepts JPEG, PNG or WebP by
+  their first bytes. `src/app/receipts/[id]/route.ts` serves them to staff and to the driver
+  who asked, sandboxed.
 - `src/lib/realtime.ts`, `src/components/live-updates.tsx`: Pusher signals and the
   client that refreshes on them.
 
 A request goes pending → approved or rejected (by a manager; a manager's own request is
-approved on creation) → paid by the mhasibu (`issued_at`, `issued_by`, `issue_note`).
+approved on creation) → paid by the mhasibu (`issued_at`, `issued_by`, `issue_note`) → receipt added (`receipts`).
+Paying sets `receipt_due`; payments from before receipts existed have it false and never wait.
 `money_requests.requester_id` is whoever asked. Expenses are paid requests, dated by
 payment time in Tanzania (Africa/Dar_es_Salaam); requests approved before the mhasibu
 existed were marked paid at their approval time. Income is dated by when it was recorded and picked against a
