@@ -5,6 +5,7 @@ import { createManager, setManagerActive, setManagerPassword } from "@/app/actio
 import { Dialog } from "@/components/dialog";
 import { Icon } from "@/components/icons";
 import { PasswordInput } from "@/components/password-input";
+import { Toast } from "@/components/toast";
 
 function Message({ state }: { state: { ok: boolean; message: string } | undefined }) {
   if (!state) return null;
@@ -20,25 +21,29 @@ const roleHints = {
   accountant: "Analipa maombi yaliyokubaliwa na meneja.",
 };
 
-// The header button and its dialog. The success message stays next to the button once the dialog closes.
+// The header button and its dialog. Once someone is added the dialog closes and a toast confirms it.
 export function AddStaff() {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(createManager, undefined);
   const [role, setRole] = useState<"manager" | "accountant">("manager");
+  const [toast, setToast] = useState<string | null>(null);
   // Close the dialog once a new person has been added (React's "adjust state on change" pattern).
   const [seen, setSeen] = useState(state);
   if (state !== seen) {
     setSeen(state);
-    if (state?.ok) setOpen(false);
+    if (state?.ok) {
+      setOpen(false);
+      setToast(state.message);
+    }
   }
 
   return (
-    <div className="grid justify-items-end gap-2">
+    <>
       <button type="button" onClick={() => setOpen(true)} className="btn btn-primary gap-2">
         <Icon name="plus" className="size-4" />
         Ongeza mfanyakazi
       </button>
-      {state?.ok && !open && <p className="text-sm text-ok">{state.message}</p>}
+      {toast && <Toast key={toast} message={toast} onClose={() => setToast(null)} />}
 
       <Dialog
         open={open}
@@ -89,7 +94,7 @@ export function AddStaff() {
           </div>
         </form>
       </Dialog>
-    </div>
+    </>
   );
 }
 

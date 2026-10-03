@@ -5,6 +5,7 @@ import { createCar } from "@/app/actions/cars";
 import { Dialog } from "@/components/dialog";
 import { GaugePicker } from "@/components/gauge-picker";
 import { Icon } from "@/components/icons";
+import { Toast } from "@/components/toast";
 
 const Err = ({ text }: { text?: string }) => (text ? <p className="mt-1 text-sm text-danger">{text}</p> : null);
 
@@ -15,27 +16,33 @@ export function AddCar() {
   const [state, action, pending] = useActionState(createCar, undefined);
   const failed = state && !state.ok ? state : undefined;
   const [tank, setTank] = useState("");
-  // Close the dialog once the car is saved (React's "adjust state on change" pattern).
+  const [toast, setToast] = useState<{ message: string; measured: boolean } | null>(null);
+  // Close the dialog once the car is saved and confirm it in a toast (React's "adjust state on
+  // change" pattern).
   const [seen, setSeen] = useState(state);
   if (state !== seen) {
     setSeen(state);
     if (state?.ok) {
       setOpen(false);
       setTank("");
+      setToast(state);
     }
   }
   const tankLitres = /^\d+$/.test(tank) ? Number(tank) : null;
 
   return (
-    <div className="grid justify-items-end gap-2">
+    <>
       <button type="button" onClick={() => setOpen(true)} className="btn btn-primary gap-2">
         <Icon name="plus" className="size-4" />
         Ongeza gari
       </button>
-      {state?.ok && !open && (
-        <p role="status" className={`text-right text-sm ${state.measured ? "text-ok" : "text-warn"}`}>
-          {state.message}
-        </p>
+      {toast && (
+        <Toast
+          key={toast.message}
+          message={toast.message}
+          tone={toast.measured ? "ok" : "warn"}
+          onClose={() => setToast(null)}
+        />
       )}
 
       <Dialog
@@ -122,6 +129,6 @@ export function AddCar() {
           </button>
         </form>
       </Dialog>
-    </div>
+    </>
   );
 }
