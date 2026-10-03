@@ -57,6 +57,11 @@ body {
   .label {
     @apply mb-1 block text-sm font-medium;
   }
+  /* A compulsory field gets a red star after its label, read from the field's `required`. */
+  label:has(:required) > .label::after {
+    content: " *";
+    color: var(--danger);
+  }
   /* 16px on phones so iOS doesn't zoom into the field. */
   .input {
     @apply w-full rounded-lg border border-line bg-background px-3 py-2.5 text-base outline-none focus:border-accent sm:py-2 sm:text-sm;
