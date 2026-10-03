@@ -141,6 +141,11 @@ directors and the mhasibu join `private-managers` and each driver only `private-
 A request goes pending → approved or rejected (by a manager; a manager's own request is
 approved on creation) → paid by the mhasibu (`issued_at`, `issued_by`, `issue_note`) → receipt added (`receipts`).
 Paying sets `receipt_due`; payments from before receipts existed have it false and never wait.
+Managers can type in history: Mapato and Omba pesa have a date that defaults to today. A past
+date stores the entry on that day at 12:00 Tanzanian time (`incomes.created_at`, or an expense's
+`created_at`, `reviewed_at` and `issued_at`) and sets `backfilled_at` to when it was typed in, so
+totals and reports place it in its month. A past expense is saved already paid, with no mhasibu
+step or receipt. Lists label these entries "Rekodi ya zamani".
 `money_requests.requester_id` is whoever asked. Expenses are paid requests, dated by
 payment time in Tanzania (Africa/Dar_es_Salaam); requests approved before the mhasibu
 existed were marked paid at their approval time. Income is dated by when it was recorded and picked against a
