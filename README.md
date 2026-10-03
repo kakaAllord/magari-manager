@@ -45,9 +45,11 @@ Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgr
 
 ## Demo accounts
 
-Below the login form, a box with five compartments (Mkurugenzi, Meneja, Mhasibu, Dereva 1,
-Dereva 2) fills in these details with one tap. It shows unless `DEMO_MODE=0`; set that once
-the site is used for real.
+The live site is used for real, so demo data and the demo login box only exist where
+`DEMO_MODE=1` is set (add it to `.env.local` for local work). Then `npm run db:seed` loads the
+accounts below, and a box with five compartments (Mkurugenzi, Meneja, Mhasibu, Dereva 1,
+Dereva 2) below the login form fills them in with one tap. Without `DEMO_MODE=1` the seed refuses
+to run.
 
 | Role     | Sign in with         | Password    |
 | -------- | -------------------- | ----------- |
@@ -63,7 +65,13 @@ The seed also loads two months of fuel readings: the Hiace handed from Juma to N
 flagged stretch, a fuel request waiting for the manager, and an unmeasured Carry. Each part of
 the seed runs only when its table is empty, so re-running it is safe.
 
-These passwords are public. Only seed a database that is meant to be a demo.
+These passwords are public. Never set `DEMO_MODE=1` for the live database.
+
+## Real use
+
+Migration 010 adds the company's director, `director@zuraja.com`, if that email is free. The
+director signs in, changes the password on Akaunti, and adds managers and the mhasibu on
+Wafanyakazi (emails `@zuraja.com`); managers add cars and drivers.
 
 ## Deploy to Vercel
 
@@ -73,9 +81,9 @@ These passwords are public. Only seed a database that is meant to be a demo.
    Otherwise set `DATABASE_URL` yourself (use the pooled URL with `?sslmode=require`).
 3. Choose one:
    - **Demo site:** add `DEMO_MODE=1` and redeploy. The build loads the demo
-     accounts and history.
-   - **Real use:** set `DEMO_MODE=0` (hides the demo box), create the director
-     from your machine, then add managers, the mhasibu, cars and drivers in the app:
+     accounts and history and shows the demo box.
+   - **Real use (this deployment):** leave `DEMO_MODE` unset. The director from migration 010
+     signs in; to create another director or reset one from your machine:
 
      ```sh
      DATABASE_URL='postgres://…' npm run create-director -- "Your Name" you@example.com 'a-strong-password'

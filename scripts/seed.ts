@@ -14,6 +14,13 @@ const cars = [
   { plate: "T789CDE", make: "Suzuki", model: "Carry", driver: null },
 ];
 
+// The live site holds real data. Demo accounts have public passwords, so the demo only goes where
+// DEMO_MODE=1 says this database is a demo or local copy.
+if (process.env.DEMO_MODE !== "1") {
+  console.error("Refusing to seed demo data: set DEMO_MODE=1 if this database is a demo or local copy.");
+  process.exit(1);
+}
+
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 try {

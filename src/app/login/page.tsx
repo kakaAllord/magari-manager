@@ -4,8 +4,8 @@ import { COMPANY } from "@/lib/company";
 import { getCurrentUser, homeFor } from "@/lib/session";
 import { LoginForm } from "./login-form";
 
-// Demo logins show unless DEMO_MODE=0 (set that once the site is used for real).
-const showDemo = () => process.env.DEMO_MODE !== "0";
+// The site is used for real, so demo logins show only where DEMO_MODE=1 (a local or demo copy).
+const showDemo = () => process.env.DEMO_MODE === "1";
 
 export default async function LoginPage() {
   const user = await getCurrentUser();

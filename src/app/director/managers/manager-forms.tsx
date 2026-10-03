@@ -73,7 +73,7 @@ export function AddStaff() {
               autoComplete="off"
               autoCapitalize="none"
               spellCheck={false}
-              placeholder="asha@zuraja.co.tz"
+              placeholder="asha@zuraja.com"
               className="input"
             />
           </label>
