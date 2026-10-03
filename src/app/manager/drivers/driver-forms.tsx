@@ -1,7 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createDriver, setDriverPassword } from "@/app/actions/drivers";
+import { Dialog } from "@/components/dialog";
+import { PasswordInput } from "@/components/password-input";
+import { RowMenu } from "@/components/row-menu";
 import { MIN_PASSWORD_LENGTH } from "@/lib/validation";
 
 function Message({ state }: { state: { ok: boolean; message: string } | undefined }) {
@@ -51,27 +54,48 @@ export function AddDriverForm({ freeCars }: { freeCars: { id: number; label: str
   );
 }
 
-export function SetPasswordForm({ driverId, driverName }: { driverId: number; driverName: string }) {
-  const [state, action, pending] = useActionState(setDriverPassword, undefined);
-
+// The "⋯" menu on each driver: a new password, given in a dialog like on Wafanyakazi.
+export function DriverMenu({ driverId, driverName }: { driverId: number; driverName: string }) {
+  const [open, setOpen] = useState(false);
   return (
-    <form action={action} className="grid gap-2">
+    <>
+      <RowMenu
+        label={`Vitendo kwa ${driverName}`}
+        items={[{ label: "Badilisha nenosiri", icon: "key", onSelect: () => setOpen(true) }]}
+      />
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Badilisha nenosiri"
+        description={`${driverName} atatolewa kwenye vifaa vyote na kuingia kwa nenosiri jipya.`}
+      >
+        <PasswordForm driverId={driverId} onDone={() => setOpen(false)} />
+      </Dialog>
+    </>
+  );
+}
+
+function PasswordForm({ driverId, onDone }: { driverId: number; onDone: () => void }) {
+  const [state, action, pending] = useActionState(setDriverPassword, undefined);
+  return (
+    <form action={action} className="grid gap-4">
       <input type="hidden" name="driverId" value={driverId} />
-      <div className="flex gap-2">
-        <input
-          name="password"
-          required
-          minLength={MIN_PASSWORD_LENGTH}
-          autoComplete="new-password"
-          placeholder="Nenosiri jipya"
-          aria-label={`Nenosiri jipya la ${driverName}`}
-          className="input min-w-0 flex-1"
-        />
-        <button type="submit" disabled={pending} className="btn btn-ghost shrink-0">
-          {pending ? "Inahifadhi…" : "Weka nenosiri"}
+      <PasswordInput label="Nenosiri jipya" />
+      {state && (
+        <p role="status" className={`rounded-md px-3 py-2 text-sm ${state.ok ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger"}`}>
+          {state.message}
+        </p>
+      )}
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onDone} className="btn btn-ghost">
+          {state?.ok ? "Funga" : "Ghairi"}
         </button>
+        {!state?.ok && (
+          <button type="submit" disabled={pending} className="btn btn-primary">
+            {pending ? "Inahifadhi…" : "Hifadhi nenosiri"}
+          </button>
+        )}
       </div>
-      <Message state={state} />
     </form>
   );
 }

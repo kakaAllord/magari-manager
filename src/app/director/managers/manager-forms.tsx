@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { createManager, setManagerActive, setManagerPassword } from "@/app/actions/managers";
 import { Dialog } from "@/components/dialog";
 import { Icon } from "@/components/icons";
 import { PasswordInput } from "@/components/password-input";
+import { RowMenu } from "@/components/row-menu";
 import { Toast } from "@/components/toast";
 
 function Message({ state }: { state: { ok: boolean; message: string } | undefined }) {
@@ -100,9 +101,7 @@ export function AddStaff() {
 
 // The "⋯" menu on each row: a new password, or switching the person off or back on.
 export function StaffMenu({ id, name, active }: { id: number; name: string; active: boolean }) {
-  const [menu, setMenu] = useState(false);
   const [dialog, setDialog] = useState<"password" | "active" | null>(null);
-  const wrapper = useRef<HTMLDivElement>(null);
   // Switching someone off or on re-renders the row with the new status: close its dialog then.
   const [wasActive, setWasActive] = useState(active);
   if (wasActive !== active) {
@@ -110,56 +109,20 @@ export function StaffMenu({ id, name, active }: { id: number; name: string; acti
     setDialog(null);
   }
 
-  useEffect(() => {
-    if (!menu) return;
-    const close = (e: PointerEvent) => {
-      if (!wrapper.current?.contains(e.target as Node)) setMenu(false);
-    };
-    document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
-  }, [menu]);
-
-  const pick = (d: "password" | "active") => {
-    setMenu(false);
-    setDialog(d);
-  };
-
   return (
-    <div ref={wrapper} className="relative">
-      <button
-        type="button"
-        onClick={() => setMenu((m) => !m)}
-        aria-haspopup="menu"
-        aria-expanded={menu}
-        aria-label={`Vitendo kwa ${name}`}
-        className="btn btn-ghost size-10 rounded-full p-0 sm:size-9"
-      >
-        <Icon name="more" className="size-5" />
-      </button>
-      {menu && (
-        <div role="menu" className="absolute right-0 z-30 mt-1 grid w-56 rounded-xl border border-line bg-surface p-1 shadow-lg">
-          {active && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => pick("password")}
-              className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background"
-            >
-              <Icon name="key" className="size-4 text-muted" />
-              Badilisha nenosiri
-            </button>
-          )}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => pick("active")}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background ${active ? "text-danger" : "text-ok"}`}
-          >
-            <Icon name="power" className="size-4" />
-            {active ? "Zima" : "Washa tena"}
-          </button>
-        </div>
-      )}
+    <>
+      <RowMenu
+        label={`Vitendo kwa ${name}`}
+        items={[
+          ...(active ? [{ label: "Badilisha nenosiri", icon: "key" as const, onSelect: () => setDialog("password") }] : []),
+          {
+            label: active ? "Zima" : "Washa tena",
+            icon: "power",
+            tone: active ? "danger" : "ok",
+            onSelect: () => setDialog("active"),
+          },
+        ]}
+      />
 
       <Dialog
         open={dialog === "password"}
@@ -181,7 +144,7 @@ export function StaffMenu({ id, name, active }: { id: number; name: string; acti
       >
         <ActiveForm id={id} active={active} onCancel={() => setDialog(null)} />
       </Dialog>
-    </div>
+    </>
   );
 }
 

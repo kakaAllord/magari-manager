@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { query } from "@/lib/db";
 import { requireUser } from "@/lib/session";
-import { AddDriverForm, SetPasswordForm } from "./driver-forms";
+import { AddDriverForm, DriverMenu } from "./driver-forms";
 
 type DriverRow = { id: number; name: string; plate: string | null; car: string | null };
 
@@ -39,8 +39,8 @@ export default async function DriversPage() {
         ) : (
           <ul className="divide-y divide-line">
             {drivers.map((d) => (
-              <li key={d.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_minmax(0,22rem)] sm:items-center">
-                <div className="flex min-w-0 items-center gap-3">
+              <li key={d.id} className="flex items-center gap-3 py-3.5">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                   <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
                     {d.name
                       .split(/\s+/)
@@ -60,7 +60,7 @@ export default async function DriversPage() {
                     )}
                   </div>
                 </div>
-                <SetPasswordForm driverId={d.id} driverName={d.name} />
+                <DriverMenu driverId={d.id} driverName={d.name} />
               </li>
             ))}
           </ul>
