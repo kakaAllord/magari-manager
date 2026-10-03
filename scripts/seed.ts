@@ -24,6 +24,18 @@ try {
       [user.name, user.email, await bcrypt.hash(user.password, 10), role],
     );
   }
+  // More staff for the Wafanyakazi page: a second manager, and a mhasibu who has been switched off.
+  for (const [name, email, role, off] of [
+    ["Peter Massawe", "manager2@example.com", "manager", false],
+    ["Saida Ally", "accountant2@example.com", "accountant", true],
+  ] as const) {
+    await client.query(
+      `INSERT INTO users (name, email, password_hash, role, deactivated_at)
+       VALUES ($1, $2, $3, $4, CASE WHEN $5 THEN now() - interval '20 days' END)
+       ON CONFLICT (email) DO NOTHING`,
+      [name, email, await bcrypt.hash(role === "manager" ? "manager123" : "accountant123", 10), role, off],
+    );
+  }
   for (const c of cars) {
     const inserted = await client.query<{ id: number }>(
       `INSERT INTO cars (plate, make, model) VALUES ($1, $2, $3)
