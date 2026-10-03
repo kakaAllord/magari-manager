@@ -6,6 +6,7 @@ import { driverChannel, MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
 import {
   checkOdometer,
+  checkReceiptImage,
   MAX_ISSUE_NOTE_LENGTH,
   parseCarChoice,
   parseMoneyRequest,
@@ -161,6 +162,7 @@ export async function reviewRequest(formData: FormData) {
 
 // The mhasibu pays out an approved request, with an optional note such as an M-Pesa reference.
 // Only unpaid approved requests match, so a double tap or a second mhasibu is a no-op.
+// The payment then waits for its receipt.
 export async function issueRequest(formData: FormData) {
   const accountant = await requireUser("accountant");
   const id = Number(formData.get("id"));
@@ -168,7 +170,7 @@ export async function issueRequest(formData: FormData) {
   if (!Number.isInteger(id)) return;
 
   const issued = await query<{ requester_id: number }>(
-    `UPDATE money_requests SET issued_at = now(), issued_by = $2, issue_note = $3
+    `UPDATE money_requests SET issued_at = now(), issued_by = $2, issue_note = $3, receipt_due = true
       WHERE id = $1 AND status = 'approved' AND issued_at IS NULL RETURNING requester_id`,
     [id, accountant.id, note],
   );
@@ -177,4 +179,35 @@ export async function issueRequest(formData: FormData) {
   revalidatePath("/director", "layout");
   revalidatePath("/driver", "layout");
   if (issued[0]) await notify([driverChannel(issued[0].requester_id), MANAGERS_CHANNEL]);
+}
+
+export type ReceiptState = { ok: boolean; message: string } | undefined;
+
+// After the purchase, the mhasibu adds the receipt photo of a paid request, with an optional note
+// such as the receipt number. The first receipt wins, so a double tap is a no-op.
+export async function addReceipt(_prev: ReceiptState, formData: FormData): Promise<ReceiptState> {
+  const accountant = await requireUser("accountant");
+  const id = Number(formData.get("id"));
+  const file = formData.get("receipt");
+  const note = String(formData.get("note") ?? "").trim().slice(0, MAX_ISSUE_NOTE_LENGTH) || null;
+  if (!Number.isInteger(id)) return { ok: false, message: "Ombi hilo halipo." };
+  const bytes = file instanceof Blob ? new Uint8Array(await file.arrayBuffer()) : new Uint8Array();
+  const image = checkReceiptImage(bytes);
+  if ("error" in image) return { ok: false, message: image.error };
+
+  const added = await query<{ requester_id: number }>(
+    `WITH r AS (SELECT id, requester_id FROM money_requests WHERE id = $1 AND receipt_due),
+          ins AS (INSERT INTO receipts (request_id, content_type, data, note, uploaded_by)
+                  SELECT id, $2, $3, $4, $5 FROM r
+                  ON CONFLICT (request_id) DO NOTHING RETURNING request_id)
+     SELECT r.requester_id FROM r JOIN ins ON ins.request_id = r.id`,
+    [id, image.contentType, Buffer.from(bytes), note, accountant.id],
+  );
+  if (!added[0]) return { ok: false, message: "Risiti ya malipo haya imeshawekwa, au malipo hayapo." };
+  revalidatePath("/accountant", "layout");
+  revalidatePath("/manager", "layout");
+  revalidatePath("/director", "layout");
+  revalidatePath("/driver", "layout");
+  await notify([driverChannel(added[0].requester_id), MANAGERS_CHANNEL]);
+  return { ok: true, message: "Risiti imewekwa." };
 }

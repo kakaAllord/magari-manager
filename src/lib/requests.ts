@@ -23,6 +23,9 @@ export type MoneyRequest = {
   // The driver's reading that came with a fuel request.
   odometer_km: number | null;
   gauge_eighths: number | null;
+  // A paid request's receipt: still awaited, or added by the mhasibu. Older payments have none.
+  receipt: "due" | "added" | null;
+  receipt_note: string | null;
 };
 
 const SELECT = `
@@ -33,6 +36,9 @@ const SELECT = `
          m.name AS reviewer_name, a.name AS issuer_name,
          CASE WHEN c.id IS NULL THEN NULL ELSE c.make || ' ' || c.model || ' · ' || c.plate END AS car,
          r.kind, fr.odometer_km, fr.gauge_eighths,
+         CASE WHEN EXISTS (SELECT 1 FROM receipts rc WHERE rc.request_id = r.id) THEN 'added'
+              WHEN r.receipt_due THEN 'due' END AS receipt,
+         (SELECT rc.note FROM receipts rc WHERE rc.request_id = r.id) AS receipt_note,
          count(*) OVER ()::int AS total_count
     FROM money_requests r
     JOIN users d ON d.id = r.requester_id
@@ -59,10 +65,16 @@ export const listAwaitingIssue = () =>
     `${SELECT} WHERE r.status = 'approved' AND r.issued_at IS NULL ORDER BY r.reviewed_at ASC`,
   );
 
-// Still moving: pending, or approved but not yet paid. Newest first.
+// Paid, and the mhasibu still needs the receipt. Oldest payment first.
+const AWAITING_RECEIPT = "r.receipt_due AND NOT EXISTS (SELECT 1 FROM receipts rc WHERE rc.request_id = r.id)";
+export const listAwaitingReceipt = () =>
+  query<MoneyRequest>(`${SELECT} WHERE ${AWAITING_RECEIPT} ORDER BY r.issued_at ASC`);
+
+// Still moving: pending, approved but not yet paid, or paid with the receipt still to bring. Newest first.
 export const listOpenForRequester = (requesterId: number) =>
   query<MoneyRequest>(
-    `${SELECT} WHERE r.requester_id = $1 AND (r.status = 'pending' OR (r.status = 'approved' AND r.issued_at IS NULL))
+    `${SELECT} WHERE r.requester_id = $1
+       AND (r.status = 'pending' OR (r.status = 'approved' AND r.issued_at IS NULL) OR ${AWAITING_RECEIPT})
      ORDER BY r.created_at DESC`,
     [requesterId],
   );
