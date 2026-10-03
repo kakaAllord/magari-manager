@@ -19,6 +19,7 @@ export type ExpenseRow = {
   issued_by: string | null;
   issue_note: string | null;
   kind: "fuel" | "other";
+  backfilled: boolean;
 };
 
 export type CarOption = { id: number; plate: string; car: string };
@@ -39,7 +40,7 @@ export function getExpenses(p: ReportParams) {
             to_char(date_trunc('week', r.issued_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
             c.id AS car_id, c.plate, c.make || ' ' || c.model AS car,
             d.name AS requester, r.reason, r.amount, m.name AS approved_by, a.name AS issued_by, r.issue_note,
-            r.kind
+            r.kind, r.backfilled_at IS NOT NULL AS backfilled
        FROM money_requests r
        JOIN users d ON d.id = r.requester_id
        LEFT JOIN users m ON m.id = r.reviewed_by
@@ -108,6 +109,7 @@ export type IncomeRow = {
   description: string | null;
   amount: string;
   recorded_by: string | null;
+  backfilled: boolean;
 };
 
 // Income recorded (Tanzanian time) within [from, to], deleted entries left out. Picking cars keeps
@@ -117,7 +119,8 @@ export function getIncomes(p: ReportParams) {
     `SELECT to_char(i.created_at AT TIME ZONE $1, 'YYYY-MM-DD HH24:MI') AS recorded_at,
             to_char(date_trunc('month', i.created_at AT TIME ZONE $1), 'YYYY-MM-DD') AS month_start,
             to_char(date_trunc('week', i.created_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
-            i.source, c.make || ' ' || c.model AS car, i.description, i.amount, u.name AS recorded_by
+            i.source, c.make || ' ' || c.model AS car, i.description, i.amount, u.name AS recorded_by,
+            i.backfilled_at IS NOT NULL AS backfilled
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
       WHERE i.deleted_at IS NULL
         AND (i.created_at AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date

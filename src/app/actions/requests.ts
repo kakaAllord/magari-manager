@@ -3,22 +3,36 @@
 import { revalidatePath } from "next/cache";
 import { query, transaction } from "@/lib/db";
 import { driverChannel, MANAGERS_CHANNEL, notify } from "@/lib/realtime";
+import { todayInTanzania } from "@/lib/reports";
 import { requireUser } from "@/lib/session";
+import { TIME_ZONE } from "@/lib/time";
 import {
   checkOdometer,
   checkReceiptImage,
   MAX_ISSUE_NOTE_LENGTH,
   parseCarChoice,
+  parseEntryDate,
   parseMoneyRequest,
   parseReading,
   type ReadingErrors,
   type RequestErrors,
 } from "@/lib/validation";
 
-type FormErrors = RequestErrors & ReadingErrors & { carId?: string; kind?: string };
-type FormValues = { kind: string; amount: string; reason: string; carId?: string; odometer?: string; gauge?: string };
+type FormErrors = RequestErrors & ReadingErrors & { carId?: string; kind?: string; date?: string };
+type FormValues = {
+  kind: string;
+  amount: string;
+  reason: string;
+  carId?: string;
+  odometer?: string;
+  gauge?: string;
+  date?: string;
+};
 
-export type RequestFormState = { ok: true } | { ok: false; errors: FormErrors; values: FormValues } | undefined;
+export type RequestFormState =
+  | { ok: true; backfilled?: boolean }
+  | { ok: false; errors: FormErrors; values: FormValues }
+  | undefined;
 
 // A fuel request may leave the reason empty; it then just says "Mafuta".
 const readKind = (formData: FormData) => (formData.get("kind") === "fuel" ? "fuel" : "other");
@@ -98,7 +112,8 @@ export async function createRequest(
   return { ok: true };
 }
 
-// A manager's own request is approved as it's made and goes straight to the mhasibu.
+// A manager's own request is approved as it's made and goes straight to the mhasibu. With a past
+// date it is history instead: entered as already paid on that day, with no mhasibu or receipt step.
 export async function createManagerRequest(
   _prev: RequestFormState,
   formData: FormData,
@@ -110,27 +125,40 @@ export async function createManagerRequest(
     amount: String(formData.get("amount") ?? ""),
     reason: String(formData.get("reason") ?? ""),
     carId: String(formData.get("carId") ?? ""),
+    date: String(formData.get("date") ?? ""),
   };
   const parsed = parseMoneyRequest({ amount: values.amount, reason: reasonFor(kind, values.reason) });
   let car = parseCarChoice(values.carId!);
   if (kind === "fuel" && !("error" in car) && car.carId === null) car = { error: "Mafuta ni ya gari: chagua gari." };
-  if (!parsed.ok || "error" in car) {
+  const date = parseEntryDate(values.date!, todayInTanzania());
+  if (!parsed.ok || "error" in car || "error" in date) {
     return {
       ok: false,
-      errors: { ...(parsed.ok ? {} : parsed.errors), ...("error" in car ? { carId: car.error } : {}) },
+      errors: {
+        ...(parsed.ok ? {} : parsed.errors),
+        ...("error" in car ? { carId: car.error } : {}),
+        ...("error" in date ? { date: date.error } : {}),
+      },
       values,
     };
   }
 
-  // A manager's fuel has no reading: the driver's next one measures it.
+  // A manager's fuel has no reading: the driver's next one measures it. Past fuel uses today's
+  // price per litre, the only one the app knows. History is dated midday that day.
   const inserted = await query(
-    `INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at, kind, fuel_price)
-     SELECT $1, $2::int, $3, $4, 'approved', $1, now(), $5,
+    `WITH at AS (SELECT CASE WHEN $6::date IS NULL THEN now() ELSE ($6::date + time '12:00') AT TIME ZONE $7 END AS t)
+     INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at, kind, fuel_price,
+                                 created_at, issued_at, backfilled_at)
+     SELECT $1, $2::int, $3, $4, 'approved', $1, at.t, $5,
             CASE WHEN $5 = 'fuel' THEN (SELECT p.price_per_litre FROM cars c JOIN fuel_prices p ON p.fuel_type = c.fuel_type
-                                         WHERE c.id = $2::int) END
+                                         WHERE c.id = $2::int) END,
+            at.t,
+            CASE WHEN $6::date IS NULL THEN NULL ELSE at.t END,
+            CASE WHEN $6::date IS NULL THEN NULL ELSE now() END
+       FROM at
       WHERE $2::int IS NULL OR EXISTS (SELECT 1 FROM cars WHERE id = $2::int)
      RETURNING id`,
-    [manager.id, car.carId, parsed.amount, parsed.reason, kind],
+    [manager.id, car.carId, parsed.amount, parsed.reason, kind, date.date, TIME_ZONE],
   );
   if (inserted.length === 0) {
     return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." }, values };
@@ -139,7 +167,7 @@ export async function createManagerRequest(
   revalidatePath("/accountant", "layout");
   revalidatePath("/director", "layout");
   await notify([MANAGERS_CHANNEL]);
-  return { ok: true };
+  return { ok: true, backfilled: date.date !== null };
 }
 
 export async function reviewRequest(formData: FormData) {

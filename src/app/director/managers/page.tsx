@@ -25,9 +25,9 @@ export default async function ManagersPage() {
                  ELSE (SELECT count(*)::int FROM money_requests r WHERE r.issued_by = u.id)
             END AS handled,
             greatest(
-              (SELECT max(reviewed_at) FROM money_requests r WHERE r.reviewed_by = u.id),
+              (SELECT max(coalesce(backfilled_at, reviewed_at)) FROM money_requests r WHERE r.reviewed_by = u.id),
               (SELECT max(issued_at) FROM money_requests r WHERE r.issued_by = u.id),
-              (SELECT max(created_at) FROM incomes i WHERE i.recorded_by = u.id)
+              (SELECT max(coalesce(backfilled_at, created_at)) FROM incomes i WHERE i.recorded_by = u.id)
             ) AS last_active
        FROM users u WHERE u.role IN ('manager', 'accountant')
       ORDER BY u.deactivated_at IS NOT NULL, u.role DESC, u.name`,

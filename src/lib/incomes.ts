@@ -12,25 +12,31 @@ export type Income = {
   description: string | null;
   car: string | null;
   created_at: Date;
+  // History typed in later: when it was entered. created_at is the day it happened.
+  backfilled_at: Date | null;
   recorder_name: string | null;
   can_delete: boolean;
 };
 
 export const INCOME_PAGE_SIZE = 25;
 
-// Deleted entries are left out. `can_delete` marks the viewer's own entries from the last 24 hours.
-// Newest first; `carId` narrows to one car.
-export async function listIncomes(viewerId: number, opts: { page?: number; limit?: number; carId?: number | null } = {}) {
+// Deleted entries are left out. `can_delete` marks the viewer's own entries entered in the last
+// 24 hours. Newest first, by date, or by when they were entered with `byEntry`; `carId` narrows to one car.
+export async function listIncomes(
+  viewerId: number,
+  opts: { page?: number; limit?: number; carId?: number | null; byEntry?: boolean } = {},
+) {
   const limit = opts.limit ?? INCOME_PAGE_SIZE;
   const rows = await query<Income & { total_count: number }>(
     `SELECT i.id, i.source, i.amount, i.description, c.make || ' ' || c.model AS car, i.created_at,
-            u.name AS recorder_name,
-            (i.recorded_by = $1 AND i.created_at > now() - make_interval(hours => $3)) AS can_delete,
+            i.backfilled_at, u.name AS recorder_name,
+            (i.recorded_by = $1 AND coalesce(i.backfilled_at, i.created_at) > now() - make_interval(hours => $3)) AS can_delete,
             count(*) OVER ()::int AS total_count
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
       WHERE i.deleted_at IS NULL AND ($5::int IS NULL OR i.car_id = $5)
-      ORDER BY i.created_at DESC LIMIT $2 OFFSET $4`,
-    [viewerId, limit, DELETE_WINDOW_HOURS, ((opts.page ?? 1) - 1) * limit, opts.carId ?? null],
+      ORDER BY CASE WHEN $6 THEN coalesce(i.backfilled_at, i.created_at) END DESC, i.created_at DESC
+      LIMIT $2 OFFSET $4`,
+    [viewerId, limit, DELETE_WINDOW_HOURS, ((opts.page ?? 1) - 1) * limit, opts.carId ?? null, opts.byEntry ?? false],
   );
   return { rows, total: rows[0]?.total_count ?? 0 };
 }

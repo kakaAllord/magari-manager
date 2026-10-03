@@ -26,12 +26,14 @@ export type MoneyRequest = {
   // A paid request's receipt: still awaited, or added by the mhasibu. Older payments have none.
   receipt: "due" | "added" | null;
   receipt_note: string | null;
+  // History typed in later: when it was entered. Its dates are the day it happened.
+  backfilled_at: Date | null;
 };
 
 const SELECT = `
   SELECT r.id, r.amount, r.reason,
          CASE WHEN r.issued_at IS NOT NULL THEN 'issued' ELSE r.status END AS status,
-         r.created_at, r.reviewed_at, r.issued_at, r.issue_note,
+         r.created_at, r.reviewed_at, r.issued_at, r.issue_note, r.backfilled_at,
          r.requester_id, d.name AS requester_name, d.role AS requester_role,
          m.name AS reviewer_name, a.name AS issuer_name,
          CASE WHEN c.id IS NULL THEN NULL ELSE c.make || ' ' || c.model || ' · ' || c.plate END AS car,
@@ -82,11 +84,13 @@ export const listOpenForRequester = (requesterId: number) =>
 export type HistoryFilter = "all" | "approved" | "issued" | "rejected";
 
 // Everything past the manager's decision (or everything one person asked for), newest first.
+// `byEntry` sorts by when each was entered, so history just typed in shows at the top.
 export async function listHistory(opts: {
   page: number;
   filter?: HistoryFilter;
   carId?: number | null;
   requesterId?: number;
+  byEntry?: boolean;
 }): Promise<Page> {
   const filter = opts.filter ?? "all";
   const rows = await query<MoneyRequest & { total_count: number }>(
@@ -100,9 +104,10 @@ export async function listHistory(opts: {
               WHEN 'rejected' THEN r.status = 'rejected'
               ELSE true
             END
-      ORDER BY coalesce(r.issued_at, r.reviewed_at, r.created_at) DESC
+      ORDER BY CASE WHEN $6 THEN r.backfilled_at END DESC NULLS LAST,
+               coalesce(r.issued_at, r.reviewed_at, r.created_at) DESC
       LIMIT $4 OFFSET $5`,
-    [opts.requesterId ?? null, opts.carId ?? null, filter, PAGE_SIZE, (opts.page - 1) * PAGE_SIZE],
+    [opts.requesterId ?? null, opts.carId ?? null, filter, PAGE_SIZE, (opts.page - 1) * PAGE_SIZE, opts.byEntry ?? false],
   );
   return paged(rows);
 }
