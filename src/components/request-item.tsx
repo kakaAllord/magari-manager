@@ -1,4 +1,5 @@
-import { formatDateTime, formatMoney } from "@/lib/format";
+import { gaugeLabel } from "@/lib/fuel-calc";
+import { formatDateTime, formatKm, formatMoney } from "@/lib/format";
 import type { MoneyRequest } from "@/lib/requests";
 
 // One request as every list shows it: amount, who asked, the reason, then each step with its time.
@@ -17,7 +18,17 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
           </span>
         )}
       </p>
-      <p className="text-sm break-words">{r.reason}</p>
+      <p className="text-sm break-words">
+        {r.kind === "fuel" && r.reason !== "Mafuta" && (
+          <span className="mr-1.5 rounded bg-accent-soft px-1.5 py-px text-xs font-medium text-accent">Mafuta</span>
+        )}
+        {r.reason}
+      </p>
+      {r.odometer_km !== null && r.gauge_eighths !== null && (
+        <p className="text-sm text-muted tabular-nums">
+          km {formatKm(r.odometer_km)} · {gaugeLabel(r.gauge_eighths)}
+        </p>
+      )}
       <p className="mt-1 text-xs text-muted">
         {r.car ?? "Hakuna gari"} · Imetumwa {formatDateTime(r.created_at)}
         {r.reviewed_at &&

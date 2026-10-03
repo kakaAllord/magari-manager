@@ -1,35 +1,98 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { query } from "@/lib/db";
+import { query, transaction } from "@/lib/db";
 import { driverChannel, MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
-import { MAX_ISSUE_NOTE_LENGTH, parseCarChoice, parseMoneyRequest, type RequestErrors } from "@/lib/validation";
+import {
+  checkOdometer,
+  MAX_ISSUE_NOTE_LENGTH,
+  parseCarChoice,
+  parseMoneyRequest,
+  parseReading,
+  type ReadingErrors,
+  type RequestErrors,
+} from "@/lib/validation";
 
-export type RequestFormState =
-  | { ok: true }
-  | { ok: false; errors: RequestErrors & { carId?: string }; values: { amount: string; reason: string; carId?: string } }
-  | undefined;
+type FormErrors = RequestErrors & ReadingErrors & { carId?: string; kind?: string };
+type FormValues = { kind: string; amount: string; reason: string; carId?: string; odometer?: string; gauge?: string };
+
+export type RequestFormState = { ok: true } | { ok: false; errors: FormErrors; values: FormValues } | undefined;
+
+// A fuel request may leave the reason empty; it then just says "Mafuta".
+const readKind = (formData: FormData) => (formData.get("kind") === "fuel" ? "fuel" : "other");
+const reasonFor = (kind: string, reason: string) => (kind === "fuel" && !reason.trim() ? "Mafuta" : reason);
 
 export async function createRequest(
   _prev: RequestFormState,
   formData: FormData,
 ): Promise<RequestFormState> {
   const driver = await requireUser("driver");
-  const values = {
+  const kind = readKind(formData);
+  const values: FormValues = {
+    kind,
     amount: String(formData.get("amount") ?? ""),
     reason: String(formData.get("reason") ?? ""),
+    odometer: String(formData.get("odometer") ?? ""),
+    gauge: String(formData.get("gauge") ?? ""),
   };
-  const parsed = parseMoneyRequest(values);
-  if (!parsed.ok) return { ok: false, errors: parsed.errors, values };
+  const parsed = parseMoneyRequest({ amount: values.amount, reason: reasonFor(kind, values.reason) });
+  const reading = kind === "fuel" ? parseReading({ odometer: values.odometer!, gauge: values.gauge! }) : null;
+  if (!parsed.ok || (reading && !reading.ok)) {
+    return {
+      ok: false,
+      errors: { ...(parsed.ok ? {} : parsed.errors), ...(reading && !reading.ok ? reading.errors : {}) },
+      values,
+    };
+  }
 
-  await query(
-    `INSERT INTO money_requests (requester_id, car_id, amount, reason)
-     VALUES ($1, (SELECT id FROM cars WHERE driver_id = $1), $2, $3)`,
-    [driver.id, parsed.amount, parsed.reason],
-  );
+  if (!reading) {
+    await query(
+      `INSERT INTO money_requests (requester_id, car_id, amount, reason)
+       VALUES ($1, (SELECT id FROM cars WHERE driver_id = $1), $2, $3)`,
+      [driver.id, parsed.amount, parsed.reason],
+    );
+  } else {
+    // The reading and the request go in together. Locking the car keeps a double tap from making two.
+    const error = await transaction(async (client): Promise<FormErrors | null> => {
+      const car = await client.query<{ id: number; fuel_type: string }>(
+        "SELECT id, fuel_type FROM cars WHERE driver_id = $1 FOR UPDATE",
+        [driver.id],
+      );
+      const carRow = car.rows[0];
+      if (!carRow) return { kind: "Bado hujapewa gari, kwa hiyo huwezi kuomba mafuta." };
+      const open = await client.query(
+        `SELECT 1 FROM money_requests WHERE car_id = $1 AND kind = 'fuel'
+            AND (status = 'pending' OR (status = 'approved' AND issued_at IS NULL))`,
+        [carRow.id],
+      );
+      if (open.rowCount) {
+        return { kind: "Gari lako lina ombi la mafuta ambalo bado halijalipwa. Subiri lilipwe au likataliwe." };
+      }
+      const last = await client.query<{ odometer_km: number }>(
+        "SELECT odometer_km FROM fuel_readings WHERE car_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1",
+        [carRow.id],
+      );
+      const odometerError = checkOdometer(reading.odometer, last.rows[0]?.odometer_km ?? null, true);
+      if (odometerError) return { odometer: odometerError };
+      const inserted = await client.query<{ id: number }>(
+        `INSERT INTO money_requests (requester_id, car_id, amount, reason, kind, fuel_price)
+         VALUES ($1, $2, $3, $4, 'fuel', (SELECT price_per_litre FROM fuel_prices WHERE fuel_type = $5))
+         RETURNING id`,
+        [driver.id, carRow.id, parsed.amount, parsed.reason, carRow.fuel_type],
+      );
+      await client.query(
+        `INSERT INTO fuel_readings (car_id, driver_id, recorded_by, request_id, odometer_km, gauge_eighths)
+         VALUES ($1, $2, $2, $3, $4, $5)`,
+        [carRow.id, driver.id, inserted.rows[0].id, reading.odometer, reading.eighths],
+      );
+      return null;
+    });
+    if (error) return { ok: false, errors: error, values };
+  }
   revalidatePath("/driver");
   revalidatePath("/manager", "layout");
+  revalidatePath("/director", "layout");
   await notify([MANAGERS_CHANNEL]);
   return { ok: true };
 }
@@ -40,13 +103,16 @@ export async function createManagerRequest(
   formData: FormData,
 ): Promise<RequestFormState> {
   const manager = await requireUser("manager");
-  const values = {
+  const kind = readKind(formData);
+  const values: FormValues = {
+    kind,
     amount: String(formData.get("amount") ?? ""),
     reason: String(formData.get("reason") ?? ""),
     carId: String(formData.get("carId") ?? ""),
   };
-  const parsed = parseMoneyRequest(values);
-  const car = parseCarChoice(values.carId);
+  const parsed = parseMoneyRequest({ amount: values.amount, reason: reasonFor(kind, values.reason) });
+  let car = parseCarChoice(values.carId!);
+  if (kind === "fuel" && !("error" in car) && car.carId === null) car = { error: "Mafuta ni ya gari: chagua gari." };
   if (!parsed.ok || "error" in car) {
     return {
       ok: false,
@@ -55,12 +121,15 @@ export async function createManagerRequest(
     };
   }
 
+  // A manager's fuel has no reading: the driver's next one measures it.
   const inserted = await query(
-    `INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at)
-     SELECT $1, $2::int, $3, $4, 'approved', $1, now()
+    `INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at, kind, fuel_price)
+     SELECT $1, $2::int, $3, $4, 'approved', $1, now(), $5,
+            CASE WHEN $5 = 'fuel' THEN (SELECT p.price_per_litre FROM cars c JOIN fuel_prices p ON p.fuel_type = c.fuel_type
+                                         WHERE c.id = $2::int) END
       WHERE $2::int IS NULL OR EXISTS (SELECT 1 FROM cars WHERE id = $2::int)
      RETURNING id`,
-    [manager.id, car.carId, parsed.amount, parsed.reason],
+    [manager.id, car.carId, parsed.amount, parsed.reason, kind],
   );
   if (inserted.length === 0) {
     return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." }, values };

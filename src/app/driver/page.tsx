@@ -7,6 +7,7 @@ import { RequestForm } from "@/components/request-form";
 import { RequestSummary } from "@/components/request-item";
 import { StatusBadge } from "@/components/status-badge";
 import { query } from "@/lib/db";
+import { getDriverFuelContext } from "@/lib/fuel";
 import { driverChannel } from "@/lib/realtime";
 import { listOpenForRequester } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
@@ -14,12 +15,13 @@ import { requireUser } from "@/lib/session";
 // The form and what's still moving. Finished requests live on Historia.
 export default async function DriverPage() {
   const user = await requireUser("driver");
-  const [cars, open] = await Promise.all([
+  const [cars, open, fuel] = await Promise.all([
     query<{ plate: string; make: string; model: string }>(
       "SELECT plate, make, model FROM cars WHERE driver_id = $1",
       [user.id],
     ),
     listOpenForRequester(user.id),
+    getDriverFuelContext(user.id),
   ]);
   const car = cars[0];
 
@@ -49,7 +51,11 @@ export default async function DriverPage() {
 
           <section className="card">
             <h2 className="mb-4 text-lg font-semibold">Omba pesa</h2>
-            <RequestForm submit={createRequest} sent="Ombi limetumwa. Utaona jibu la meneja hapa, kisha mhasibu atakulipa." />
+            <RequestForm
+              submit={createRequest}
+              fuel={fuel}
+              sent="Ombi limetumwa. Utaona jibu la meneja hapa, kisha mhasibu atakulipa."
+            />
           </section>
         </div>
 

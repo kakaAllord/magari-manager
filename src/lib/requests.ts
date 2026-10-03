@@ -19,6 +19,10 @@ export type MoneyRequest = {
   reviewer_name: string | null;
   issuer_name: string | null;
   car: string | null;
+  kind: "fuel" | "other";
+  // The driver's reading that came with a fuel request.
+  odometer_km: number | null;
+  gauge_eighths: number | null;
 };
 
 const SELECT = `
@@ -28,12 +32,14 @@ const SELECT = `
          r.requester_id, d.name AS requester_name, d.role AS requester_role,
          m.name AS reviewer_name, a.name AS issuer_name,
          CASE WHEN c.id IS NULL THEN NULL ELSE c.make || ' ' || c.model || ' · ' || c.plate END AS car,
+         r.kind, fr.odometer_km, fr.gauge_eighths,
          count(*) OVER ()::int AS total_count
     FROM money_requests r
     JOIN users d ON d.id = r.requester_id
     LEFT JOIN users m ON m.id = r.reviewed_by
     LEFT JOIN users a ON a.id = r.issued_by
-    LEFT JOIN cars c ON c.id = r.car_id`;
+    LEFT JOIN cars c ON c.id = r.car_id
+    LEFT JOIN fuel_readings fr ON fr.request_id = r.id`;
 
 export const PAGE_SIZE = 25;
 
