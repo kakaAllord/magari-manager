@@ -134,6 +134,43 @@ export async function updateCar(_prev: CarFormState, formData: FormData): Promis
   return saved(result.plate, details, result.measured, "limehifadhiwa");
 }
 
+export type DeleteCarState = { message: string } | undefined;
+
+const CAR_HAS_HISTORY =
+  "Gari hili lina maombi au mapato yaliyorekodiwa, kwa hiyo haliwezi kufutwa. Historia yake inabaki ili matumizi yasifichwe.";
+const FOREIGN_KEY_VIOLATION = "23503";
+
+// For a car added by mistake, such as a mistyped plate. It goes only while nothing was ever booked
+// to it (deleted income counts too), so spending can't be hidden by removing a car; the database
+// refuses as well. Its fuel readings go with it, and a driver who had it is signed out.
+export async function deleteCar(_prev: DeleteCarState, formData: FormData): Promise<DeleteCarState> {
+  await requireUser("manager");
+  const carId = Number(formData.get("carId"));
+  if (!Number.isInteger(carId)) return { message: "Gari hilo halipo tena." };
+
+  const outcome = await transaction(async (client) => {
+    const car = await client.query<{ driver_id: number | null; used: boolean }>(
+      `SELECT driver_id,
+              EXISTS (SELECT 1 FROM money_requests WHERE car_id = cars.id)
+                OR EXISTS (SELECT 1 FROM incomes WHERE car_id = cars.id) AS used
+         FROM cars WHERE id = $1 FOR UPDATE`,
+      [carId],
+    );
+    const row = car.rows[0];
+    if (!row) return "gone";
+    if (row.used) return "used";
+    await client.query("DELETE FROM cars WHERE id = $1", [carId]);
+    if (row.driver_id) await client.query("DELETE FROM sessions WHERE user_id = $1", [row.driver_id]);
+    return "deleted";
+  }).catch((err) => {
+    if ((err as { code?: string }).code === FOREIGN_KEY_VIOLATION) return "used" as const;
+    throw err;
+  });
+  if (outcome === "used") return { message: CAR_HAS_HISTORY };
+  await refreshCars();
+  return undefined;
+}
+
 // Assigning a driver who already has a car moves them to this one. The driver who
 // loses this car is signed out, since their plate no longer signs them in.
 export async function assignDriver(formData: FormData) {

@@ -142,7 +142,9 @@ directors and the mhasibu join `private-managers` and each driver only `private-
   Fuel can't be requested for a car until it has a fuel type, a tank size and a first reading
   (`src/lib/fuel-ready.ts`; past-dated history excepted). The manager gives them when adding the
   car or later from its ⋯ menu on Magari; later readings go on Mafuta. A reading taken while the
-  car has no driver passes to its first driver.
+  car has no driver passes to its first driver. The plate can't be edited (drivers sign in with
+  it); a car added by mistake is deleted from its ⋯ menu instead, but only while no request or
+  income was ever booked to it, and the database refuses otherwise (migration 012).
 - Receipts are photos stored in Postgres (`receipts.data`). The browser shrinks them to at most
   1600 px before upload (`src/app/accountant/add-receipt.tsx`) to stay under the 1 MB server
   action limit; `checkReceiptImage` in `src/lib/validation.ts` accepts JPEG, PNG or WebP by

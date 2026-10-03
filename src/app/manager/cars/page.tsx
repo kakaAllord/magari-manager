@@ -13,6 +13,7 @@ type Car = {
   tank_litres: number | null;
   driver_id: number | null;
   measured: boolean;
+  used: boolean;
 };
 
 export default async function CarsPage() {
@@ -20,7 +21,9 @@ export default async function CarsPage() {
   const [cars, drivers] = await Promise.all([
     query<Car>(
       `SELECT id, plate, name, fuel_type, tank_litres, driver_id,
-              EXISTS (SELECT 1 FROM fuel_readings r WHERE r.car_id = cars.id) AS measured
+              EXISTS (SELECT 1 FROM fuel_readings r WHERE r.car_id = cars.id) AS measured,
+              EXISTS (SELECT 1 FROM money_requests m WHERE m.car_id = cars.id)
+                OR EXISTS (SELECT 1 FROM incomes i WHERE i.car_id = cars.id) AS used
          FROM cars ORDER BY plate`,
     ),
     query<{ id: number; name: string }>("SELECT id, name FROM users WHERE role = 'driver' ORDER BY name"),
@@ -53,6 +56,7 @@ export default async function CarsPage() {
                 car={{ id: c.id, plate: c.plate, name: c.name, fuelType: c.fuel_type, tank: c.tank_litres, measured: c.measured }}
                 missing={missing.get(c.id) ?? ""}
                 driverless={c.driver_id === null}
+                used={c.used}
               >
                 {/* key forces the select to pick up a new default after reassignment */}
                 <form action={assignDriver} key={c.driver_id ?? "none"} className="flex gap-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createCar, updateCar, type CarFormState } from "@/app/actions/cars";
+import { createCar, deleteCar, updateCar, type CarFormState } from "@/app/actions/cars";
 import { Dialog } from "@/components/dialog";
 import { GaugePicker } from "@/components/gauge-picker";
 import { Icon } from "@/components/icons";
@@ -161,19 +161,23 @@ export function AddCar() {
 }
 
 // One car on Magari: plate and Aina, what's missing for fuel (a tap opens the edit dialog), the
-// driver picker passed in as `children`, and a "⋯" menu with the same dialog.
+// driver picker passed in as `children`, and a "⋯" menu with the same dialog and Futa gari.
+// `used`: something was booked to the car, so it can't be deleted.
 export function CarRow({
   car,
   missing,
   driverless,
+  used,
   children,
 }: {
   car: EditableCar;
   missing: string;
   driverless: boolean;
+  used: boolean;
   children: React.ReactNode;
 }) {
   const { open, setOpen, action, pending, failed, toastView } = useCarDialog(updateCar);
+  const [deleting, setDeleting] = useState(false);
   return (
     <li className="flex items-start gap-3 py-4 sm:items-center">
       <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -193,9 +197,27 @@ export function CarRow({
       </div>
       <RowMenu
         label={`Vitendo kwa ${car.plate}`}
-        items={[{ label: "Badilisha taarifa", icon: "car", onSelect: () => setOpen(true) }]}
+        items={[
+          { label: "Badilisha taarifa", icon: "car", onSelect: () => setOpen(true) },
+          { label: "Futa gari", icon: "close", tone: "danger", onSelect: () => setDeleting(true) },
+        ]}
       />
       {toastView}
+
+      <Dialog
+        open={deleting}
+        onClose={() => setDeleting(false)}
+        title={used ? `${car.plate} haliwezi kufutwa` : `Futa ${car.plate}?`}
+        description={
+          used
+            ? "Lina maombi au mapato yaliyorekodiwa. Gari lenye historia halifutwi, ili matumizi yasihamishwe wala kufichwa."
+            : `Kwa gari lililoongezwa kimakosa, kama namba iliyokosewa. Linaondolewa kabisa pamoja na vipimo vyake vya mafuta.${
+                driverless ? "" : " Dereva wake atatolewa na hataweza kuingia hadi apewe gari lingine."
+              }`
+        }
+      >
+        <DeleteCarForm carId={car.id} used={used} onDone={() => setDeleting(false)} />
+      </Dialog>
 
       <Dialog open={open} onClose={() => setOpen(false)} title={`Taarifa za ${car.plate}`}>
         <form action={action} className="grid gap-4">
@@ -213,5 +235,32 @@ export function CarRow({
         </form>
       </Dialog>
     </li>
+  );
+}
+
+function DeleteCarForm({ carId, used, onDone }: { carId: number; used: boolean; onDone: () => void }) {
+  const [state, action, pending] = useActionState(deleteCar, undefined);
+  if (used) {
+    return (
+      <div className="flex justify-end">
+        <button type="button" onClick={onDone} className="btn btn-primary">
+          Sawa
+        </button>
+      </div>
+    );
+  }
+  return (
+    <form action={action} className="grid gap-4">
+      <input type="hidden" name="carId" value={carId} />
+      {state && <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">{state.message}</p>}
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onDone} className="btn btn-ghost">
+          Hapana
+        </button>
+        <button type="submit" disabled={pending} className="btn bg-danger text-white hover:opacity-90">
+          {pending ? "Inafuta…" : "Ndiyo, futa"}
+        </button>
+      </div>
+    </form>
   );
 }
