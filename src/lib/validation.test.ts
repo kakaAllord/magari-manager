@@ -12,6 +12,7 @@ import {
   parseMoneyRequest,
   parsePricePerLitre,
   parseReading,
+  parseStartingReading,
   parseTankLitres,
 } from "./validation.ts";
 
@@ -134,4 +135,16 @@ test("a past date is history; today, empty and bad dates are not", () => {
   assert.ok("error" in parseEntryDate("2026-01-32", today));
   assert.ok("error" in parseEntryDate("14/05/2026", today));
   assert.ok("error" in parseEntryDate("2014-12-31", today));
+});
+
+test("a new car's starting reading is km and gauge together, or nothing", () => {
+  assert.deepEqual(parseStartingReading({ odometer: "", gauge: "" }), { ok: true, reading: null });
+  assert.deepEqual(parseStartingReading({ odometer: "45,500", gauge: "4" }), {
+    ok: true,
+    reading: { odometer: 45500, eighths: 4 },
+  });
+  const noGauge = parseStartingReading({ odometer: "45500", gauge: "" });
+  assert.ok(!noGauge.ok && noGauge.errors.gauge && !noGauge.errors.odometer);
+  const noKm = parseStartingReading({ odometer: " ", gauge: "8" });
+  assert.ok(!noKm.ok && noKm.errors.odometer);
 });

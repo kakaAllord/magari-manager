@@ -171,3 +171,13 @@ export function parseEntryDate(input: string, today: string): { date: string | n
   if (typed < EARLIEST_ENTRY_DATE) return { error: "Tarehe ni ya zamani mno." };
   return { date: typed };
 }
+
+// A new car's starting reading is optional, but km and gauge go together: both or neither.
+export function parseStartingReading(input: ReadingInput):
+  | { ok: true; reading: { odometer: number; eighths: number } | null }
+  | { ok: false; errors: ReadingErrors } {
+  if (!input.odometer.trim() && input.gauge === "") return { ok: true, reading: null };
+  const parsed = parseReading(input);
+  if (!parsed.ok) return parsed;
+  return { ok: true, reading: { odometer: parsed.odometer, eighths: parsed.eighths } };
+}
