@@ -24,3 +24,10 @@ export const formatWallTime = (local: string) => wallTime.format(new Date(`${loc
 // Compact axis labels: 1,250,000 -> "1.3M", 40,000 -> "40K".
 export const formatCompact = (amount: number) =>
   new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(amount);
+
+// Fuel figures: "45,500", "27.5", and a dash when there's nothing to measure.
+const whole = new Intl.NumberFormat("en", { maximumFractionDigits: 0 });
+const oneDecimal = new Intl.NumberFormat("en", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+export const formatKm = (km: number) => whole.format(km);
+export const formatLitres = (litres: number) => oneDecimal.format(litres);
+export const formatRate = (rate: number | null) => (rate === null ? "–" : oneDecimal.format(rate));
