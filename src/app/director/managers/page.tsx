@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { query } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { requireUser } from "@/lib/session";
-import { AddManagerForm, ManagerActiveForm, SetManagerPasswordForm } from "./manager-forms";
+import { AddStaff, StaffMenu } from "./manager-forms";
 
 type StaffRow = {
   id: number;
@@ -32,68 +32,65 @@ export default async function ManagersPage() {
        FROM users u WHERE u.role IN ('manager', 'accountant')
       ORDER BY u.deactivated_at IS NOT NULL, u.role DESC, u.name`,
   );
+  const inactive = managers.filter((m) => m.deactivated_at).length;
 
   return (
     <main className="page">
       <PageHeader
         title="Wafanyakazi"
-        description="Mameneja na wahasibu wanaingia kwa barua pepe na nenosiri unaloweka hapa. Ukimzima mtu, hataweza kuingia lakini jina lake linabaki kwenye historia."
+        description="Mameneja na wahasibu. Ukimzima mtu hataweza kuingia, lakini jina lake linabaki kwenye historia."
+        action={<AddStaff />}
       />
 
-      <section className="card">
-        <h2 className="mb-4 text-lg font-semibold">Ongeza mfanyakazi</h2>
-        <AddManagerForm />
-      </section>
-
-      <section className="card">
-        <h2 className="mb-2 text-lg font-semibold">
-          Wafanyakazi wote <span className="text-muted">({managers.length})</span>
+      <section className="card p-0 sm:p-0">
+        <h2 className="border-b border-line px-4 py-3 text-sm font-medium text-muted sm:px-5">
+          Wafanyakazi {managers.length}
+          {inactive > 0 && ` · ${inactive} wamezimwa`}
         </h2>
         {managers.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted">Bado hakuna mfanyakazi. Ongeza wa kwanza hapo juu.</p>
+          <p className="py-10 text-center text-sm text-muted">Bado hakuna mfanyakazi. Bonyeza “Ongeza mfanyakazi”.</p>
         ) : (
           <ul className="divide-y divide-line">
             {managers.map((m) => (
-              <li key={m.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_minmax(0,22rem)] sm:items-center">
-                <div className={`flex min-w-0 items-center gap-3 ${m.deactivated_at ? "opacity-60" : ""}`}>
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
-                    {m.name
-                      .split(/\s+/)
-                      .map((w) => w[0])
-                      .slice(0, 2)
-                      .join("")
-                      .toUpperCase()}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-2 font-medium">
-                      {m.name}
-                      <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
-                        {m.role === "manager" ? "Meneja" : "Mhasibu"}
+              <li key={m.id} className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
+                <span
+                  className={`grid size-10 shrink-0 place-items-center rounded-full text-sm font-semibold ${
+                    m.deactivated_at ? "bg-background text-muted" : "bg-accent-soft text-accent"
+                  }`}
+                >
+                  {m.name
+                    .split(/\s+/)
+                    .map((w) => w[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase()}
+                </span>
+                <div className={`min-w-0 flex-1 ${m.deactivated_at ? "opacity-60" : ""}`}>
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
+                    {m.name}
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        m.role === "manager" ? "bg-accent-soft text-accent" : "bg-warn-soft text-warn"
+                      }`}
+                    >
+                      {m.role === "manager" ? "Meneja" : "Mhasibu"}
+                    </span>
+                    {m.deactivated_at && (
+                      <span className="rounded-full bg-danger-soft px-2 py-0.5 text-xs font-medium text-danger">
+                        Amezimwa
                       </span>
-                      {m.deactivated_at && (
-                        <span className="rounded-full bg-danger-soft px-2 py-0.5 text-xs font-medium text-danger">
-                          Amezimwa
-                        </span>
-                      )}
-                    </p>
-                    <p className="truncate text-sm text-muted">{m.email}</p>
-                    <p className="text-xs text-muted">
-                      {m.role === "manager" ? "Ameamua maombi" : "Amelipa maombi"} {m.handled}
-                      {m.last_active && ` · Mara ya mwisho ${formatDateTime(m.last_active)}`}
-                    </p>
-                  </div>
+                    )}
+                  </p>
+                  <p className="truncate text-sm text-muted">{m.email}</p>
+                  <p className="text-xs text-muted">
+                    {m.deactivated_at
+                      ? `Alizimwa ${formatDateTime(m.deactivated_at)}`
+                      : `${m.role === "manager" ? "Ameamua maombi" : "Amelipa maombi"} ${m.handled}${
+                          m.last_active ? ` · mara ya mwisho ${formatDateTime(m.last_active)}` : ""
+                        }`}
+                  </p>
                 </div>
-                {m.deactivated_at ? (
-                  <div className="grid gap-1 sm:justify-items-end">
-                    <p className="text-xs text-muted">Alizimwa {formatDateTime(m.deactivated_at)}</p>
-                    <ManagerActiveForm managerId={m.id} managerName={m.name} active={false} />
-                  </div>
-                ) : (
-                  <div className="grid gap-2">
-                    <SetManagerPasswordForm managerId={m.id} managerName={m.name} />
-                    <ManagerActiveForm managerId={m.id} managerName={m.name} active />
-                  </div>
-                )}
+                <StaffMenu id={m.id} name={m.name} active={!m.deactivated_at} />
               </li>
             ))}
           </ul>

@@ -1,135 +1,225 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createManager, setManagerActive, setManagerPassword } from "@/app/actions/managers";
-import { MIN_PASSWORD_LENGTH } from "@/lib/validation";
+import { Dialog } from "@/components/dialog";
+import { Icon } from "@/components/icons";
+import { PasswordInput } from "@/components/password-input";
 
 function Message({ state }: { state: { ok: boolean; message: string } | undefined }) {
   if (!state) return null;
-  return <p className={`text-sm ${state.ok ? "text-ok" : "text-danger"}`}>{state.message}</p>;
+  return (
+    <p role="status" className={`rounded-md px-3 py-2 text-sm ${state.ok ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger"}`}>
+      {state.message}
+    </p>
+  );
 }
 
-export function AddManagerForm() {
+const roleHints = {
+  manager: "Anakubali maombi ya madereva, anarekodi mapato na kufuatilia mafuta.",
+  accountant: "Analipa maombi yaliyokubaliwa na meneja.",
+};
+
+// The header button and its dialog. The success message stays next to the button once the dialog closes.
+export function AddStaff() {
+  const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(createManager, undefined);
-
-  return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
-      <fieldset className="grid gap-2 sm:col-span-2">
-        <legend className="label">Nafasi</legend>
-        <div className="flex flex-wrap gap-2">
-          <label className="chip has-checked:chip-on cursor-pointer">
-            <input type="radio" name="role" value="manager" defaultChecked className="size-4 accent-accent" />
-            Meneja <span className="text-muted">· anakubali maombi, anarekodi mapato</span>
-          </label>
-          <label className="chip has-checked:chip-on cursor-pointer">
-            <input type="radio" name="role" value="accountant" className="size-4 accent-accent" />
-            Mhasibu <span className="text-muted">· analipa maombi yaliyokubaliwa</span>
-          </label>
-        </div>
-      </fieldset>
-      <label>
-        <span className="label">Jina</span>
-        <input name="name" required autoComplete="off" placeholder="Asha Said" className="input" />
-      </label>
-      <label>
-        <span className="label">Barua pepe (ya kuingia)</span>
-        <input
-          name="email"
-          type="email"
-          required
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          placeholder="asha@kampuni.co.tz"
-          className="input"
-        />
-      </label>
-      <label>
-        <span className="label">Nenosiri la kumpa</span>
-        <input
-          name="password"
-          required
-          minLength={MIN_PASSWORD_LENGTH}
-          autoComplete="new-password"
-          className="input"
-        />
-      </label>
-      <div className="flex items-end">
-        <button type="submit" disabled={pending} className="btn btn-primary w-full">
-          {pending ? "Inaongeza…" : "Ongeza"}
-        </button>
-      </div>
-      <div className="sm:col-span-2">
-        <Message state={state} />
-      </div>
-    </form>
-  );
-}
-
-export function SetManagerPasswordForm({ managerId, managerName }: { managerId: number; managerName: string }) {
-  const [state, action, pending] = useActionState(setManagerPassword, undefined);
-
-  return (
-    <form action={action} className="grid gap-2">
-      <input type="hidden" name="managerId" value={managerId} />
-      <div className="flex gap-2">
-        <input
-          name="password"
-          required
-          minLength={MIN_PASSWORD_LENGTH}
-          autoComplete="new-password"
-          placeholder="Nenosiri jipya"
-          aria-label={`Nenosiri jipya la ${managerName}`}
-          className="input min-w-0 flex-1"
-        />
-        <button type="submit" disabled={pending} className="btn btn-ghost shrink-0">
-          {pending ? "Inahifadhi…" : "Weka nenosiri"}
-        </button>
-      </div>
-      <Message state={state} />
-    </form>
-  );
-}
-
-// Switching off takes two taps; switching back on takes one.
-export function ManagerActiveForm({ managerId, managerName, active }: { managerId: number; managerName: string; active: boolean }) {
-  const [state, action, pending] = useActionState(setManagerActive, undefined);
-  const [confirming, setConfirming] = useState(false);
-
-  if (active && !confirming) {
-    return (
-      <div className="flex justify-end">
-        <button type="button" onClick={() => setConfirming(true)} className="btn btn-ghost text-danger">
-          Zima
-        </button>
-      </div>
-    );
+  const [role, setRole] = useState<"manager" | "accountant">("manager");
+  // Close the dialog once a new person has been added (React's "adjust state on change" pattern).
+  const [seen, setSeen] = useState(state);
+  if (state !== seen) {
+    setSeen(state);
+    if (state?.ok) setOpen(false);
   }
+
   return (
-    <form
-      action={action}
-      className={active ? "flex flex-wrap items-center justify-end gap-2 rounded-lg bg-danger-soft p-2" : "grid gap-1"}
-    >
-      <input type="hidden" name="managerId" value={managerId} />
-      <input type="hidden" name="active" value={active ? "0" : "1"} />
-      {active ? (
-        <>
-          <p className="mr-auto text-sm">Zima {managerName}? Hataweza kuingia hadi umwashe tena.</p>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setConfirming(false)} className="btn btn-ghost">
-              Hapana
+    <div className="grid justify-items-end gap-2">
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-primary gap-2">
+        <Icon name="plus" className="size-4" />
+        Ongeza mfanyakazi
+      </button>
+      {state?.ok && !open && <p className="text-sm text-ok">{state.message}</p>}
+
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Ongeza mfanyakazi"
+        description="Ataingia kwa barua pepe na nenosiri unaloweka hapa."
+      >
+        <form action={action} className="grid gap-4">
+          <label className="block">
+            <span className="label">Nafasi</span>
+            <select
+              name="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as typeof role)}
+              className="input"
+            >
+              <option value="manager">Meneja</option>
+              <option value="accountant">Mhasibu</option>
+            </select>
+            <span className="mt-1 block text-xs text-muted">{roleHints[role]}</span>
+          </label>
+          <label className="block">
+            <span className="label">Jina kamili</span>
+            <input name="name" required autoComplete="off" placeholder="Asha Said" className="input" />
+          </label>
+          <label className="block">
+            <span className="label">Barua pepe</span>
+            <input
+              name="email"
+              type="email"
+              required
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="asha@zuraja.co.tz"
+              className="input"
+            />
+          </label>
+          <PasswordInput label="Nenosiri la kumpa" />
+          {state && !state.ok && <Message state={state} />}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost">
+              Ghairi
             </button>
-            <button type="submit" disabled={pending} className="btn bg-danger text-white hover:opacity-90">
-              {pending ? "Inazima…" : "Ndiyo, zima"}
+            <button type="submit" disabled={pending} className="btn btn-primary">
+              {pending ? "Inaongeza…" : "Ongeza"}
             </button>
           </div>
-        </>
-      ) : (
-        <button type="submit" disabled={pending} className="btn btn-primary">
-          {pending ? "Inawasha…" : "Washa tena"}
-        </button>
+        </form>
+      </Dialog>
+    </div>
+  );
+}
+
+// The "⋯" menu on each row: a new password, or switching the person off or back on.
+export function StaffMenu({ id, name, active }: { id: number; name: string; active: boolean }) {
+  const [menu, setMenu] = useState(false);
+  const [dialog, setDialog] = useState<"password" | "active" | null>(null);
+  const wrapper = useRef<HTMLDivElement>(null);
+  // Switching someone off or on re-renders the row with the new status: close its dialog then.
+  const [wasActive, setWasActive] = useState(active);
+  if (wasActive !== active) {
+    setWasActive(active);
+    setDialog(null);
+  }
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e: PointerEvent) => {
+      if (!wrapper.current?.contains(e.target as Node)) setMenu(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [menu]);
+
+  const pick = (d: "password" | "active") => {
+    setMenu(false);
+    setDialog(d);
+  };
+
+  return (
+    <div ref={wrapper} className="relative">
+      <button
+        type="button"
+        onClick={() => setMenu((m) => !m)}
+        aria-haspopup="menu"
+        aria-expanded={menu}
+        aria-label={`Vitendo kwa ${name}`}
+        className="btn btn-ghost size-10 rounded-full p-0 sm:size-9"
+      >
+        <Icon name="more" className="size-5" />
+      </button>
+      {menu && (
+        <div role="menu" className="absolute right-0 z-30 mt-1 grid w-56 rounded-xl border border-line bg-surface p-1 shadow-lg">
+          {active && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => pick("password")}
+              className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background"
+            >
+              <Icon name="key" className="size-4 text-muted" />
+              Badilisha nenosiri
+            </button>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => pick("active")}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background ${active ? "text-danger" : "text-ok"}`}
+          >
+            <Icon name="power" className="size-4" />
+            {active ? "Zima" : "Washa tena"}
+          </button>
+        </div>
       )}
+
+      <Dialog
+        open={dialog === "password"}
+        onClose={() => setDialog(null)}
+        title="Badilisha nenosiri"
+        description={`${name} atatolewa kwenye vifaa vyote na kuingia kwa nenosiri jipya.`}
+      >
+        <PasswordForm id={id} onDone={() => setDialog(null)} />
+      </Dialog>
+      <Dialog
+        open={dialog === "active"}
+        onClose={() => setDialog(null)}
+        title={active ? `Zima ${name}?` : `Washa ${name} tena?`}
+        description={
+          active
+            ? "Hataweza kuingia hadi umwashe tena. Jina lake linabaki kwenye historia."
+            : "Ataweza kuingia tena kwa nenosiri lake la zamani."
+        }
+      >
+        <ActiveForm id={id} active={active} onCancel={() => setDialog(null)} />
+      </Dialog>
+    </div>
+  );
+}
+
+function PasswordForm({ id, onDone }: { id: number; onDone: () => void }) {
+  const [state, action, pending] = useActionState(setManagerPassword, undefined);
+  return (
+    <form action={action} className="grid gap-4">
+      <input type="hidden" name="managerId" value={id} />
+      <PasswordInput label="Nenosiri jipya" />
       <Message state={state} />
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onDone} className="btn btn-ghost">
+          {state?.ok ? "Funga" : "Ghairi"}
+        </button>
+        {!state?.ok && (
+          <button type="submit" disabled={pending} className="btn btn-primary">
+            {pending ? "Inahifadhi…" : "Hifadhi nenosiri"}
+          </button>
+        )}
+      </div>
+    </form>
+  );
+}
+
+function ActiveForm({ id, active, onCancel }: { id: number; active: boolean; onCancel: () => void }) {
+  const [state, action, pending] = useActionState(setManagerActive, undefined);
+  return (
+    <form action={action} className="grid gap-4">
+      <input type="hidden" name="managerId" value={id} />
+      <input type="hidden" name="active" value={active ? "0" : "1"} />
+      <Message state={state} />
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className="btn btn-ghost">
+          Hapana
+        </button>
+        <button
+          type="submit"
+          disabled={pending}
+          className={`btn ${active ? "bg-danger text-white hover:opacity-90" : "btn-primary"}`}
+        >
+          {pending ? "Subiri…" : active ? "Ndiyo, zima" : "Ndiyo, washa"}
+        </button>
+      </div>
     </form>
   );
 }
