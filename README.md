@@ -1,16 +1,20 @@
 # Magari
 
-A Next.js + Postgres app for running a small fleet, in Swahili. Drivers sign in
-with their car's plate number and request money with a reason. Managers sign in
+A Next.js + Postgres app for running ZURAJA TRADING COMPANY LTD's fleet, in Swahili. Drivers sign in
+with their car's plate number and request money: fuel (with the car's odometer and fuel
+gauge) or anything else with a reason. Managers sign in
 with email, approve or reject requests, ask for money themselves (approved as they ask, for a
 car or none), record income (the car it came from, amount, optional
 description; the recorder can delete an entry within 24 hours), manage cars and
 drivers, watch income and spending on a dashboard, and see reports with separate
-spend and income tables plus every entry with its date, downloadable as Excel per car, month or week.
+spend and income on tabs plus every entry with its date, downloadable as a PDF or an Excel
+workbook (formulas, tables and native charts) per car, month or week. On Mafuta they record each
+car's first reading, set fuel prices and tank sizes, and see km per litre by car, by driver and
+per stretch between readings, with suspicious stretches flagged.
 A mhasibu (accountant) signs in with email and pays out approved requests, with an optional
 note such as an M-Pesa reference. A director signs in with email, adds managers and mhasibu,
-switches them off and on, reads the same reports, and watches income, spending and a live
-feed of everything that happens, deletions and payouts included. Long lists (requests,
+switches them off and on, reads the same reports and Mafuta, and sees an overview of income,
+spending, the balance, each car and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
 Everyone can change their own password on the Akaunti page. Decisions reach
 the driver instantly (Pusher), or within 10 seconds without Pusher. Amounts are
@@ -51,6 +55,12 @@ the site is used for real.
 | Driver  | plate `T456BCD`     | driver123  |
 | Manager | manager@example.com | manager123 |
 | Mhasibu | accountant@example.com | accountant123 |
+| Manager | manager2@example.com | manager123 |
+| Mhasibu (switched off) | accountant2@example.com | accountant123 |
+
+The seed also loads two months of fuel readings: the Hiace handed from Juma to Neema, one
+flagged stretch, a fuel request waiting for the manager, and an unmeasured Carry. Each part of
+the seed runs only when its table is empty, so re-running it is safe.
 
 These passwords are public. Only seed a database that is meant to be a demo.
 
@@ -101,7 +111,7 @@ directors and the mhasibu join `private-managers` and each driver only `private-
 ## How it fits together
 
 - `db/migrations/`: plain SQL schema for `users` (driver, manager, director or accountant), `cars`,
-  `sessions`, `money_requests` and `incomes`.
+  `sessions`, `money_requests`, `incomes`, `fuel_readings` and `fuel_prices`.
 - `src/lib/session.ts`: cookie sessions stored hashed in Postgres; `requireUser(role)`
   guards every page, layout and server action.
 - `src/app/actions/`: server actions for login, requests, cars, drivers, income,
@@ -109,10 +119,16 @@ directors and the mhasibu join `private-managers` and each driver only `private-
 - `src/app/driver`, `src/app/manager`, `src/app/accountant`, `src/app/director`: the role-specific areas, each wrapped in
   `AppShell` (sidebar on desktop, top bar with tabs on phones). `src/app/account` is
   shared by all roles.
-- `src/lib/stats.ts`, `src/lib/reports.ts`, `src/lib/workbook.ts`: dashboard figures,
-  report queries and the Excel file. `src/components/report-view.tsx` and
-  `src/lib/report-export.ts` serve the report to managers, the mhasibu and directors. `src/lib/incomes.ts` and `src/lib/activity.ts`:
-  income totals and the director's timeline.
+- `src/lib/stats.ts`, `src/lib/reports.ts`: dashboard figures and report queries.
+  `src/lib/report-data.ts` gathers one report for both downloads: `src/lib/workbook.ts` (Excel,
+  with charts added by `src/lib/xlsx-charts.ts`, since ExcelJS can't write them) and
+  `src/lib/report-pdf.tsx` (PDF via @react-pdf/renderer). `src/components/report-view.tsx` and
+  `src/lib/report-export.ts` serve them to managers, the mhasibu and directors
+  (`?format=pdf` for the PDF). `src/lib/incomes.ts`: income totals.
+- `src/lib/fuel-calc.ts` (pure, unit tested) works out stretches between readings: km, litres
+  used (`tank × gauge/8` at the first reading + litres paid for in between − at the second;
+  litres = amount ÷ the request's price per litre), km per litre and flags. `src/lib/fuel.ts`
+  loads readings and paid fuel requests for the Mafuta pages and reports.
 - `src/lib/realtime.ts`, `src/components/live-updates.tsx`: Pusher signals and the
   client that refreshes on them.
 
