@@ -179,7 +179,61 @@ try {
       }
     }
   }
-  console.log("seeded demo users, cars, requests, income and fuel");
+  // Receipts: payments of the last three weeks needed one. The three newest still wait for the
+  // mhasibu; the older ones carry a sample receipt (an SVG, which real uploads can't be).
+  const { rows: existingReceipts } = await client.query(
+    "SELECT 1 FROM money_requests WHERE receipt_due UNION ALL SELECT 1 FROM receipts LIMIT 1",
+  );
+  if (existingReceipts.length === 0) {
+    const { rows: paid } = await client.query<{ id: number; amount: string; reason: string; kind: string; plate: string | null; issued_at: Date }>(
+      `UPDATE money_requests r SET receipt_due = true WHERE r.issued_at > now() - interval '21 days'
+       RETURNING r.id, r.amount, r.reason, r.kind, (SELECT plate FROM cars WHERE id = r.car_id) AS plate, r.issued_at`,
+    );
+    paid.sort((a, b) => b.issued_at.getTime() - a.issued_at.getTime());
+    for (const [i, p] of paid.slice(3).entries()) {
+      const no = String(4100 + i * 37).padStart(6, "0");
+      await client.query(
+        `INSERT INTO receipts (request_id, content_type, data, note, uploaded_by, created_at)
+         VALUES ($1, 'image/svg+xml', $2, $3, (SELECT id FROM users WHERE email = $4), $5::timestamptz + interval '1 day')`,
+        [p.id, Buffer.from(demoReceipt(p, no)), no, accountant.email, p.issued_at],
+      );
+    }
+  }
+  console.log("seeded demo users, cars, requests, income, fuel and receipts");
 } finally {
   await client.end();
+}
+
+// A till receipt drawn as an SVG, so the demo has something to open.
+function demoReceipt(p: { amount: string; reason: string; kind: string; plate: string | null; issued_at: Date }, no: string) {
+  const fuel = p.kind === "fuel";
+  const amount = Number(p.amount).toLocaleString("en-US");
+  const date = p.issued_at.toISOString().slice(0, 10);
+  const esc = (s: string) => s.replace(/[<>&"]/g, (ch) => `&#${ch.charCodeAt(0)};`);
+  const lines = [
+    [fuel ? "PUMA ENERGY" : "MSHIKAMANO AUTO SPARES", 22, "bold"],
+    [fuel ? "Ubungo, Dar es Salaam" : "Kariakoo, Dar es Salaam", 15, ""],
+    ["TIN 100-234-567  VRN 40-012345-K", 13, ""],
+    ["", 10, ""],
+    [`RISITI NA. ${no}`, 15, "bold"],
+    [`Tarehe ${date}`, 14, ""],
+    [p.plate ? `Gari ${p.plate}` : "", 14, ""],
+    ["--------------------------------", 14, ""],
+    [esc(p.reason.slice(0, 30)), 15, ""],
+    ["--------------------------------", 14, ""],
+    [`JUMLA  TSh ${amount}`, 20, "bold"],
+    ["", 10, ""],
+    ["Asante, karibu tena", 14, ""],
+  ] as const;
+  let y = 50;
+  const text = lines
+    .map(([t, size, weight]) => {
+      y += Number(size) + 14;
+      return `<text x="200" y="${y}" font-size="${size}" font-weight="${weight || "normal"}" text-anchor="middle">${t}</text>`;
+    })
+    .join("");
+  // A torn edge along the bottom, drawn right to left back to the start.
+  const teeth = Array.from({ length: 20 }, (_, i) => `L${390 - i * 20},${y + 60} L${380 - i * 20},${y + 50}`).join(" ");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="${y + 70}" viewBox="0 0 400 ${y + 70}" font-family="monospace" fill="#222">
+<rect width="400" height="${y + 70}" fill="#e8e6e1"/><path d="M0,0 H400 V${y + 50} ${teeth} Z" fill="#fffdf8"/>${text}</svg>`;
 }
