@@ -1,25 +1,32 @@
+import Link from "next/link";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
-import { listActivity, type Activity } from "@/lib/activity";
-import { formatDateTime, formatMoney } from "@/lib/format";
+import { getFuelOverview } from "@/lib/fuel";
+import { formatMoney, formatRate } from "@/lib/format";
 import { getIncomeTotals } from "@/lib/incomes";
-import { AwaitingIssue } from "@/components/awaiting-issue";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
-import { getMonthlyIncomeAndSpend, getOverview } from "@/lib/stats";
+import { getCarMoneyThisMonth, getOverview } from "@/lib/stats";
 import { TIME_ZONE } from "@/lib/time";
 
 const today = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "full", timeZone: TIME_ZONE });
 
+// An overview of what has been done: money in and out, per car, and how the fuel is going.
+// Who asked, approved or paid what lives in the reports, not here.
 export default async function DirectorDashboard() {
   await requireUser("director");
-  const [o, income, months, activity] = await Promise.all([
+  const [o, income, cars, fuel] = await Promise.all([
     getOverview(),
     getIncomeTotals(),
-    getMonthlyIncomeAndSpend(6),
-    listActivity(25),
+    getCarMoneyThisMonth(),
+    getFuelOverview("30"),
   ]);
   const balance = Number(income.this_month) - Number(o.this_month);
+  const lastBalance = Number(income.last_month) - Number(o.last_month);
+  const allTime = Number(income.all_time) - Number(o.all_time);
+  // The "no car" row only shows when something was booked without a car this month.
+  const rows = cars.filter((c) => c.id !== null || Number(c.income) || Number(c.spend));
+  const flagged = fuel.stretches.filter((s) => s.flag).length;
 
   return (
     <main className="page">
@@ -34,107 +41,96 @@ export default async function DirectorDashboard() {
           Mwezi uliopita {formatMoney(o.last_month)}
         </Tile>
         <Tile label="Salio mwezi huu" value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
-          Mapato toa matumizi
+          Mwezi uliopita {formatMoney(lastBalance)}
         </Tile>
-        <Tile label="Yanasubiri idhini" value={String(o.pending_count)} tone={o.pending_count > 0 ? "warn" : undefined}>
-          {o.pending_count > 0 ? `Jumla ${formatMoney(o.pending_total)}` : "Hakuna linalosubiri"}
-          <AwaitingIssue count={o.awaiting_issue_count} total={o.awaiting_issue_total} />
+        <Tile label="Salio tangu mwanzo" value={formatMoney(allTime)} tone={allTime < 0 ? "danger" : "ok"}>
+          Mapato {formatMoney(income.all_time)}
         </Tile>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
+      <div className="grid gap-6 lg:grid-cols-[3fr_2fr] lg:items-start">
         <section className="card">
-          <h2 className="font-semibold">Mapato na matumizi kwa mwezi</h2>
-          <p className="mb-1 text-sm text-muted">Salio la kila mwezi, miezi 6 iliyopita. Matumizi ni pesa zilizotolewa na mhasibu.</p>
-          <ul className="divide-y divide-line">
-            {months.map((m) => {
-              const net = Number(m.income) - Number(m.spend);
-              return (
-                <li key={m.label} className="flex items-start justify-between gap-3 py-2.5 text-sm">
-                  <div className="min-w-0">
-                    <p className="font-medium">{m.label}</p>
-                    <p className="text-xs text-muted tabular-nums">
-                      Mapato {formatMoney(m.income)} · Matumizi {formatMoney(m.spend)}
-                    </p>
-                  </div>
-                  <p className={`shrink-0 font-semibold tabular-nums ${net < 0 ? "text-danger" : "text-ok"}`}>
-                    {formatMoney(net)}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="mb-2 flex items-baseline justify-between gap-3">
+            <h2 className="font-semibold">Kila gari mwezi huu</h2>
+            <Link href="/director/reports" className="text-sm font-medium text-accent underline">
+              Ripoti kamili →
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Gari</th>
+                  <th className="num">Mapato</th>
+                  <th className="num">Matumizi</th>
+                  <th className="num">Salio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((c) => {
+                  const net = Number(c.income) - Number(c.spend);
+                  return (
+                    <tr key={c.id ?? "none"}>
+                      <td>
+                        {c.plate ? <span className="plate">{c.plate}</span> : "Bila gari"}
+                        {c.car && <span className="mt-0.5 block text-xs text-muted">{c.car}</span>}
+                      </td>
+                      <td className="num text-ok">{formatMoney(c.income)}</td>
+                      <td className="num">{formatMoney(c.spend)}</td>
+                      <td className={`num font-medium ${net < 0 ? "text-danger" : "text-ok"}`}>{formatMoney(net)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Jumla</td>
+                  <td className="num text-ok">{formatMoney(income.this_month)}</td>
+                  <td className="num">{formatMoney(o.this_month)}</td>
+                  <td className={`num ${balance < 0 ? "text-danger" : "text-ok"}`}>{formatMoney(balance)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </section>
 
         <section className="card">
-          <h2 className="font-semibold">Kinachoendelea</h2>
-          <p className="mb-2 text-sm text-muted">Maombi, maamuzi, malipo ya mhasibu, mapato (na yaliyofutwa) na wafanyakazi wapya, vya karibuni juu</p>
-          {activity.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted">Bado hakuna kilichotokea.</p>
-          ) : (
-            <ol className="divide-y divide-line">
-              {activity.map((a, i) => (
-                <ActivityItem key={i} activity={a} />
-              ))}
-            </ol>
+          <div className="mb-2 flex items-baseline justify-between gap-3">
+            <h2 className="font-semibold">Mafuta, siku 30</h2>
+            <Link href="/director/fuel" className="text-sm font-medium text-accent underline">
+              Zaidi →
+            </Link>
+          </div>
+          <p className="text-sm text-muted">
+            Km {fuel.all.km.toLocaleString("en")} · wastani {formatRate(fuel.all.kmPerLitre)} km/L
+            {fuel.all.costPerKm !== null && ` · ${formatMoney(fuel.all.costPerKm)} kwa km`}
+          </p>
+          <ul className="mt-2 divide-y divide-line">
+            {fuel.cars.map((c) => (
+              <li key={c.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <span className="min-w-0">
+                  <span className="plate">{c.plate}</span>
+                  <span className="ml-2 text-muted">{c.driver ?? "Hana dereva"}</span>
+                </span>
+                <span className="shrink-0 text-right tabular-nums">
+                  <span className="font-semibold">{formatRate(c.totals.kmPerLitre)}</span>
+                  <span className="text-xs text-muted"> km/L</span>
+                  {c.totals.flagged > 0 && <span className="ml-2 text-xs font-medium text-warn">⚠ {c.totals.flagged}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {flagged > 0 && (
+            <p className="mt-2 text-xs font-medium text-warn">
+              Vipindi {flagged} vina matumizi ya kutiliwa shaka.{" "}
+              <Link href="/director/fuel?kipindi=30&tab=vipindi" className="underline">
+                Viangalie
+              </Link>
+            </p>
           )}
         </section>
       </div>
     </main>
-  );
-}
-
-const dot = {
-  request: "bg-warn",
-  self_request: "bg-warn",
-  approved: "bg-ok",
-  rejected: "bg-danger",
-  issued: "bg-ok",
-  income: "bg-accent",
-  income_deleted: "bg-danger",
-  staff: "bg-muted",
-} as const;
-
-function ActivityItem({ activity: a }: { activity: Activity }) {
-  const who = a.actor ?? "Mtu asiyejulikana";
-  let text: React.ReactNode;
-  switch (a.kind) {
-    case "request":
-      text = <>{who} ameomba <b className="tabular-nums">{formatMoney(a.amount)}</b>: {a.detail}</>;
-      break;
-    case "self_request":
-      text = <>{who} (meneja) ameomba na kujikubalia <b className="tabular-nums">{formatMoney(a.amount)}</b>: {a.detail}</>;
-      break;
-    case "issued":
-      text = <>{who} amemlipa {a.subject} <b className="tabular-nums">{formatMoney(a.amount)}</b>: {a.detail}</>;
-      break;
-    case "approved":
-      text = <>{who} amekubali ombi la <b className="tabular-nums">{formatMoney(a.amount)}</b>: {a.detail}</>;
-      break;
-    case "rejected":
-      text = <>{who} amekataa ombi la <b className="tabular-nums">{formatMoney(a.amount)}</b>: {a.detail}</>;
-      break;
-    case "income":
-      text = <>{who} amerekodi mapato ya <b className="tabular-nums">{formatMoney(a.amount)}</b> kutoka {a.detail}</>;
-      break;
-    case "income_deleted":
-      text = <>{who} amefuta mapato ya <b className="tabular-nums">{formatMoney(a.amount)}</b> kutoka {a.detail}</>;
-      break;
-    case "staff":
-      text = <>{who} ameongezwa kama {a.subject === "accountant" ? "mhasibu" : "meneja"} ({a.detail})</>;
-      break;
-  }
-  return (
-    <li className="flex gap-3 py-3">
-      <span className={`mt-1.5 size-2 shrink-0 rounded-full ${dot[a.kind]}`} aria-hidden="true" />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm break-words">{text}</p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
-          {a.plate && <span className="plate">{a.plate}</span>}
-          {formatDateTime(a.at)}
-        </p>
-      </div>
-    </li>
   );
 }
 
@@ -146,12 +142,12 @@ function Tile({
 }: {
   label: string;
   value: string;
-  tone?: "ok" | "warn" | "danger";
+  tone?: "ok" | "danger";
   children: React.ReactNode;
 }) {
-  const valueColor = { ok: "text-ok", warn: "text-warn", danger: "text-danger" };
+  const valueColor = { ok: "text-ok", danger: "text-danger" };
   return (
-    <div className={`card ${tone === "warn" ? "border-warn/50 bg-warn-soft" : ""}`}>
+    <div className="card">
       <p className="text-xs font-medium tracking-wide text-muted uppercase">{label}</p>
       <p className={`mt-1 text-xl font-semibold tabular-nums sm:text-2xl ${tone ? valueColor[tone] : ""}`}>{value}</p>
       <p className="mt-1 text-xs text-muted">{children}</p>

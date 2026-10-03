@@ -89,3 +89,26 @@ export async function getMonthlyIncomeAndSpend(months = 6) {
   );
   return rows.map((r) => ({ label: periodLabel(r.month_start, "month"), income: r.income, spend: r.spend }));
 }
+
+// This month's income and issued spend for every car, plus a row for anything with no car.
+export function getCarMoneyThisMonth() {
+  return query<{ id: number | null; plate: string | null; car: string | null; income: string; spend: string }>(
+    `WITH local AS (SELECT date_trunc('month', now() AT TIME ZONE $1) AS month),
+     income AS (
+       SELECT i.car_id, sum(i.amount) AS total FROM incomes i, local
+        WHERE i.deleted_at IS NULL AND i.created_at AT TIME ZONE $1 >= month GROUP BY i.car_id
+     ),
+     spend AS (
+       SELECT r.car_id, sum(r.amount) AS total FROM money_requests r, local
+        WHERE r.issued_at IS NOT NULL AND r.issued_at AT TIME ZONE $1 >= month GROUP BY r.car_id
+     )
+     SELECT c.id, c.plate, c.make || ' ' || c.model AS car,
+            coalesce(i.total, 0) AS income, coalesce(s.total, 0) AS spend
+       FROM cars c LEFT JOIN income i ON i.car_id = c.id LEFT JOIN spend s ON s.car_id = c.id
+     UNION ALL
+     SELECT NULL, NULL, NULL, coalesce((SELECT total FROM income WHERE car_id IS NULL), 0),
+            coalesce((SELECT total FROM spend WHERE car_id IS NULL), 0)
+     ORDER BY 1 NULLS LAST`,
+    [TIME_ZONE],
+  );
+}
