@@ -1,4 +1,4 @@
-// Creates demo accounts, cars, requests and income. Safe to re-run: existing rows are left alone.
+// Creates demo accounts, cars, requests, income and fuel readings. Safe to re-run: existing rows are left alone.
 // Usage: npm run db:seed
 import bcrypt from "bcryptjs";
 import pg from "pg";
@@ -94,7 +94,80 @@ try {
       );
     }
   }
-  console.log("seeded demo users, cars, requests and income");
+  // Two months of fuel readings. Juma drove the Hiace until a handover to Neema 35 days ago, then
+  // the IST. Neema's Hiace has one thirsty stretch and a fuel request still waiting for the manager;
+  // the Carry has never been measured, so the manager can start it.
+  const { rows: existingFuel } = await client.query("SELECT 1 FROM fuel_readings LIMIT 1");
+  if (existingFuel.length === 0) {
+    await client.query(
+      `INSERT INTO fuel_prices (fuel_type, price_per_litre) VALUES ('petrol', 2950), ('diesel', 2850)
+       ON CONFLICT (fuel_type) DO NOTHING`,
+    );
+    for (const [plate, fuelType, tank] of [["T103ABE", "petrol", 42], ["T456BCD", "diesel", 70], ["T789CDE", "petrol", 36]]) {
+      await client.query("UPDATE cars SET fuel_type = $2, tank_litres = $3 WHERE plate = $1 AND tank_litres IS NULL", [
+        plate,
+        fuelType,
+        tank,
+      ]);
+    }
+    // [daysAgo, odometer, gauge in eighths, driver, fuel bought (TSh) or null for a manager's reading, status]
+    type Step = [number, number, number, string, number | null, "issued" | "pending"];
+    const fuel: [plate: string, price: number, steps: Step[]][] = [
+      ["T456BCD", 2850, [
+        [60, 128_400, 4, "Juma Hassan", null, "issued"],
+        [55, 128_650, 1, "Juma Hassan", 120_000, "issued"],
+        [49, 128_950, 2, "Juma Hassan", 140_000, "issued"],
+        [42, 129_330, 3, "Juma Hassan", 110_000, "issued"],
+        [35, 129_620, 4, "Neema Mushi", null, "issued"],
+        [30, 129_860, 1, "Neema Mushi", 150_000, "issued"],
+        [24, 130_120, 3, "Neema Mushi", 100_000, "issued"],
+        [17, 130_330, 1, "Neema Mushi", 150_000, "issued"],
+        [10, 130_630, 3, "Neema Mushi", 120_000, "issued"],
+        [4, 130_910, 4, "Neema Mushi", 90_000, "issued"],
+        [0, 131_160, 4, "Neema Mushi", 80_000, "pending"],
+      ]],
+      ["T103ABE", 2950, [
+        [34, 86_120, 2, "Juma Hassan", null, "issued"],
+        [33, 86_250, 0, "Juma Hassan", 90_000, "issued"],
+        [27, 86_640, 1, "Juma Hassan", 100_000, "issued"],
+        [20, 87_080, 2, "Juma Hassan", 85_000, "issued"],
+        [13, 87_470, 3, "Juma Hassan", 70_000, "issued"],
+        [6, 87_860, 2, "Juma Hassan", 90_000, "issued"],
+        [2, 88_150, 4, "Juma Hassan", 60_000, "issued"],
+      ]],
+    ];
+    for (const [plate, price, steps] of fuel) {
+      for (const [daysAgo, odometer, eighths, driver, amount, status] of steps) {
+        const at = `now() - make_interval(days => ${daysAgo}) - interval '${daysAgo === 0 ? 3 : 0} hours'`;
+        let requestId: number | null = null;
+        if (amount !== null) {
+          const issued = status === "issued";
+          const inserted = await client.query<{ id: number }>(
+            `INSERT INTO money_requests (requester_id, car_id, amount, reason, kind, fuel_price, status,
+                                        reviewed_by, reviewed_at, issued_by, issued_at, created_at)
+             SELECT d.id, c.id, $3, 'Mafuta', 'fuel', $4, CASE WHEN $5 THEN 'approved' ELSE 'pending' END,
+                    CASE WHEN $5 THEN (SELECT id FROM users WHERE email = $6) END,
+                    CASE WHEN $5 THEN ${at} + interval '1 hour' END,
+                    CASE WHEN $5 THEN (SELECT id FROM users WHERE email = $7) END,
+                    CASE WHEN $5 THEN ${at} + interval '2 hours' END,
+                    ${at}
+               FROM cars c, users d WHERE c.plate = $1 AND d.name = $2 AND d.role = 'driver'
+             RETURNING id`,
+            [plate, driver, amount, price, issued, manager.email, accountant.email],
+          );
+          requestId = inserted.rows[0]?.id ?? null;
+        }
+        await client.query(
+          `INSERT INTO fuel_readings (car_id, driver_id, recorded_by, request_id, odometer_km, gauge_eighths, created_at)
+           SELECT c.id, d.id, CASE WHEN $3::int IS NULL THEN (SELECT id FROM users WHERE email = $6) ELSE d.id END,
+                  $3, $4, $5, ${at}
+             FROM cars c, users d WHERE c.plate = $1 AND d.name = $2 AND d.role = 'driver'`,
+          [plate, driver, requestId, odometer, eighths, manager.email],
+        );
+      }
+    }
+  }
+  console.log("seeded demo users, cars, requests, income and fuel");
 } finally {
   await client.end();
 }
