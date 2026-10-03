@@ -41,9 +41,8 @@ export function LoginForm({ demo = false }: { demo?: boolean }) {
               autoCapitalize="characters"
               autoCorrect="off"
               spellCheck={false}
-              placeholder="T103ABE"
               defaultValue={state?.login}
-              className="input font-mono tracking-wider placeholder:normal-case"
+              className="input font-mono tracking-wider"
             />
           </label>
           <label className="block">
