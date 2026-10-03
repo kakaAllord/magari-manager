@@ -1,18 +1,13 @@
 import Link from "next/link";
 import { deleteLatestReading } from "@/app/actions/fuel";
 import { AutoSubmitSelect } from "@/components/auto-submit-select";
-import { gaugeLabel, type Flag, type Totals } from "@/lib/fuel-calc";
+import { flagText, gaugeLabel, type Totals } from "@/lib/fuel-calc";
 import { fuelPeriods, fuelTypeName, type FuelOverview as Overview, type FuelPeriod } from "@/lib/fuel";
 import { formatDateTime, formatKm, formatLitres, formatMoney, formatRate } from "@/lib/format";
 
 export type FuelTab = "magari" | "madereva" | "vipindi";
 export const parseFuelTab = (v: unknown): FuelTab => (v === "madereva" || v === "vipindi" ? v : "magari");
 
-export const flagText: Record<Flag, { short: string; long: string }> = {
-  thirsty: { short: "Matumizi makubwa", long: "Km kwa lita chini sana ya kawaida ya gari hili" },
-  gained: { short: "Mafuta yaliongezeka", long: "Tanki lilijaa zaidi bila malipo ya mafuta. Angalia vipimo" },
-  idle: { short: "Mafuta yalipotea", long: "Robo tanki au zaidi lilipungua gari likiwa limesimama" },
-};
 
 const dayFormat = new Intl.DateTimeFormat("sw-TZ", { day: "numeric", month: "short", timeZone: "Africa/Dar_es_Salaam" });
 

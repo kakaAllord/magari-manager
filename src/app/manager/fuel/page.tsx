@@ -1,7 +1,7 @@
 import { FuelOverview, parseFuelTab } from "@/components/fuel-overview";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
-import { getFuelOverview, parseFuelPeriod } from "@/lib/fuel";
+import { getFuelOverview, parseFuelPeriod, periodRange } from "@/lib/fuel";
 import { formatKm } from "@/lib/format";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
@@ -11,7 +11,7 @@ export default async function ManagerFuelPage({ searchParams }: PageProps<"/mana
   await requireUser("manager");
   const sp = await searchParams;
   const period = parseFuelPeriod(sp.kipindi);
-  const data = await getFuelOverview(period);
+  const data = await getFuelOverview(periodRange(period));
   const missingTanks = data.cars.filter((c) => !c.tank_litres).length;
   const missingPrice = data.prices.petrol === null && data.prices.diesel === null;
 

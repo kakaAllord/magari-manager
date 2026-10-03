@@ -13,6 +13,13 @@ export type Fill = { at: number; amount: number; litres: number | null };
 // idle: a quarter tank or more gone while the car barely moved.
 export type Flag = "thirsty" | "gained" | "idle";
 
+// How each flag is explained: a short label for tables, a sentence for the stretch list.
+export const flagText: Record<Flag, { short: string; long: string }> = {
+  thirsty: { short: "Matumizi makubwa", long: "Km kwa lita chini sana ya kawaida ya gari hili" },
+  gained: { short: "Mafuta yaliongezeka", long: "Tanki lilijaa zaidi bila malipo ya mafuta. Angalia vipimo" },
+  idle: { short: "Mafuta yalipotea", long: "Robo tanki au zaidi lilipungua gari likiwa limesimama" },
+};
+
 export type Stretch = {
   from: Reading;
   to: Reading;

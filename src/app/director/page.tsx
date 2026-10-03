@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
-import { getFuelOverview } from "@/lib/fuel";
+import { getFuelOverview, periodRange } from "@/lib/fuel";
 import { formatMoney, formatRate } from "@/lib/format";
 import { getIncomeTotals } from "@/lib/incomes";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
@@ -19,7 +19,7 @@ export default async function DirectorDashboard() {
     getOverview(),
     getIncomeTotals(),
     getCarMoneyThisMonth(),
-    getFuelOverview("30"),
+    getFuelOverview(periodRange("30")),
   ]);
   const balance = Number(income.this_month) - Number(o.this_month);
   const lastBalance = Number(income.last_month) - Number(o.last_month);

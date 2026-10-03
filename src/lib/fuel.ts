@@ -54,8 +54,23 @@ export type FuelOverview = {
   prices: Record<FuelType, number | null>;
 };
 
-// Everything the Mafuta page shows. Stretches count in the period they end in.
-export async function getFuelOverview(period: FuelPeriod): Promise<FuelOverview> {
+// A period picked on the Mafuta page, as the time range a stretch must end in.
+export const periodRange = (period: FuelPeriod): FuelRange => ({
+  since: period === "all" ? -Infinity : Date.now() - Number(period) * 86_400_000,
+  until: Infinity,
+});
+
+// Report dates are whole Tanzanian days, "YYYY-MM-DD".
+export const dayRange = (from: string, to: string): FuelRange => ({
+  since: Date.parse(`${from}T00:00:00+03:00`),
+  until: Date.parse(`${to}T23:59:59.999+03:00`),
+});
+
+export type FuelRange = { since: number; until: number };
+
+// Everything the Mafuta page and the reports show. Stretches count in the range they end in;
+// `carIds` (empty for all) narrows to some cars.
+export async function getFuelOverview(range: FuelRange, carIds: number[] = []): Promise<FuelOverview> {
   const [cars, readings, fills, priceRows, users] = await Promise.all([
     query<CarRow>(
       `SELECT c.id, c.plate, c.make || ' ' || c.model AS car, c.fuel_type, c.tank_litres, u.name AS driver
@@ -80,10 +95,10 @@ export async function getFuelOverview(period: FuelPeriod): Promise<FuelOverview>
   for (const p of priceRows) prices[p.fuel_type] = p.price_per_litre;
   const names = new Map(users.map((u) => [u.id, u.name]));
   const driverName = (id: number | null) => (id === null ? "Bila dereva" : (names.get(id) ?? "Dereva aliyeondolewa"));
-  const since = period === "all" ? -Infinity : Date.now() - Number(period) * 86_400_000;
 
   const inPeriod: StretchRow[] = [];
-  const carFuel: CarFuel[] = cars.map((car) => {
+  const chosen = carIds.length ? cars.filter((c) => carIds.includes(c.id)) : cars;
+  const carFuel: CarFuel[] = chosen.map((car) => {
     const price = prices[car.fuel_type];
     const mine = readings.filter((r) => r.car_id === car.id);
     const myFills: Fill[] = fills
@@ -116,7 +131,7 @@ export async function getFuelOverview(period: FuelPeriod): Promise<FuelOverview>
         eighths: r.gauge_eighths,
         driverId: r.driver_id,
       }));
-      stretches = stretchesFor(rs, myFills, car.tank_litres, price).filter((s) => s.to.at >= since);
+      stretches = stretchesFor(rs, myFills, car.tank_litres, price).filter((s) => s.to.at >= range.since && s.to.at <= range.until);
       for (const s of stretches) inPeriod.push({ ...s, plate: car.plate, driver: driverName(s.driverId) });
     }
     return { ...car, last, litresSinceLast, totals: totalsOf(stretches) };

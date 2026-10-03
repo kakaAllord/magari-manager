@@ -18,6 +18,7 @@ export type ExpenseRow = {
   approved_by: string | null;
   issued_by: string | null;
   issue_note: string | null;
+  kind: "fuel" | "other";
 };
 
 export type CarOption = { id: number; plate: string; car: string };
@@ -37,7 +38,8 @@ export function getExpenses(p: ReportParams) {
             to_char(date_trunc('month', r.issued_at AT TIME ZONE $1), 'YYYY-MM-DD') AS month_start,
             to_char(date_trunc('week', r.issued_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
             c.id AS car_id, c.plate, c.make || ' ' || c.model AS car,
-            d.name AS requester, r.reason, r.amount, m.name AS approved_by, a.name AS issued_by, r.issue_note
+            d.name AS requester, r.reason, r.amount, m.name AS approved_by, a.name AS issued_by, r.issue_note,
+            r.kind
        FROM money_requests r
        JOIN users d ON d.id = r.requester_id
        LEFT JOIN users m ON m.id = r.reviewed_by
