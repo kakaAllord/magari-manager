@@ -141,3 +141,17 @@ export function parseTankLitres(input: string): { litres: number } | { error: st
   }
   return { litres };
 }
+
+// A receipt photo, shrunk in the browser to stay under the 1 MB server action limit.
+// The type comes from the file's first bytes, never from what the browser claims.
+export const MAX_RECEIPT_BYTES = 900_000;
+
+export function checkReceiptImage(bytes: Uint8Array): { contentType: string } | { error: string } {
+  if (bytes.length === 0) return { error: "Chagua picha ya risiti." };
+  if (bytes.length > MAX_RECEIPT_BYTES) return { error: "Picha ni kubwa mno. Jaribu tena au piga picha nyingine." };
+  const starts = (sig: number[], at = 0) => sig.every((b, i) => bytes[at + i] === b);
+  if (starts([0xff, 0xd8, 0xff])) return { contentType: "image/jpeg" };
+  if (starts([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return { contentType: "image/png" };
+  if (starts([0x52, 0x49, 0x46, 0x46]) && starts([0x57, 0x45, 0x42, 0x50], 8)) return { contentType: "image/webp" };
+  return { error: "Faili hili si picha. Weka picha ya risiti (JPG, PNG au WebP)." };
+}

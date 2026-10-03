@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   checkEmail,
+  checkReceiptImage,
   checkOdometer,
   MAX_KM_BETWEEN_READINGS,
+  MAX_RECEIPT_BYTES,
   parseCarChoice,
   parseIncome,
   parseMoneyRequest,
@@ -105,4 +107,18 @@ test("checks fuel prices and tank sizes", () => {
   assert.deepEqual(parseTankLitres("45"), { litres: 45 });
   assert.ok("error" in parseTankLitres("5"));
   assert.ok("error" in parseTankLitres("45.5"));
+});
+
+test("knows a receipt photo by its first bytes", () => {
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]);
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]);
+  const webp = new Uint8Array([0x52, 0x49, 0x46, 0x46, 1, 2, 3, 4, 0x57, 0x45, 0x42, 0x50]);
+  assert.deepEqual(checkReceiptImage(jpeg), { contentType: "image/jpeg" });
+  assert.deepEqual(checkReceiptImage(png), { contentType: "image/png" });
+  assert.deepEqual(checkReceiptImage(webp), { contentType: "image/webp" });
+  assert.ok("error" in checkReceiptImage(new Uint8Array()));
+  assert.ok("error" in checkReceiptImage(new TextEncoder().encode("<svg onload=alert(1)>")));
+  const big = new Uint8Array(MAX_RECEIPT_BYTES + 1);
+  big.set([0xff, 0xd8, 0xff]);
+  assert.ok("error" in checkReceiptImage(big));
 });
