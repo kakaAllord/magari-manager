@@ -39,6 +39,16 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
         {/* Requests from before there was a mhasibu were paid on approval and name no issuer. */}
         {r.issued_at && (r.issuer_name ? ` · Imelipwa na ${r.issuer_name} ${formatDateTime(r.issued_at)}` : " · Imelipwa")}
         {r.issue_note && ` · ${r.issue_note}`}
+        {r.receipt === "due" && (mine ? " · Peleka risiti kwa mhasibu" : " · Inasubiri risiti")}
+        {r.receipt === "added" && (
+          <>
+            {" · "}
+            <a href={`/receipts/${r.id}`} target="_blank" className="font-medium text-accent underline">
+              Ona risiti
+            </a>
+            {r.receipt_note && ` (Na. ${r.receipt_note})`}
+          </>
+        )}
       </p>
     </div>
   );

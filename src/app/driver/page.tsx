@@ -61,7 +61,7 @@ export default async function DriverPage() {
 
         <section className="card">
           <h2 className="text-lg font-semibold">Yanayoendelea</h2>
-          <p className="mb-2 text-sm text-muted">Yanasubiri meneja, au yamekubaliwa na yanasubiri mhasibu akulipe.</p>
+          <p className="mb-2 text-sm text-muted">Yanasubiri meneja, mhasibu akulipe, au risiti yake.</p>
           {open.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted">Hakuna ombi linaloendelea.</p>
           ) : (
