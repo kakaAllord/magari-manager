@@ -2,7 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { transaction } from "@/lib/db";
+import { claimDriverlessReading, transaction } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { checkNewPassword } from "@/lib/validation";
 
@@ -31,6 +31,7 @@ export async function createDriver(_prev: DriverFormState, formData: FormData): 
       [rows[0].id, carId],
     );
     if (!car.rowCount) throw new CarTakenError();
+    await claimDriverlessReading(client, carId, rows[0].id);
     return car.rows[0].plate;
   }).catch((err) => {
     if (err instanceof CarTakenError) return err;

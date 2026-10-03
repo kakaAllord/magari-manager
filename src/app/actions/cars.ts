@@ -1,33 +1,82 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { query, transaction } from "@/lib/db";
+import { claimDriverlessReading, transaction } from "@/lib/db";
+import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
-import { checkPlate, normalizePlate } from "@/lib/validation";
+import {
+  checkPlate,
+  normalizePlate,
+  parseStartingReading,
+  parseTankLitres,
+  type ReadingErrors,
+} from "@/lib/validation";
 
-export type CarFormState = { ok: boolean; message: string } | undefined;
+type CarValues = { plate: string; make: string; model: string; fuelType: string; tank: string; odometer: string; gauge: string };
+type CarErrors = ReadingErrors & { plate?: string; car?: string; tank?: string };
+
+export type CarFormState =
+  | { ok: true; message: string; measured: boolean }
+  | { ok: false; errors: CarErrors; values: CarValues }
+  | undefined;
 
 const UNIQUE_VIOLATION = "23505";
 
+// A new car with its fuel type and tank size, and optionally what its odometer and gauge read now.
+// That reading is the base fuel is measured from, so no fuel can be asked for the car without one;
+// it can also be recorded later on Mafuta.
 export async function createCar(_prev: CarFormState, formData: FormData): Promise<CarFormState> {
-  await requireUser("manager");
-  const plate = normalizePlate(String(formData.get("plate") ?? ""));
-  const make = String(formData.get("make") ?? "").trim();
-  const model = String(formData.get("model") ?? "").trim();
+  const manager = await requireUser("manager");
+  const values: CarValues = {
+    plate: String(formData.get("plate") ?? ""),
+    make: String(formData.get("make") ?? "").trim(),
+    model: String(formData.get("model") ?? "").trim(),
+    fuelType: formData.get("fuelType") === "diesel" ? "diesel" : "petrol",
+    tank: String(formData.get("tank") ?? "").trim(),
+    odometer: String(formData.get("odometer") ?? ""),
+    gauge: String(formData.get("gauge") ?? ""),
+  };
+  const plate = normalizePlate(values.plate);
+  const errors: CarErrors = {};
   const plateError = checkPlate(plate);
-  if (plateError) return { ok: false, message: plateError };
-  if (!make || !model) return { ok: false, message: "Andika aina na modeli ya gari." };
+  if (plateError) errors.plate = plateError;
+  if (!values.make || !values.model) errors.car = "Andika aina na modeli ya gari.";
+  const tank = values.tank ? parseTankLitres(values.tank) : { litres: null };
+  if ("error" in tank) errors.tank = tank.error;
+  const start = parseStartingReading(values);
+  if (!start.ok) Object.assign(errors, start.errors);
+  if (Object.keys(errors).length || !start.ok || "error" in tank) return { ok: false, errors, values };
 
   try {
-    await query("INSERT INTO cars (plate, make, model) VALUES ($1, $2, $3)", [plate, make, model]);
+    await transaction(async (client) => {
+      const car = await client.query<{ id: number }>(
+        "INSERT INTO cars (plate, make, model, fuel_type, tank_litres) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        [plate, values.make, values.model, values.fuelType, tank.litres],
+      );
+      if (start.reading) {
+        // Nobody drives it yet; the first driver it's given to takes this reading over.
+        await client.query(
+          `INSERT INTO fuel_readings (car_id, recorded_by, odometer_km, gauge_eighths) VALUES ($1, $2, $3, $4)`,
+          [car.rows[0].id, manager.id, start.reading.odometer, start.reading.eighths],
+        );
+      }
+    });
   } catch (err) {
     if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
-      return { ok: false, message: `Gari lenye namba ${plate} tayari lipo.` };
+      return { ok: false, errors: { plate: `Gari lenye namba ${plate} tayari lipo.` }, values };
     }
     throw err;
   }
   revalidatePath("/manager", "layout");
-  return { ok: true, message: `${make} ${model} (${plate}) limeongezwa.` };
+  revalidatePath("/director", "layout");
+  await notify([MANAGERS_CHANNEL]);
+  return {
+    ok: true,
+    measured: start.reading !== null,
+    message: start.reading
+      ? `${values.make} ${values.model} (${plate}) limeongezwa pamoja na kipimo chake cha mafuta.`
+      : `${values.make} ${values.model} (${plate}) limeongezwa. Rekodi kipimo cha mafuta kabla ya kuomba mafuta.`,
+  };
 }
 
 // Assigning a driver who already has a car moves them to this one. The driver who
@@ -51,6 +100,7 @@ export async function assignDriver(formData: FormData) {
       await client.query("UPDATE cars SET driver_id = NULL WHERE driver_id = $1 AND id <> $2", [driverId, carId]);
     }
     await client.query("UPDATE cars SET driver_id = $1 WHERE id = $2", [driverId, carId]);
+    if (driverId !== null) await claimDriverlessReading(client, carId, driverId);
     if (previousDriver && previousDriver !== driverId) {
       await client.query("DELETE FROM sessions WHERE user_id = $1", [previousDriver]);
     }
