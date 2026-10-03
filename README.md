@@ -1,6 +1,6 @@
 # Magari
 
-A Next.js + Postgres app for running Zuraja MotorVehicle's fleet, in Swahili. Drivers sign in
+A Next.js + Postgres app for running Zuraja Magari's fleet, in Swahili. Drivers sign in
 with their car's plate number and request money: fuel (with the car's odometer and fuel
 gauge) or anything else with a reason. Managers sign in
 with email, approve or reject requests, ask for money themselves (approved as they ask, for a
