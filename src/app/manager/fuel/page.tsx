@@ -27,10 +27,11 @@ export default async function ManagerFuelPage({ searchParams }: PageProps<"/mana
         <section className="card">
           <h2 className="text-lg font-semibold">Rekodi kipimo</h2>
           <p className="mb-4 text-sm text-muted">
-            Kipimo cha kwanza kinaanza ufuatiliaji wa gari. Gari likibadilisha dereva, mpe dereva mpya gari kwanza,
-            kisha rekodi kipimo hapa.
+            Kipimo cha kwanza kinaanza ufuatiliaji wa gari, na gari halitaombewa mafuta kabla yake. Gari likibadilisha
+            dereva, mpe dereva mpya gari kwanza, kisha rekodi kipimo hapa.
           </p>
           <ReadingForm
+            preselect={Number(sp.gari) || undefined}
             cars={data.cars.map((c) => ({
               id: c.id,
               plate: c.plate,

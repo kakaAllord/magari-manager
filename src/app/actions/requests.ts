@@ -34,6 +34,11 @@ export type RequestFormState =
   | { ok: false; errors: FormErrors; values: FormValues }
   | undefined;
 
+const NOT_MEASURED_DRIVER =
+  "Gari lako bado halina kipimo cha kwanza cha mafuta. Mwombe meneja arekodi kilomita na geji zake kwanza.";
+const NOT_MEASURED_MANAGER =
+  "Gari hili bado halina kipimo cha kwanza cha mafuta. Kirekodi kwenye Mafuta (kilomita na geji) kisha uombe mafuta.";
+
 // A fuel request may leave the reason empty; it then just says "Mafuta".
 const readKind = (formData: FormData) => (formData.get("kind") === "fuel" ? "fuel" : "other");
 const reasonFor = (kind: string, reason: string) => (kind === "fuel" && !reason.trim() ? "Mafuta" : reason);
@@ -88,7 +93,9 @@ export async function createRequest(
         "SELECT odometer_km FROM fuel_readings WHERE car_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1",
         [carRow.id],
       );
-      const odometerError = checkOdometer(reading.odometer, last.rows[0]?.odometer_km ?? null, true);
+      // Fuel is measured from the manager's starting reading, so there must be one first.
+      if (!last.rows[0]) return { kind: NOT_MEASURED_DRIVER };
+      const odometerError = checkOdometer(reading.odometer, last.rows[0].odometer_km, true);
       if (odometerError) return { odometer: odometerError };
       const inserted = await client.query<{ id: number }>(
         `INSERT INTO money_requests (requester_id, car_id, amount, reason, kind, fuel_price)
@@ -141,6 +148,13 @@ export async function createManagerRequest(
       },
       values,
     };
+  }
+
+  // Fuel bought now needs the car's starting reading to be measured against. Past fuel is history
+  // from before tracking, so it doesn't.
+  if (kind === "fuel" && date.date === null && car.carId !== null) {
+    const measured = await query("SELECT 1 FROM fuel_readings WHERE car_id = $1 LIMIT 1", [car.carId]);
+    if (measured.length === 0) return { ok: false, errors: { carId: NOT_MEASURED_MANAGER }, values };
   }
 
   // A manager's fuel has no reading: the driver's next one measures it. Past fuel uses today's

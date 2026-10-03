@@ -13,8 +13,8 @@ import { MAX_REASON_LENGTH } from "@/lib/validation";
 // One tap fills a common reason; the driver can still type anything. Fuel is its own kind of request.
 const quickReasons = ["Matengenezo", "Maegesho", "Usafi wa gari", "Ushuru wa barabara"];
 
-// What a driver's fuel request is checked against: their car's last reading, and whether a fuel
-// request is still waiting to be paid.
+// What a driver's fuel request is checked against: their car's last reading (none until the manager
+// records a starting one), and whether a fuel request is still waiting to be paid.
 export type DriverFuel = { last: { odometer: number; eighths: number; at: Date } | null; openFuel: boolean } | null;
 
 // Drivers ask for their own car, and a fuel request carries their km and gauge reading. Managers
@@ -38,7 +38,8 @@ export function RequestForm({
   const [past, setPast] = useState(false);
   const [picked, setKind] = useState(failed?.values.kind ?? "other");
   const isDriver = !cars;
-  const fuelBlocked = isDriver && (fuel === null || fuel?.openFuel);
+  const notMeasured = isDriver && fuel !== null && fuel !== undefined && fuel.last === null;
+  const fuelBlocked = isDriver && (fuel === null || fuel?.openFuel || notMeasured);
   // After a fuel request goes in, fuel is blocked until it's paid, so the form falls back to the rest.
   const kind = fuelBlocked ? "other" : picked;
 
@@ -78,6 +79,11 @@ export function RequestForm({
           </p>
         )}
         {isDriver && fuel === null && <p className="mt-1 text-xs text-muted">Utaomba mafuta ukishapewa gari.</p>}
+        {notMeasured && (
+          <p className="mt-1 text-xs text-muted">
+            Gari lako bado halina kipimo cha kwanza cha mafuta. Meneja akishakirekodi, utaomba mafuta.
+          </p>
+        )}
         {failed?.errors.kind && <p className="mt-1 text-sm text-danger">{failed.errors.kind}</p>}
       </fieldset>
 
@@ -96,13 +102,20 @@ export function RequestForm({
             <option value="" disabled>
               Chagua namba ya gari
             </option>
+            {/* Fuel bought now is measured from the car's starting reading; past fuel is history. */}
             {cars.map((c) => (
-              <option key={c.id} value={c.id}>
+              <option key={c.id} value={c.id} disabled={kind === "fuel" && !past && !c.measured}>
                 {c.plate} · {c.car}
+                {kind === "fuel" && !past && !c.measured && " · bado halijapimwa"}
               </option>
             ))}
             {kind !== "fuel" && <option value="none">Bila gari (ofisi na mengineyo)</option>}
           </select>
+          {kind === "fuel" && !past && cars.some((c) => !c.measured) && (
+            <p className="mt-1 text-xs text-muted">
+              Gari lisilopimwa haliwezi kuombewa mafuta: rekodi kilomita na geji zake kwenye Mafuta kwanza.
+            </p>
+          )}
           {failed?.errors.carId && <p className="mt-1 text-sm text-danger">{failed.errors.carId}</p>}
         </label>
       )}

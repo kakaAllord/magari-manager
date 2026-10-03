@@ -6,7 +6,8 @@ import { GaugePicker } from "@/components/gauge-picker";
 
 type CarChoice = { id: number; plate: string; car: string; driver: string | null; last: string | null };
 
-export function ReadingForm({ cars }: { cars: CarChoice[] }) {
+// `preselect` picks a car when the manager arrives from its "bado halijapimwa" link on Magari.
+export function ReadingForm({ cars, preselect }: { cars: CarChoice[]; preselect?: number }) {
   const [state, action, pending] = useActionState(recordReading, undefined);
   const failed = state && !state.ok ? state : undefined;
 
@@ -19,7 +20,7 @@ export function ReadingForm({ cars }: { cars: CarChoice[] }) {
           key={failed ? `car-${failed.values.carId}` : "fresh"}
           name="carId"
           required
-          defaultValue={failed?.values.carId ?? ""}
+          defaultValue={failed?.values.carId ?? (cars.some((c) => c.id === preselect) ? String(preselect) : "")}
           className="input"
         >
           <option value="" disabled>

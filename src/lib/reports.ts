@@ -22,10 +22,15 @@ export type ExpenseRow = {
   backfilled: boolean;
 };
 
-export type CarOption = { id: number; plate: string; car: string };
+// `measured`: the car has a fuel reading, so fuel can be asked for it.
+export type CarOption = { id: number; plate: string; car: string; measured: boolean };
 
 export const listCars = () =>
-  query<CarOption>("SELECT id, plate, make || ' ' || model AS car FROM cars ORDER BY plate");
+  query<CarOption>(
+    `SELECT id, plate, make || ' ' || model AS car,
+            EXISTS (SELECT 1 FROM fuel_readings r WHERE r.car_id = cars.id) AS measured
+       FROM cars ORDER BY plate`,
+  );
 
 export const todayInTanzania = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(new Date());
