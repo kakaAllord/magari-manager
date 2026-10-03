@@ -87,3 +87,57 @@ export function checkNewPassword(password: string): string | undefined {
     return `Nenosiri liwe na herufi ${MIN_PASSWORD_LENGTH} au zaidi.`;
   }
 }
+
+export type ReadingInput = { odometer: string; gauge: string };
+export type ReadingErrors = { odometer?: string; gauge?: string };
+
+const MAX_ODOMETER = 9_999_999;
+
+// An odometer as typed ("45500" or "45,500") and a gauge mark in eighths of a tank (0 to 8).
+export function parseReading(input: ReadingInput):
+  | { ok: true; odometer: number; eighths: number }
+  | { ok: false; errors: ReadingErrors } {
+  const errors: ReadingErrors = {};
+  const typed = input.odometer.trim();
+  const raw = /^\d{1,3}(,\d{3})+$/.test(typed) ? typed.replaceAll(",", "") : typed;
+  const odometer = Number(raw);
+  if (!/^\d+$/.test(raw) || odometer > MAX_ODOMETER) {
+    errors.odometer = "Andika kilomita zinazoonekana kwenye gari, mfano 45,500.";
+  }
+  const eighths = Number(input.gauge);
+  if (input.gauge === "" || !Number.isInteger(eighths) || eighths < 0 || eighths > 8) {
+    errors.gauge = "Chagua mafuta yaliyopo kwenye geji.";
+  }
+  if (errors.odometer || errors.gauge) return { ok: false, errors };
+  return { ok: true, odometer, eighths };
+}
+
+// A driver's reading may not jump this far past the car's last one; a typo is likelier than the trip.
+export const MAX_KM_BETWEEN_READINGS = 3_000;
+
+// Compares a new odometer with the car's last reading. Undefined means it's fine.
+export function checkOdometer(odometer: number, last: number | null, capJump: boolean): string | undefined {
+  if (last === null) return;
+  if (odometer < last) {
+    return `Kilomita haziwezi kuwa chini ya kipimo cha mwisho (${last.toLocaleString("en")}). Angalia tena.`;
+  }
+  if (capJump && odometer - last > MAX_KM_BETWEEN_READINGS) {
+    return `Ni zaidi ya km ${MAX_KM_BETWEEN_READINGS.toLocaleString("en")} tangu kipimo cha mwisho (${last.toLocaleString("en")}). Hakikisha umeandika sawa, au mwambie meneja.`;
+  }
+}
+
+export function parsePricePerLitre(input: string): { price: number } | { error: string } {
+  const amount = parseAmount(input);
+  if ("error" in amount) return amount;
+  const price = Number(amount.amount);
+  if (price > 100_000) return { error: "Bei ya lita moja ni kubwa mno." };
+  return { price };
+}
+
+export function parseTankLitres(input: string): { litres: number } | { error: string } {
+  const litres = Number(input.trim());
+  if (!/^\d+$/.test(input.trim()) || litres < 10 || litres > 1000) {
+    return { error: "Andika lita za tanki, kati ya 10 na 1000." };
+  }
+  return { litres };
+}
