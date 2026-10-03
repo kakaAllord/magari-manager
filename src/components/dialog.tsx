@@ -39,7 +39,7 @@ export function Dialog({
             <h2 className="text-lg font-semibold">{title}</h2>
             {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
           </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost -mt-1 -mr-1 size-9 p-0" aria-label="Funga">
+          <button type="button" onClick={onClose} className="btn btn-ghost -mt-1 -mr-1 size-11 shrink-0 p-0 sm:size-9" aria-label="Funga">
             <Icon name="close" className="size-4" />
           </button>
         </div>

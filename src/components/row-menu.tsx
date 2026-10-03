@@ -29,7 +29,7 @@ export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] 
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={label}
-        className="btn btn-ghost size-10 rounded-full p-0 sm:size-9"
+        className="btn btn-ghost size-11 rounded-full p-0 sm:size-9"
       >
         <Icon name="more" className="size-5" />
       </button>
