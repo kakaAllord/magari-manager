@@ -56,7 +56,34 @@ export default async function DirectorDashboard() {
               Ripoti kamili →
             </Link>
           </div>
-          <div className="overflow-x-auto">
+          {/* Phones: four money columns don't fit, so each car is a row with its balance on the right. */}
+          <ul className="divide-y divide-line text-sm sm:hidden">
+            {rows.map((c) => {
+              const net = Number(c.income) - Number(c.spend);
+              return (
+                <li key={c.id ?? "none"} className="py-2.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      {c.plate ? <span className="plate">{c.plate}</span> : "Bila gari"}
+                      {c.car && <span className="ml-2 text-xs text-muted">{c.car}</span>}
+                    </div>
+                    <span className={`shrink-0 font-semibold tabular-nums ${net < 0 ? "text-danger" : "text-ok"}`}>
+                      {formatMoney(net)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted tabular-nums">
+                    Mapato <span className="text-ok">{formatMoney(c.income)}</span> · Matumizi{" "}
+                    <span className="text-foreground">{formatMoney(c.spend)}</span>
+                  </p>
+                </li>
+              );
+            })}
+            <li className="flex items-start justify-between gap-3 py-2.5 font-semibold">
+              Jumla
+              <span className={`tabular-nums ${balance < 0 ? "text-danger" : "text-ok"}`}>{formatMoney(balance)}</span>
+            </li>
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
             <table className="table">
               <thead>
                 <tr>
