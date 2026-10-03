@@ -18,7 +18,7 @@ export function AppShell({ user, links, children }: { user: User; links: NavLink
 
   const logoutButton = (full: boolean) => (
     <form action={logout} className={full ? "w-full" : undefined}>
-      <button type="submit" className={`btn btn-ghost gap-2 ${full ? "w-full justify-start" : ""}`} aria-label="Toka">
+      <button type="submit" className={`btn btn-ghost gap-2 ${full ? "w-full justify-start" : "max-sm:size-11 max-sm:p-0"}`} aria-label="Toka">
         <Icon name="logout" className="size-4" />
         <span className={full ? undefined : "max-sm:sr-only"}>Toka</span>
       </button>
@@ -62,12 +62,13 @@ export function AppShell({ user, links, children }: { user: User; links: NavLink
         <div className="flex items-center gap-3 px-4 pt-3 pb-2">
           <BrandMark className="size-9" />
           <div className="min-w-0 flex-1">
-            <p className="truncate leading-tight font-semibold">{COMPANY_SHORT}</p>
+            {/* Wraps rather than cut off on the narrowest phones: the name is what a client looks for. */}
+            <p className="leading-tight font-semibold">{COMPANY_SHORT}</p>
             <p className="truncate text-xs text-muted">
               {user.name} · {roleName[user.role]}
             </p>
           </div>
-          <Link href="/account" className="btn btn-ghost" aria-label="Akaunti yangu">
+          <Link href="/account" className="btn btn-ghost max-sm:size-11 max-sm:p-0" aria-label="Akaunti yangu">
             <Icon name="account" className="size-4" />
           </Link>
           {logoutButton(false)}
