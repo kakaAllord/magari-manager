@@ -155,3 +155,19 @@ export function checkReceiptImage(bytes: Uint8Array): { contentType: string } | 
   if (starts([0x52, 0x49, 0x46, 0x46]) && starts([0x57, 0x45, 0x42, 0x50], 8)) return { contentType: "image/webp" };
   return { error: "Faili hili si picha. Weka picha ya risiti (JPG, PNG au WebP)." };
 }
+
+// A manager may date an expense or income entry in the past to type in history. Today (in
+// Tanzania) or empty means "now"; the future is refused.
+export const EARLIEST_ENTRY_DATE = "2015-01-01";
+
+export function parseEntryDate(input: string, today: string): { date: string | null } | { error: string } {
+  const typed = input.trim();
+  if (!typed || typed === today) return { date: null };
+  // Date rolls 30 Feb over to March and gives up on 32 Jan, so a real date reads back unchanged.
+  const parsed = new Date(`${typed}T00:00:00Z`);
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(typed) && !isNaN(parsed.getTime()) && parsed.toISOString().startsWith(typed);
+  if (!valid) return { error: "Chagua tarehe sahihi." };
+  if (typed > today) return { error: "Tarehe haiwezi kuwa ya baadaye." };
+  if (typed < EARLIEST_ENTRY_DATE) return { error: "Tarehe ni ya zamani mno." };
+  return { date: typed };
+}

@@ -7,6 +7,7 @@ import {
   MAX_KM_BETWEEN_READINGS,
   MAX_RECEIPT_BYTES,
   parseCarChoice,
+  parseEntryDate,
   parseIncome,
   parseMoneyRequest,
   parsePricePerLitre,
@@ -121,4 +122,16 @@ test("knows a receipt photo by its first bytes", () => {
   const big = new Uint8Array(MAX_RECEIPT_BYTES + 1);
   big.set([0xff, 0xd8, 0xff]);
   assert.ok("error" in checkReceiptImage(big));
+});
+
+test("a past date is history; today, empty and bad dates are not", () => {
+  const today = "2026-10-03";
+  assert.deepEqual(parseEntryDate("", today), { date: null });
+  assert.deepEqual(parseEntryDate("2026-10-03", today), { date: null });
+  assert.deepEqual(parseEntryDate(" 2026-05-14 ", today), { date: "2026-05-14" });
+  assert.ok("error" in parseEntryDate("2026-10-04", today));
+  assert.ok("error" in parseEntryDate("2026-02-30", today));
+  assert.ok("error" in parseEntryDate("2026-01-32", today));
+  assert.ok("error" in parseEntryDate("14/05/2026", today));
+  assert.ok("error" in parseEntryDate("2014-12-31", today));
 });
