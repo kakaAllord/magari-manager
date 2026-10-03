@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { Icon } from "@/components/icons";
+import { Icon, type IconName } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
-import { ReportFilters } from "@/components/report-filters";
+import { ReportToolbar } from "@/components/report-filters";
 import { formatMoney, formatWallTime } from "@/lib/format";
-import { formatDay, parseReportParams, presets, toSearch } from "@/lib/report-params";
+import { parseReportParams, presets, toSearch } from "@/lib/report-params";
 import { getExpenses, getIncomes, listCars, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
 
 // The reports page, shared by managers and directors. `base` is the page's own path.
@@ -32,42 +32,48 @@ export async function ReportView({
           description="Mapato na matumizi kwa kipindi unachochagua. Matumizi ni pesa zilizotolewa na mhasibu, kwa tarehe ya kutolewa; mapato ni kwa tarehe ya kurekodiwa."
         />
 
-        <ReportFilters presets={presets(today)} params={params} cars={cars} today={today} tab={tab} />
+        <ReportToolbar
+          presets={presets(today)}
+          params={params}
+          cars={cars}
+          today={today}
+          tab={tab}
+          downloads={[
+            { label: "Excel", hint: "Majedwali na chati, unaweza kuchuja", href: `${base}/export?${search}`, icon: "sheet" },
+          ]}
+        />
 
-        <section className="card grid gap-4" aria-label="Jumla">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <p className="text-sm text-muted">
-              {formatDay(params.from)} hadi {formatDay(params.to)}
-            </p>
-            <a href={`${base}/export?${search}`} className="btn btn-primary w-full gap-2 sm:w-auto" download>
-              <Icon name="download" className="size-4" />
-              Pakua Excel
-            </a>
-          </div>
-          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <div>
-              <dt className="text-xs font-medium tracking-wide text-muted uppercase">Mapato</dt>
-              <dd className="text-xl font-semibold text-ok tabular-nums sm:text-2xl">{formatMoney(income.total)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium tracking-wide text-muted uppercase">Matumizi</dt>
-              <dd className="text-xl font-semibold tabular-nums sm:text-2xl">{formatMoney(summary.grandTotal)}</dd>
-            </div>
-            <div className="col-span-2 sm:col-span-1">
-              <dt className="text-xs font-medium tracking-wide text-muted uppercase">Salio</dt>
-              <dd className={`text-xl font-semibold tabular-nums sm:text-2xl ${balance < 0 ? "text-danger" : "text-ok"}`}>
-                {formatMoney(balance)}
-              </dd>
-            </div>
-          </dl>
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Jumla">
+          <Total
+            tone="in"
+            icon="moneyIn"
+            label="Mapato"
+            value={income.total}
+            note={income.count === 1 ? "Rekodi 1" : `Rekodi ${income.count}`}
+          />
+          <Total
+            tone="out"
+            icon="moneyOut"
+            label="Matumizi"
+            value={summary.grandTotal}
+            note={summary.count === 1 ? "Ombi 1 lililolipwa" : `Maombi ${summary.count} yaliyolipwa`}
+          />
+          <Total
+            wide
+            tone={balance < 0 ? "negative" : "balance"}
+            icon="wallet"
+            label="Salio"
+            value={balance}
+            note={balance < 0 ? "Matumizi yamezidi mapato" : "Mapato toa matumizi"}
+          />
         </section>
 
         <section className="card grid gap-4">
           <nav className="-mx-4 -mt-4 flex border-b border-line sm:-mx-5 sm:-mt-5" aria-label="Matumizi au mapato">
             {(
               [
-                { key: "matumizi", label: "Matumizi", total: summary.grandTotal, tone: "" },
-                { key: "mapato", label: "Mapato", total: income.total, tone: "text-ok" },
+                { key: "matumizi", label: "Matumizi", count: summary.count },
+                { key: "mapato", label: "Mapato", count: income.count },
               ] as const
             ).map((t) => (
               <Link
@@ -75,10 +81,10 @@ export async function ReportView({
                 href={`?${tabSearch(t.key)}`}
                 scroll={false}
                 aria-current={tab === t.key ? "page" : undefined}
-                className="flex-1 border-b-2 border-transparent px-4 py-3 text-center text-muted hover:text-foreground aria-[current=page]:border-accent aria-[current=page]:text-foreground"
+                className="flex flex-1 items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted hover:text-foreground aria-[current=page]:border-accent aria-[current=page]:text-foreground"
               >
-                <span className="block text-sm font-medium">{t.label}</span>
-                <span className={`block text-lg font-semibold tabular-nums ${t.tone}`}>{formatMoney(t.total)}</span>
+                {t.label}
+                <span className="rounded-full bg-background px-2 text-xs tabular-nums">{t.count}</span>
               </Link>
             ))}
           </nav>
@@ -163,7 +169,7 @@ export async function ReportView({
               )}
 
               {expenses.length > 0 && (
-                <details open>
+                <details>
                   <summary className="cursor-pointer text-sm font-medium">Kila ombi na tarehe yake ({expenses.length})</summary>
                   <ul className="mt-2 divide-y divide-line">
                     {expenses.map((e, i) => (
@@ -227,7 +233,7 @@ export async function ReportView({
               )}
 
               {incomes.length > 0 && (
-                <details open>
+                <details>
                   <summary className="cursor-pointer text-sm font-medium">Kila rekodi na tarehe yake ({incomes.length})</summary>
                   <ul className="mt-2 divide-y divide-line">
                     {incomes.map((x, i) => (
@@ -253,5 +259,43 @@ export async function ReportView({
           )}
         </section>
       </main>
+  );
+}
+
+const tones = {
+  in: { card: "border-ok/25 bg-ok-soft", text: "text-ok", icon: "bg-ok text-white" },
+  out: { card: "border-warn/25 bg-warn-soft", text: "text-warn", icon: "bg-warn text-white" },
+  balance: { card: "border-info/25 bg-info-soft", text: "text-info", icon: "bg-info text-white" },
+  negative: { card: "border-danger/25 bg-danger-soft", text: "text-danger", icon: "bg-danger text-white" },
+};
+
+// Money in is green, money out amber, and the balance blue, or red when it's below zero.
+function Total({
+  wide = false,
+  tone,
+  icon,
+  label,
+  value,
+  note,
+}: {
+  wide?: boolean;
+  tone: keyof typeof tones;
+  icon: IconName;
+  label: string;
+  value: number;
+  note: string;
+}) {
+  const t = tones[tone];
+  return (
+    <div className={`flex items-center gap-4 rounded-xl border p-4 sm:p-5 ${t.card} ${wide ? "col-span-2 sm:col-span-1" : ""}`}>
+      <span className={`grid size-11 shrink-0 place-items-center rounded-full max-sm:hidden ${t.icon}`}>
+        <Icon name={icon} className="size-5" />
+      </span>
+      <div className="min-w-0">
+        <p className={`text-sm font-medium ${t.text}`}>{label}</p>
+        <p className={`truncate text-lg font-semibold tabular-nums sm:text-2xl ${t.text}`}>{formatMoney(value)}</p>
+        <p className="text-xs text-muted">{note}</p>
+      </div>
+    </div>
   );
 }

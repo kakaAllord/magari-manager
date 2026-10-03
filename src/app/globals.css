@@ -16,6 +16,8 @@
   --warn-soft: #fcf0d9;
   --danger: #c22f2f;
   --danger-soft: #fce8e8;
+  --info: #2357b5;
+  --info-soft: #e7eefb;
   color-scheme: light;
 }
 
@@ -34,6 +36,8 @@
   --color-warn-soft: var(--warn-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
