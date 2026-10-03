@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
 import { ReportToolbar } from "@/components/report-filters";
-import { formatMoney, formatWallDate, formatWallTime } from "@/lib/format";
+import { formatMoney, formatWallDate, formatWallTime, keepMinus } from "@/lib/format";
 import { parseReportParams, presets, toSearch } from "@/lib/report-params";
 import { getExpenses, getIncomes, listCars, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
 
@@ -307,9 +307,9 @@ function Total({
       <span className={`grid size-11 shrink-0 place-items-center rounded-full max-sm:hidden ${t.icon}`}>
         <Icon name={icon} className="size-5" />
       </span>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1 @container">
         <p className={`text-sm font-medium ${t.text}`}>{label}</p>
-        <p className={`truncate text-lg font-semibold tabular-nums sm:text-2xl ${t.text}`}>{formatMoney(value)}</p>
+        <p className={`figure ${t.text}`}>{keepMinus(formatMoney(value))}</p>
         <p className="text-xs text-muted">{note}</p>
       </div>
     </div>

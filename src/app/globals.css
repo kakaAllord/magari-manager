@@ -75,6 +75,17 @@ body {
   .btn-ghost {
     @apply border border-line bg-surface hover:bg-background;
   }
+  /* A tile's big figure. On the narrowest phones it shrinks with its tile (an @container) instead
+     of spilling out. */
+  .figure {
+    @apply font-semibold tabular-nums;
+    font-size: clamp(0.9375rem, 14cqi, 1.25rem);
+    line-height: 1.35;
+    @variant sm {
+      font-size: var(--text-2xl);
+      line-height: var(--text-2xl--line-height);
+    }
+  }
   .plate {
     @apply rounded border border-foreground/60 px-1.5 py-px font-mono text-xs font-medium tracking-wider whitespace-nowrap text-foreground;
   }

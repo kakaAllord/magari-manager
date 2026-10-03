@@ -263,9 +263,9 @@ function Tile({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`card ${tone === "warn" ? "border-warn/50 bg-warn-soft" : ""}`}>
+    <div className={`card @container ${tone === "warn" ? "border-warn/50 bg-warn-soft" : ""}`}>
       <p className="text-xs font-medium tracking-wide text-muted uppercase">{label}</p>
-      <p className={`mt-1 text-xl font-semibold tabular-nums sm:text-2xl ${tone === "warn" ? "text-warn" : ""}`}>{value}</p>
+      <p className={`figure mt-1 ${tone === "warn" ? "text-warn" : ""}`}>{value}</p>
       <p className="mt-1 text-xs text-muted">{children}</p>
     </div>
   );

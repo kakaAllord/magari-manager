@@ -15,6 +15,8 @@ const dateTime = new Intl.DateTimeFormat("sw-TZ", {
 
 // pg returns numeric columns as strings to avoid precision loss.
 export const formatMoney = (amount: string | number) => money.format(Number(amount));
+// A big figure may wrap on a phone; a real minus sign stays on the same line as the amount.
+export const keepMinus = (s: string) => s.replace(/^-/, "\u2212");
 export const formatDateTime = (d: Date) => dateTime.format(d);
 // History typed in later has a day but no real time of day.
 const dateOnly = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "medium", timeZone: TIME_ZONE });

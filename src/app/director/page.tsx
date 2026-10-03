@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
 import { getFuelOverview, periodRange } from "@/lib/fuel";
-import { formatMoney, formatRate } from "@/lib/format";
+import { formatMoney, formatRate, keepMinus } from "@/lib/format";
 import { getIncomeTotals } from "@/lib/incomes";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
@@ -174,9 +174,9 @@ function Tile({
 }) {
   const valueColor = { ok: "text-ok", danger: "text-danger" };
   return (
-    <div className="card">
+    <div className="card @container">
       <p className="text-xs font-medium tracking-wide text-muted uppercase">{label}</p>
-      <p className={`mt-1 text-xl font-semibold tabular-nums sm:text-2xl ${tone ? valueColor[tone] : ""}`}>{value}</p>
+      <p className={`figure mt-1 ${tone ? valueColor[tone] : ""}`}>{keepMinus(value)}</p>
       <p className="mt-1 text-xs text-muted">{children}</p>
     </div>
   );

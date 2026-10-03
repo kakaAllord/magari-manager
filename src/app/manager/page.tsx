@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, keepMinus } from "@/lib/format";
 import { getIncomeTotals } from "@/lib/incomes";
 import { AwaitingIssue } from "@/components/awaiting-issue";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
@@ -125,13 +125,11 @@ function Tile({
   const body = (
     <>
       <p className="text-xs font-medium tracking-wide text-muted uppercase">{label}</p>
-      <p className={`mt-1 text-xl font-semibold tabular-nums sm:text-2xl ${tone ? valueColor[tone] : ""}`}>
-        {value}
-      </p>
+      <p className={`figure mt-1 ${tone ? valueColor[tone] : ""}`}>{keepMinus(value)}</p>
       <p className="mt-1 text-xs text-muted">{children}</p>
     </>
   );
-  const className = `card block ${tone === "warn" ? "border-warn/50 bg-warn-soft" : ""}`;
+  const className = `card @container block ${tone === "warn" ? "border-warn/50 bg-warn-soft" : ""}`;
   return href ? (
     <Link href={href} className={`${className} hover:border-accent`}>
       {body}
