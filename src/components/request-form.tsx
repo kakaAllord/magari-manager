@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { RequestFormState } from "@/app/actions/requests";
+import { EntryDate } from "@/components/entry-date";
 import { GaugePicker } from "@/components/gauge-picker";
 import { Icon } from "@/components/icons";
 import { gaugeLabel } from "@/lib/fuel-calc";
@@ -18,19 +19,23 @@ export type DriverFuel = { last: { odometer: number; eighths: number; at: Date }
 
 // Drivers ask for their own car, and a fuel request carries their km and gauge reading. Managers
 // also pick the car (or none), and `cars` turns that on; their fuel requests carry no reading.
+// `today` adds a date, so a manager can type in past expenses as history.
 export function RequestForm({
   submit,
   cars,
   fuel,
+  today,
   sent,
 }: {
   submit: (prev: RequestFormState, formData: FormData) => Promise<RequestFormState>;
   cars?: CarOption[];
   fuel?: DriverFuel;
+  today?: string;
   sent: string;
 }) {
   const [state, action, pending] = useActionState(submit, undefined);
   const failed = state && !state.ok ? state : undefined;
+  const [past, setPast] = useState(false);
   const [picked, setKind] = useState(failed?.values.kind ?? "other");
   const isDriver = !cars;
   const fuelBlocked = isDriver && (fuel === null || fuel?.openFuel);
@@ -100,6 +105,16 @@ export function RequestForm({
           </select>
           {failed?.errors.carId && <p className="mt-1 text-sm text-danger">{failed.errors.carId}</p>}
         </label>
+      )}
+
+      {today && (
+        <EntryDate
+          today={today}
+          defaultValue={failed?.values.date}
+          error={failed?.errors.date}
+          onPast={setPast}
+          pastHint="Tarehe iliyopita: litahifadhiwa kama matumizi ya zamani yaliyokwisha lipwa, bila kupitia kwa mhasibu."
+        />
       )}
 
       {isDriver && kind === "fuel" && (
@@ -176,11 +191,11 @@ export function RequestForm({
         </div>
       )}
       <button type="submit" disabled={pending} className="btn btn-primary w-full">
-        {pending ? "Inatuma…" : cars ? "Omba na ukubali" : "Tuma ombi"}
+        {pending ? "Inatuma…" : past ? "Hifadhi matumizi ya zamani" : cars ? "Omba na ukubali" : "Tuma ombi"}
       </button>
       {state?.ok && (
         <p role="status" className="rounded-md bg-ok-soft px-3 py-2 text-sm text-ok">
-          {sent}
+          {state.backfilled ? "Matumizi ya zamani yamehifadhiwa kama yaliyokwisha lipwa." : sent}
         </p>
       )}
     </form>

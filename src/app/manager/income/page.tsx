@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { formatMoney } from "@/lib/format";
 import { DELETE_WINDOW_HOURS, getIncomeTotals, listIncomes } from "@/lib/incomes";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
-import { listCars } from "@/lib/reports";
+import { listCars, todayInTanzania } from "@/lib/reports";
 import { requireUser } from "@/lib/session";
 import { IncomeForm } from "./income-form";
 import { IncomeList } from "./income-list";
@@ -15,7 +15,7 @@ const RECENT = 5;
 export default async function IncomePage() {
   const manager = await requireUser("manager");
   const [recent, totals, cars] = await Promise.all([
-    listIncomes(manager.id, { limit: RECENT }),
+    listIncomes(manager.id, { limit: RECENT, byEntry: true }),
     getIncomeTotals(),
     listCars(),
   ]);
@@ -35,7 +35,7 @@ export default async function IncomePage() {
             Mapato yanarekodiwa kwa gari. <Link href="/manager/cars" className="font-medium text-accent underline">Ongeza gari</Link> kwanza.
           </p>
         ) : (
-          <IncomeForm cars={cars} />
+          <IncomeForm cars={cars} today={todayInTanzania()} />
         )}
       </section>
 

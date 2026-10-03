@@ -1,13 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createIncome } from "@/app/actions/incomes";
+import { EntryDate } from "@/components/entry-date";
 import type { CarOption } from "@/lib/reports";
 import { MAX_DESCRIPTION_LENGTH } from "@/lib/validation";
 
-export function IncomeForm({ cars }: { cars: CarOption[] }) {
+// `today` is Tanzania's date; picking an earlier one types in past income as history.
+export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }) {
   const [state, action, pending] = useActionState(createIncome, undefined);
   const failed = state && !state.ok ? state : undefined;
+  const [past, setPast] = useState(false);
 
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2">
@@ -48,6 +51,13 @@ export function IncomeForm({ cars }: { cars: CarOption[] }) {
         </div>
         {failed?.errors.amount && <p className="mt-1 text-sm text-danger">{failed.errors.amount}</p>}
       </label>
+      <EntryDate
+        today={today}
+        defaultValue={failed?.values.date}
+        error={failed?.errors.date}
+        onPast={setPast}
+        pastHint="Tarehe iliyopita: yatahifadhiwa kama mapato ya zamani ya siku hiyo."
+      />
       <label className="block sm:col-span-2">
         <span className="label">
           Maelezo <span className="font-normal text-muted">(si lazima)</span>
@@ -64,7 +74,7 @@ export function IncomeForm({ cars }: { cars: CarOption[] }) {
       </label>
       <div className="grid gap-2 sm:col-span-2 sm:flex sm:items-center">
         <button type="submit" disabled={pending} className="btn btn-primary">
-          {pending ? "Inahifadhi…" : "Hifadhi mapato"}
+          {pending ? "Inahifadhi…" : past ? "Hifadhi mapato ya zamani" : "Hifadhi mapato"}
         </button>
         {state?.ok && (
           <p role="status" className="text-sm text-ok">
