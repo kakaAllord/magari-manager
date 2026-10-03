@@ -1,5 +1,6 @@
 import "server-only";
 import ExcelJS from "exceljs";
+import { COMPANY } from "@/lib/company";
 import { formatDay, type ReportParams } from "@/lib/report-params";
 import type { ExpenseRow, IncomeRow, IncomeSummary, Summary } from "@/lib/reports";
 
@@ -29,12 +30,13 @@ export async function buildWorkbook(
   carsLabel: string,
 ) {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Magari";
+  wb.creator = COMPANY;
   wb.created = new Date();
 
   // Summary sheet: the totals, then the expenses table, then the income table.
   const s = wb.addWorksheet("Muhtasari");
   const note = { color: { argb: "FF5F6673" } };
+  s.addRow([COMPANY]).font = { bold: true, size: 12 };
   s.addRow([`Mapato na matumizi · ${formatDay(p.from)} hadi ${formatDay(p.to)}`]).font = { bold: true, size: 14 };
   s.addRow([`Magari: ${carsLabel} · Kwa ${groupName[p.group]} · Saa za Tanzania`]).font = note;
   s.addRow([]);

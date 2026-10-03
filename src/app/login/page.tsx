@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { BrandMark } from "@/components/icons";
+import { COMPANY } from "@/lib/company";
 import { getCurrentUser, homeFor } from "@/lib/session";
 import { LoginForm } from "./login-form";
 
@@ -16,6 +17,7 @@ export default async function LoginPage() {
         <div className="mb-8 flex flex-col items-center text-center">
           <BrandMark className="size-14" />
           <h1 className="mt-4 text-2xl font-semibold tracking-tight">Karibu</h1>
+          <p className="mt-1 text-sm font-medium text-muted">{COMPANY}</p>
         </div>
         <LoginForm demo={showDemo()} />
       </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { COMPANY, COMPANY_SHORT } from "@/lib/company";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Magari",
-  description: "Maombi ya pesa za magari na ripoti za matumizi",
-  appleWebApp: { title: "Magari", statusBarStyle: "default" },
+  title: COMPANY_SHORT,
+  description: `${COMPANY} · Maombi ya pesa za magari na ripoti za matumizi`,
+  appleWebApp: { title: COMPANY_SHORT, statusBarStyle: "default" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

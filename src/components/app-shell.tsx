@@ -1,4 +1,5 @@
 import { logout } from "@/app/actions/auth";
+import { COMPANY, COMPANY_SHORT } from "@/lib/company";
 import { roleName, type User } from "@/lib/session";
 import Link from "next/link";
 import { BrandMark, Icon, type IconName } from "./icons";
@@ -30,8 +31,8 @@ export function AppShell({ user, links, children }: { user: User; links: NavLink
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-line bg-surface px-4 py-5 lg:flex">
         <div className="flex items-center gap-3 px-2">
           <BrandMark />
-          <div>
-            <p className="font-semibold leading-tight">Magari</p>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-tight">{COMPANY}</p>
             <p className="text-xs text-muted">Usimamizi wa magari</p>
           </div>
         </div>
@@ -61,7 +62,7 @@ export function AppShell({ user, links, children }: { user: User; links: NavLink
         <div className="flex items-center gap-3 px-4 pt-3 pb-2">
           <BrandMark className="size-9" />
           <div className="min-w-0 flex-1">
-            <p className="leading-tight font-semibold">Magari</p>
+            <p className="truncate leading-tight font-semibold">{COMPANY_SHORT}</p>
             <p className="truncate text-xs text-muted">
               {user.name} · {roleName[user.role]}
             </p>

@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
+import { COMPANY, COMPANY_SHORT } from "@/lib/company";
 
 // Lets drivers add the app to their phone's home screen and open it full screen.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Magari",
-    short_name: "Magari",
+    name: COMPANY,
+    short_name: COMPANY_SHORT,
     description: "Maombi ya pesa za magari na ripoti za matumizi",
     lang: "sw",
     start_url: "/",
