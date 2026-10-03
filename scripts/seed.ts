@@ -199,7 +199,40 @@ try {
       );
     }
   }
-  console.log("seeded demo users, cars, requests, income, fuel and receipts");
+  // History typed in yesterday by Grace: income and expenses from before the app, on their own days.
+  const { rows: existingHistory } = await client.query(
+    "SELECT 1 FROM incomes WHERE backfilled_at IS NOT NULL UNION ALL SELECT 1 FROM money_requests WHERE backfilled_at IS NOT NULL LIMIT 1",
+  );
+  if (existingHistory.length === 0) {
+    const day = (daysAgo: number) => `(date_trunc('day', now() AT TIME ZONE 'Africa/Dar_es_Salaam')
+      - make_interval(days => ${daysAgo}) + time '12:00') AT TIME ZONE 'Africa/Dar_es_Salaam'`;
+    const past: [kind: "income" | "expense", daysAgo: number, plate: string | null, amount: number, text: string][] = [
+      ["income", 200, "T103ABE", 480000, "Safari ya Mwanza, wageni wa kampuni"],
+      ["income", 185, "T456BCD", 350000, "Kukodisha Hiace kwa harusi"],
+      ["expense", 195, "T456BCD", 320000, "Matairi mapya manne"],
+      ["expense", 180, null, 90000, "Kodi ya ofisi"],
+    ];
+    for (const [kind, daysAgo, plate, amount, text] of past) {
+      if (kind === "income") {
+        await client.query(
+          `INSERT INTO incomes (car_id, source, amount, description, recorded_by, created_at, backfilled_at)
+           SELECT c.id, c.plate, $2, $3, (SELECT id FROM users WHERE email = $4), ${day(daysAgo)}, now() - interval '1 day'
+             FROM cars c WHERE c.plate = $1`,
+          [plate, amount, text, manager.email],
+        );
+      } else {
+        await client.query(
+          `INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at,
+                                      created_at, issued_at, backfilled_at)
+           SELECT m.id, (SELECT id FROM cars WHERE plate = $1), $2, $3, 'approved', m.id, ${day(daysAgo)},
+                  ${day(daysAgo)}, ${day(daysAgo)}, now() - interval '1 day'
+             FROM users m WHERE m.email = $4`,
+          [plate, amount, text, manager.email],
+        );
+      }
+    }
+  }
+  console.log("seeded demo users, cars, requests, income, fuel, receipts and typed-in history");
 } finally {
   await client.end();
 }
