@@ -32,7 +32,7 @@ export function LoginForm({ demo = false }: { demo?: boolean }) {
       <div className="card p-5 sm:p-6">
         <form action={action} className="grid gap-4">
           <label className="block">
-            <span className="label">Namba ya gari</span>
+            <span className="label">Namba ya gari au barua pepe</span>
             <input
               ref={loginRef}
               name="login"
