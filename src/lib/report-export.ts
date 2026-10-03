@@ -1,5 +1,6 @@
 import "server-only";
 import { getReportData } from "@/lib/report-data";
+import { buildPdf } from "@/lib/report-pdf";
 import { buildWorkbook, reportFilename } from "@/lib/workbook";
 
 const searchParamsOf = (request: Request) => {
@@ -13,8 +14,20 @@ const searchParamsOf = (request: Request) => {
 };
 
 // The downloads behind the report's download menu. Callers check the role first.
+// `?format=pdf` gives the PDF; anything else the Excel workbook.
 export async function reportResponse(request: Request) {
-  const data = await getReportData(searchParamsOf(request));
+  const sp = searchParamsOf(request);
+  const data = await getReportData(sp);
+  if (sp.format === "pdf") {
+    const pdf = await buildPdf(data);
+    return new Response(new Uint8Array(pdf), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${reportFilename(data.params, "pdf")}"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
   const file = await buildWorkbook(data);
   return new Response(new Uint8Array(file), {
     headers: {

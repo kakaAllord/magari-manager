@@ -39,7 +39,8 @@ export async function ReportView({
           today={today}
           tab={tab}
           downloads={[
-            { label: "Excel", hint: "Majedwali na chati, unaweza kuchuja", href: `${base}/export?${search}`, icon: "sheet" },
+            { label: "PDF", hint: "Tayari kuchapisha au kutuma", href: `${base}/export?${search}&format=pdf`, icon: "pdf" },
+            { label: "Excel", hint: "Fomula, chati na majedwali ya kuchuja", href: `${base}/export?${search}`, icon: "sheet" },
           ]}
         />
 
