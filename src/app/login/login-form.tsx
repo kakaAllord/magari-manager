@@ -38,7 +38,7 @@ export function LoginForm({ demo = false }: { demo?: boolean }) {
               name="login"
               required
               autoComplete="username"
-              autoCapitalize="characters"
+              autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
               defaultValue={state?.login}
