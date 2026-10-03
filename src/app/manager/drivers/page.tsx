@@ -9,12 +9,12 @@ export default async function DriversPage() {
   await requireUser("manager");
   const [drivers, freeCars] = await Promise.all([
     query<DriverRow>(
-      `SELECT u.id, u.name, c.plate, c.make || ' ' || c.model AS car
+      `SELECT u.id, u.name, c.plate, c.name AS car
          FROM users u LEFT JOIN cars c ON c.driver_id = u.id
         WHERE u.role = 'driver' ORDER BY u.name`,
     ),
     query<{ id: number; label: string }>(
-      "SELECT id, plate || ' · ' || make || ' ' || model AS label FROM cars WHERE driver_id IS NULL ORDER BY plate",
+      "SELECT id, concat_ws(' · ', plate, name) AS label FROM cars WHERE driver_id IS NULL ORDER BY plate",
     ),
   ]);
 

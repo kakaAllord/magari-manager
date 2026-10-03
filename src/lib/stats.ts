@@ -53,8 +53,8 @@ export async function getOverview() {
 
 // This month's issued spend per car, biggest first; cars with no spend are included.
 export function getSpendByCarThisMonth() {
-  return query<{ id: number; plate: string; car: string; driver: string | null; count: number; total: string }>(
-    `SELECT c.id, c.plate, c.make || ' ' || c.model AS car, u.name AS driver,
+  return query<{ id: number; plate: string; car: string | null; driver: string | null; count: number; total: string }>(
+    `SELECT c.id, c.plate, c.name AS car, u.name AS driver,
             count(r.id)::int AS count, coalesce(sum(r.amount), 0) AS total
        FROM cars c
        LEFT JOIN users u ON u.id = c.driver_id
@@ -102,7 +102,7 @@ export function getCarMoneyThisMonth() {
        SELECT r.car_id, sum(r.amount) AS total FROM money_requests r, local
         WHERE r.issued_at IS NOT NULL AND r.issued_at AT TIME ZONE $1 >= month GROUP BY r.car_id
      )
-     SELECT c.id, c.plate, c.make || ' ' || c.model AS car,
+     SELECT c.id, c.plate, c.name AS car,
             coalesce(i.total, 0) AS income, coalesce(s.total, 0) AS spend
        FROM cars c LEFT JOIN income i ON i.car_id = c.id LEFT JOIN spend s ON s.car_id = c.id
      UNION ALL

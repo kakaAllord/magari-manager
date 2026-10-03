@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { recordReading, saveFuelPrices, saveTank } from "@/app/actions/fuel";
 import { GaugePicker } from "@/components/gauge-picker";
 
-type CarChoice = { id: number; plate: string; car: string; driver: string | null; last: string | null };
+type CarChoice = { id: number; plate: string; car: string | null; driver: string | null; last: string | null };
 
 // `preselect` picks a car when the manager arrives from its "bado halijapimwa" link on Magari.
 export function ReadingForm({ cars, preselect }: { cars: CarChoice[]; preselect?: number }) {
@@ -102,14 +102,17 @@ export function TankForm({
   tank,
 }: {
   carId: number;
-  fuelType: "petrol" | "diesel";
+  fuelType: "petrol" | "diesel" | null;
   tank: number | null;
 }) {
   const [state, action, pending] = useActionState(saveTank, undefined);
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="carId" value={carId} />
-      <select name="fuelType" defaultValue={fuelType} aria-label="Aina ya mafuta" className="input w-auto">
+      <select name="fuelType" required defaultValue={fuelType ?? ""} aria-label="Aina ya mafuta" className="input w-auto">
+        <option value="" disabled>
+          Mafuta?
+        </option>
         <option value="petrol">Petroli</option>
         <option value="diesel">Dizeli</option>
       </select>

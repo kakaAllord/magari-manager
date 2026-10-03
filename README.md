@@ -138,9 +138,11 @@ directors and the mhasibu join `private-managers` and each driver only `private-
   used (`tank × gauge/8` at the first reading + litres paid for in between − at the second;
   litres = amount ÷ the request's price per litre), km per litre and flags. `src/lib/fuel.ts`
   loads readings and paid fuel requests for the Mafuta pages and reports.
-  A car's first reading is the base: the manager gives it when adding the car (km, gauge, tank)
-  or later on Mafuta, and fuel can't be requested for the car until it exists (past-dated
-  history excepted). A reading taken while the car has no driver passes to its first driver.
+  A car needs only its plate; Aina (e.g. "Toyota IST", one free-text field) is always optional.
+  Fuel can't be requested for a car until it has a fuel type, a tank size and a first reading
+  (`src/lib/fuel-ready.ts`; past-dated history excepted). The manager gives them when adding the
+  car or later from its ⋯ menu on Magari; later readings go on Mafuta. A reading taken while the
+  car has no driver passes to its first driver.
 - Receipts are photos stored in Postgres (`receipts.data`). The browser shrinks them to at most
   1600 px before upload (`src/app/accountant/add-receipt.tsx`) to stay under the 1 MB server
   action limit; `checkReceiptImage` in `src/lib/validation.ts` accepts JPEG, PNG or WebP by

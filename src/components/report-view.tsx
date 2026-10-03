@@ -250,7 +250,7 @@ export async function ReportView({
                       <li key={i} className="flex items-start justify-between gap-4 py-3">
                         <div className="min-w-0">
                           <p className="break-words">
-                            {x.car ? <span className="plate">{x.source}</span> : x.source}
+                            {x.car_id !== null ? <span className="plate">{x.source}</span> : x.source}
                             {x.car && <span className="text-muted"> {x.car}</span>}
                           </p>
                           {x.description && <p className="text-sm break-words">{x.description}</p>}

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { query, transaction } from "@/lib/db";
+import { missingForFuel } from "@/lib/fuel-ready";
 import { driverChannel, MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { todayInTanzania } from "@/lib/reports";
 import { requireUser } from "@/lib/session";
@@ -34,10 +35,9 @@ export type RequestFormState =
   | { ok: false; errors: FormErrors; values: FormValues }
   | undefined;
 
-const NOT_MEASURED_DRIVER =
-  "Gari lako bado halina kipimo cha kwanza cha mafuta. Mwombe meneja arekodi kilomita na geji zake kwanza.";
-const NOT_MEASURED_MANAGER =
-  "Gari hili bado halina kipimo cha kwanza cha mafuta. Kirekodi kwenye Mafuta (kilomita na geji) kisha uombe mafuta.";
+const notReadyForDriver = (missing: string) => `Gari lako bado halina ${missing}. Mwombe meneja akamilishe kwanza.`;
+const notReadyForManager = (missing: string) =>
+  `Gari hili bado halina ${missing}. Kamilisha kwenye Magari (⋯ → Badilisha taarifa) kisha uombe mafuta.`;
 
 // A fuel request may leave the reason empty; it then just says "Mafuta".
 const readKind = (formData: FormData) => (formData.get("kind") === "fuel" ? "fuel" : "other");
@@ -75,8 +75,8 @@ export async function createRequest(
   } else {
     // The reading and the request go in together. Locking the car keeps a double tap from making two.
     const error = await transaction(async (client): Promise<FormErrors | null> => {
-      const car = await client.query<{ id: number; fuel_type: string }>(
-        "SELECT id, fuel_type FROM cars WHERE driver_id = $1 FOR UPDATE",
+      const car = await client.query<{ id: number; fuel_type: string | null; tank_litres: number | null }>(
+        "SELECT id, fuel_type, tank_litres FROM cars WHERE driver_id = $1 FOR UPDATE",
         [driver.id],
       );
       const carRow = car.rows[0];
@@ -93,8 +93,9 @@ export async function createRequest(
         "SELECT odometer_km FROM fuel_readings WHERE car_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1",
         [carRow.id],
       );
-      // Fuel is measured from the manager's starting reading, so there must be one first.
-      if (!last.rows[0]) return { kind: NOT_MEASURED_DRIVER };
+      // Fuel is measured from the manager's starting reading, in litres of this car's tank.
+      const missing = missingForFuel({ fuelType: carRow.fuel_type, tank: carRow.tank_litres, measured: !!last.rows[0] });
+      if (missing || !last.rows[0]) return { kind: notReadyForDriver(missing) };
       const odometerError = checkOdometer(reading.odometer, last.rows[0].odometer_km, true);
       if (odometerError) return { odometer: odometerError };
       const inserted = await client.query<{ id: number }>(
@@ -150,11 +151,16 @@ export async function createManagerRequest(
     };
   }
 
-  // Fuel bought now needs the car's starting reading to be measured against. Past fuel is history
-  // from before tracking, so it doesn't.
+  // Fuel bought now needs the car's fuel type, tank and starting reading to be measured against.
+  // Past fuel is history from before tracking, so it doesn't.
   if (kind === "fuel" && date.date === null && car.carId !== null) {
-    const measured = await query("SELECT 1 FROM fuel_readings WHERE car_id = $1 LIMIT 1", [car.carId]);
-    if (measured.length === 0) return { ok: false, errors: { carId: NOT_MEASURED_MANAGER }, values };
+    const [row] = await query<{ fuel_type: string | null; tank_litres: number | null; measured: boolean }>(
+      `SELECT fuel_type, tank_litres, EXISTS (SELECT 1 FROM fuel_readings WHERE car_id = cars.id) AS measured
+         FROM cars WHERE id = $1`,
+      [car.carId],
+    );
+    const missing = row ? missingForFuel({ fuelType: row.fuel_type, tank: row.tank_litres, measured: row.measured }) : "";
+    if (missing) return { ok: false, errors: { carId: notReadyForManager(missing) }, values };
   }
 
   // A manager's fuel has no reading: the driver's next one measures it. Past fuel uses today's

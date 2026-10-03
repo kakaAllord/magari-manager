@@ -2,62 +2,86 @@
 
 import { revalidatePath } from "next/cache";
 import { claimDriverlessReading, transaction } from "@/lib/db";
+import { missingForFuel } from "@/lib/fuel-ready";
 import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
-import {
-  checkPlate,
-  normalizePlate,
-  parseStartingReading,
-  parseTankLitres,
-  type ReadingErrors,
-} from "@/lib/validation";
+import { checkPlate, normalizePlate, parseStartingReading, parseTankLitres, type ReadingErrors } from "@/lib/validation";
 
-type CarValues = { plate: string; make: string; model: string; fuelType: string; tank: string; odometer: string; gauge: string };
+type CarValues = { plate: string; name: string; fuelType: string; tank: string; odometer: string; gauge: string };
 type CarErrors = ReadingErrors & { plate?: string; car?: string; tank?: string };
 
 export type CarFormState =
-  | { ok: true; message: string; measured: boolean }
+  | { ok: true; message: string; ready: boolean }
   | { ok: false; errors: CarErrors; values: CarValues }
   | undefined;
 
 const UNIQUE_VIOLATION = "23505";
 
-// A new car with its fuel type and tank size, and optionally what its odometer and gauge read now.
-// That reading is the base fuel is measured from, so no fuel can be asked for the car without one;
-// it can also be recorded later on Mafuta.
-export async function createCar(_prev: CarFormState, formData: FormData): Promise<CarFormState> {
-  const manager = await requireUser("manager");
-  const values: CarValues = {
-    plate: String(formData.get("plate") ?? ""),
-    make: String(formData.get("make") ?? "").trim(),
-    model: String(formData.get("model") ?? "").trim(),
-    fuelType: formData.get("fuelType") === "diesel" ? "diesel" : "petrol",
-    tank: String(formData.get("tank") ?? "").trim(),
-    odometer: String(formData.get("odometer") ?? ""),
-    gauge: String(formData.get("gauge") ?? ""),
-  };
-  const plate = normalizePlate(values.plate);
-  const errors: CarErrors = {};
-  const plateError = checkPlate(plate);
-  if (plateError) errors.plate = plateError;
-  if (!values.make || !values.model) errors.car = "Andika aina na modeli ya gari.";
+const readValues = (formData: FormData): CarValues => ({
+  plate: String(formData.get("plate") ?? ""),
+  name: String(formData.get("name") ?? "").trim().slice(0, 60),
+  fuelType: String(formData.get("fuelType") ?? ""),
+  tank: String(formData.get("tank") ?? "").trim(),
+  odometer: String(formData.get("odometer") ?? ""),
+  gauge: String(formData.get("gauge") ?? ""),
+});
+
+// Everything but the plate can wait: Aina for good, the fuel type, tank and starting reading until
+// someone asks for fuel for the car.
+function parseDetails(values: CarValues, errors: CarErrors) {
+  const fuelType = values.fuelType === "petrol" || values.fuelType === "diesel" ? values.fuelType : null;
   const tank = values.tank ? parseTankLitres(values.tank) : { litres: null };
   if ("error" in tank) errors.tank = tank.error;
   const start = parseStartingReading(values);
   if (!start.ok) Object.assign(errors, start.errors);
-  if (Object.keys(errors).length || !start.ok || "error" in tank) return { ok: false, errors, values };
+  return {
+    name: values.name || null,
+    fuelType,
+    tank: "litres" in tank ? tank.litres : null,
+    reading: start.ok ? start.reading : null,
+  };
+}
+
+// "Toyota IST (T103ABE)", or just the plate, and what's still missing before fuel.
+function saved(plate: string, details: ReturnType<typeof parseDetails>, measured: boolean, what: string) {
+  const label = details.name ? `${details.name} (${plate})` : plate;
+  const missing = missingForFuel({ fuelType: details.fuelType, tank: details.tank, measured });
+  return {
+    ok: true as const,
+    ready: !missing,
+    message: missing ? `${label} ${what}. Kabla ya kuomba mafuta, weka ${missing}.` : `${label} ${what}. Liko tayari kwa mafuta.`,
+  };
+}
+
+const refreshCars = async () => {
+  revalidatePath("/manager", "layout");
+  revalidatePath("/director", "layout");
+  revalidatePath("/driver", "layout");
+  await notify([MANAGERS_CHANNEL]);
+};
+
+// A new car needs only its plate. A starting reading taken now has no driver yet; the first driver
+// the car is given to takes it over.
+export async function createCar(_prev: CarFormState, formData: FormData): Promise<CarFormState> {
+  const manager = await requireUser("manager");
+  const values = readValues(formData);
+  const plate = normalizePlate(values.plate);
+  const errors: CarErrors = {};
+  const plateError = checkPlate(plate);
+  if (plateError) errors.plate = plateError;
+  const details = parseDetails(values, errors);
+  if (Object.keys(errors).length) return { ok: false, errors, values };
 
   try {
     await transaction(async (client) => {
       const car = await client.query<{ id: number }>(
-        "INSERT INTO cars (plate, make, model, fuel_type, tank_litres) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-        [plate, values.make, values.model, values.fuelType, tank.litres],
+        "INSERT INTO cars (plate, name, fuel_type, tank_litres) VALUES ($1, $2, $3, $4) RETURNING id",
+        [plate, details.name, details.fuelType, details.tank],
       );
-      if (start.reading) {
-        // Nobody drives it yet; the first driver it's given to takes this reading over.
+      if (details.reading) {
         await client.query(
           `INSERT INTO fuel_readings (car_id, recorded_by, odometer_km, gauge_eighths) VALUES ($1, $2, $3, $4)`,
-          [car.rows[0].id, manager.id, start.reading.odometer, start.reading.eighths],
+          [car.rows[0].id, manager.id, details.reading.odometer, details.reading.eighths],
         );
       }
     });
@@ -67,16 +91,47 @@ export async function createCar(_prev: CarFormState, formData: FormData): Promis
     }
     throw err;
   }
-  revalidatePath("/manager", "layout");
-  revalidatePath("/director", "layout");
-  await notify([MANAGERS_CHANNEL]);
-  return {
-    ok: true,
-    measured: start.reading !== null,
-    message: start.reading
-      ? `${values.make} ${values.model} (${plate}) limeongezwa pamoja na kipimo chake cha mafuta.`
-      : `${values.make} ${values.model} (${plate}) limeongezwa. Rekodi kipimo cha mafuta kabla ya kuomba mafuta.`,
-  };
+  await refreshCars();
+  return saved(plate, details, details.reading !== null, "limeongezwa");
+}
+
+// Aina, fuel type and tank can change any time. The starting reading is only taken here while the
+// car has none; later readings go on Mafuta, where they are checked against the last one. The plate
+// stays, since the driver signs in with it.
+export async function updateCar(_prev: CarFormState, formData: FormData): Promise<CarFormState> {
+  const manager = await requireUser("manager");
+  const carId = Number(formData.get("carId"));
+  const values = readValues(formData);
+  const errors: CarErrors = {};
+  const details = parseDetails(values, errors);
+  if (!Number.isInteger(carId)) errors.car = "Gari hilo halipo tena.";
+  if (Object.keys(errors).length) return { ok: false, errors, values };
+
+  const result = await transaction(async (client) => {
+    const car = await client.query<{ plate: string; driver_id: number | null; measured: boolean }>(
+      `SELECT plate, driver_id, EXISTS (SELECT 1 FROM fuel_readings WHERE car_id = cars.id) AS measured
+         FROM cars WHERE id = $1 FOR UPDATE`,
+      [carId],
+    );
+    const row = car.rows[0];
+    if (!row) return null;
+    await client.query("UPDATE cars SET name = $2, fuel_type = $3, tank_litres = $4 WHERE id = $1", [
+      carId,
+      details.name,
+      details.fuelType,
+      details.tank,
+    ]);
+    if (details.reading && !row.measured) {
+      await client.query(
+        `INSERT INTO fuel_readings (car_id, driver_id, recorded_by, odometer_km, gauge_eighths) VALUES ($1, $2, $3, $4, $5)`,
+        [carId, row.driver_id, manager.id, details.reading.odometer, details.reading.eighths],
+      );
+    }
+    return { plate: row.plate, measured: row.measured || details.reading !== null };
+  });
+  if (!result) return { ok: false, errors: { car: "Gari hilo halipo tena." }, values };
+  await refreshCars();
+  return saved(result.plate, details, result.measured, "limehifadhiwa");
 }
 
 // Assigning a driver who already has a car moves them to this one. The driver who

@@ -1,5 +1,6 @@
 import "server-only";
 import { query } from "@/lib/db";
+import { fuelReadySql } from "@/lib/fuel-ready";
 import { periodLabel, periodStarts, type ReportParams } from "@/lib/report-params";
 import { TIME_ZONE } from "@/lib/time";
 
@@ -22,15 +23,11 @@ export type ExpenseRow = {
   backfilled: boolean;
 };
 
-// `measured`: the car has a fuel reading, so fuel can be asked for it.
-export type CarOption = { id: number; plate: string; car: string; measured: boolean };
+// `fuelReady`: the car has its fuel type, tank size and a reading, so fuel can be asked for it.
+export type CarOption = { id: number; plate: string; car: string | null; fuelReady: boolean };
 
 export const listCars = () =>
-  query<CarOption>(
-    `SELECT id, plate, make || ' ' || model AS car,
-            EXISTS (SELECT 1 FROM fuel_readings r WHERE r.car_id = cars.id) AS measured
-       FROM cars ORDER BY plate`,
-  );
+  query<CarOption>(`SELECT id, plate, name AS car, ${fuelReadySql("cars")} AS "fuelReady" FROM cars ORDER BY plate`);
 
 export const todayInTanzania = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(new Date());
@@ -43,7 +40,7 @@ export function getExpenses(p: ReportParams) {
             to_char(r.created_at AT TIME ZONE $1, 'YYYY-MM-DD HH24:MI') AS requested_at,
             to_char(date_trunc('month', r.issued_at AT TIME ZONE $1), 'YYYY-MM-DD') AS month_start,
             to_char(date_trunc('week', r.issued_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
-            c.id AS car_id, c.plate, c.make || ' ' || c.model AS car,
+            c.id AS car_id, c.plate, c.name AS car,
             d.name AS requester, r.reason, r.amount, m.name AS approved_by, a.name AS issued_by, r.issue_note,
             r.kind, r.backfilled_at IS NOT NULL AS backfilled
        FROM money_requests r
@@ -72,7 +69,7 @@ const NO_CAR = "none";
 // Per car: one row per car. Per month/week: one row per period, one column per car.
 export function summarise(expenses: ExpenseRow[], cars: CarOption[], p: ReportParams): Summary {
   const chosen = p.carIds.length ? cars.filter((c) => p.carIds.includes(c.id)) : cars;
-  const columns = chosen.map((c) => ({ key: String(c.id), label: c.plate, sub: c.car }));
+  const columns = chosen.map((c) => ({ key: String(c.id), label: c.plate, sub: c.car ?? undefined }));
   if (!p.carIds.length && expenses.some((e) => e.car_id === null)) {
     columns.push({ key: NO_CAR, label: "Hakuna gari", sub: "Ombi halikuwa la gari lolote" });
   }
@@ -110,6 +107,7 @@ export type IncomeRow = {
   month_start: string;
   week_start: string;
   source: string;
+  car_id: number | null;
   car: string | null;
   description: string | null;
   amount: string;
@@ -124,7 +122,7 @@ export function getIncomes(p: ReportParams) {
     `SELECT to_char(i.created_at AT TIME ZONE $1, 'YYYY-MM-DD HH24:MI') AS recorded_at,
             to_char(date_trunc('month', i.created_at AT TIME ZONE $1), 'YYYY-MM-DD') AS month_start,
             to_char(date_trunc('week', i.created_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
-            i.source, c.make || ' ' || c.model AS car, i.description, i.amount, u.name AS recorded_by,
+            i.source, i.car_id, c.name AS car, i.description, i.amount, u.name AS recorded_by,
             i.backfilled_at IS NOT NULL AS backfilled
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
       WHERE i.deleted_at IS NULL

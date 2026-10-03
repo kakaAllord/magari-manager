@@ -1,5 +1,6 @@
 import "server-only";
 import { query } from "@/lib/db";
+import { missingForFuel } from "@/lib/fuel-ready";
 import { stretchesFor, totalsOf, type Fill, type Reading, type Stretch, type Totals } from "@/lib/fuel-calc";
 
 export type FuelType = "petrol" | "diesel";
@@ -18,8 +19,8 @@ export const parseFuelPeriod = (v: unknown): FuelPeriod =>
 type CarRow = {
   id: number;
   plate: string;
-  car: string;
-  fuel_type: FuelType;
+  car: string | null;
+  fuel_type: FuelType | null;
   tank_litres: number | null;
   driver: string | null;
 };
@@ -73,7 +74,7 @@ export type FuelRange = { since: number; until: number };
 export async function getFuelOverview(range: FuelRange, carIds: number[] = []): Promise<FuelOverview> {
   const [cars, readings, fills, priceRows, users] = await Promise.all([
     query<CarRow>(
-      `SELECT c.id, c.plate, c.make || ' ' || c.model AS car, c.fuel_type, c.tank_litres, u.name AS driver
+      `SELECT c.id, c.plate, c.name AS car, c.fuel_type, c.tank_litres, u.name AS driver
          FROM cars c LEFT JOIN users u ON u.id = c.driver_id
         ORDER BY c.plate`,
     ),
@@ -99,7 +100,7 @@ export async function getFuelOverview(range: FuelRange, carIds: number[] = []): 
   const inPeriod: StretchRow[] = [];
   const chosen = carIds.length ? cars.filter((c) => carIds.includes(c.id)) : cars;
   const carFuel: CarFuel[] = chosen.map((car) => {
-    const price = prices[car.fuel_type];
+    const price = car.fuel_type ? prices[car.fuel_type] : null;
     const mine = readings.filter((r) => r.car_id === car.id);
     const myFills: Fill[] = fills
       .filter((f) => f.car_id === car.id)
@@ -162,8 +163,15 @@ export async function lastOdometer(carId: number) {
 
 // What the driver sees above the fuel form: their car's latest reading and the tank size.
 export async function getDriverFuelContext(driverId: number) {
-  const rows = await query<{ odometer_km: number | null; gauge_eighths: number | null; created_at: Date | null; open_fuel: boolean }>(
-    `SELECT r.odometer_km, r.gauge_eighths, r.created_at,
+  const rows = await query<{
+    odometer_km: number | null;
+    gauge_eighths: number | null;
+    created_at: Date | null;
+    open_fuel: boolean;
+    fuel_type: string | null;
+    tank_litres: number | null;
+  }>(
+    `SELECT r.odometer_km, r.gauge_eighths, r.created_at, c.fuel_type, c.tank_litres,
             EXISTS (SELECT 1 FROM money_requests m
                      WHERE m.car_id = c.id AND m.kind = 'fuel'
                        AND (m.status = 'pending' OR (m.status = 'approved' AND m.issued_at IS NULL))) AS open_fuel
@@ -178,5 +186,6 @@ export async function getDriverFuelContext(driverId: number) {
   return {
     last: row.odometer_km === null ? null : { odometer: row.odometer_km, eighths: row.gauge_eighths!, at: row.created_at! },
     openFuel: row.open_fuel,
+    missing: missingForFuel({ fuelType: row.fuel_type, tank: row.tank_litres, measured: row.odometer_km !== null }),
   };
 }

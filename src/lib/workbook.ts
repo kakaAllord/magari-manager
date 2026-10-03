@@ -138,7 +138,7 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     excelDate(x.recorded_at),
     periodOfRow(x, periodGroup),
     incomeCar(x),
-    x.car ? `${x.car}` : x.source,
+    x.car_id !== null ? (x.car ?? "") : x.source,
     x.description ?? "",
     Number(x.amount),
     x.recorded_by ?? "",
@@ -231,7 +231,7 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
     const row = byCarStart + i;
     s.getRow(row).values = [
       c.label,
-      c.car,
+      c.car ?? "",
       { formula: `SUMIFS(${incomeAmounts},${range(income, income.carCol)},A${row})`, result: c.income },
       { formula: `SUMIFS(${spendAmounts},${range(spend, spend.carCol)},A${row})`, result: c.spend },
       { formula: `C${row}-D${row}`, result: c.income - c.spend },
@@ -366,7 +366,7 @@ function addFuelSheets(wb: ExcelJS.Workbook, data: ReportData): ChartSpec[] {
     const row = carStart + i;
     s.getRow(row).values = [
       c.plate,
-      c.car,
+      c.car ?? "",
       c.driver ?? "Hana dereva",
       c.totals.km,
       Number(c.totals.litres.toFixed(1)),

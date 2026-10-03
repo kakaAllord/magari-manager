@@ -7,11 +7,13 @@ const manager = { name: "Grace Mollel", email: "manager@example.com", password: 
 const director = { name: "Baraka Mushi", email: "director@example.com", password: "director123" };
 const accountant = { name: "Rehema Kweka", email: "accountant@example.com", password: "accountant123" };
 
-// Each driver signs in with their car's plate and the password below.
+// Each driver signs in with their car's plate and the password below. T321DEF is only a plate, as
+// a manager may add a car before knowing more about it.
 const cars = [
-  { plate: "T103ABE", make: "Toyota", model: "IST", driver: { name: "Juma Hassan", password: "driver123" } },
-  { plate: "T456BCD", make: "Toyota", model: "Hiace", driver: { name: "Neema Mushi", password: "driver123" } },
-  { plate: "T789CDE", make: "Suzuki", model: "Carry", driver: null },
+  { plate: "T103ABE", name: "Toyota IST", driver: { name: "Juma Hassan", password: "driver123" } },
+  { plate: "T456BCD", name: "Toyota Hiace", driver: { name: "Neema Mushi", password: "driver123" } },
+  { plate: "T789CDE", name: "Suzuki Carry", driver: null },
+  { plate: "T321DEF", name: null, driver: null },
 ];
 
 // The live site holds real data. Demo accounts have public passwords, so the demo only goes where
@@ -45,9 +47,9 @@ try {
   }
   for (const c of cars) {
     const inserted = await client.query<{ id: number }>(
-      `INSERT INTO cars (plate, make, model) VALUES ($1, $2, $3)
+      `INSERT INTO cars (plate, name) VALUES ($1, $2)
        ON CONFLICT (plate) DO NOTHING RETURNING id`,
-      [c.plate, c.make, c.model],
+      [c.plate, c.name],
     );
     // Only create the driver alongside a new car, so re-running doesn't duplicate drivers.
     const carId = inserted.rows[0]?.id;

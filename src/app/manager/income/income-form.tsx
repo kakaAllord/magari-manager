@@ -30,7 +30,8 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
           </option>
           {cars.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.plate} · {c.car}
+              {c.plate}
+              {c.car && ` · ${c.car}`}
             </option>
           ))}
         </select>

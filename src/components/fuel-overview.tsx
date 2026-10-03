@@ -138,8 +138,9 @@ function CarsTable({ data, manage }: { data: Overview; manage: boolean }) {
                   <span className="text-muted">{c.driver ?? "Hana dereva"}</span>
                 </p>
                 <p className="mt-1 text-xs text-muted">
-                  {c.car} · {fuelTypeName[c.fuel_type]}
-                  {c.tank_litres ? ` · tanki L ${c.tank_litres}` : ""}
+                  {[c.car, c.fuel_type ? fuelTypeName[c.fuel_type] : "aina ya mafuta haijawekwa", c.tank_litres && `tanki L ${c.tank_litres}`]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
                 {!c.tank_litres && (
                   <p className="mt-1 text-xs font-medium text-warn">

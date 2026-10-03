@@ -36,7 +36,7 @@ const SELECT = `
          r.created_at, r.reviewed_at, r.issued_at, r.issue_note, r.backfilled_at,
          r.requester_id, d.name AS requester_name, d.role AS requester_role,
          m.name AS reviewer_name, a.name AS issuer_name,
-         CASE WHEN c.id IS NULL THEN NULL ELSE c.make || ' ' || c.model || ' · ' || c.plate END AS car,
+         CASE WHEN c.id IS NULL THEN NULL ELSE concat_ws(' · ', c.name, c.plate) END AS car,
          r.kind, fr.odometer_km, fr.gauge_eighths,
          CASE WHEN EXISTS (SELECT 1 FROM receipts rc WHERE rc.request_id = r.id) THEN 'added'
               WHEN r.receipt_due THEN 'due' END AS receipt,

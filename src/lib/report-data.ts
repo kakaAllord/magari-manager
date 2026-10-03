@@ -32,7 +32,7 @@ export type ReportData = {
   income: IncomeSummary;
   totals: { income: number; spend: number; balance: number };
   // Per car (and "Bila gari" when something had no car): income, spending and how many requests.
-  byCar: { label: string; car: string; income: number; spend: number; count: number }[];
+  byCar: { label: string; car: string | null; income: number; spend: number; count: number }[];
   byKind: { label: string; total: number }[];
   // Months, or weeks when the report is grouped by week.
   periodName: "Mwezi" | "Wiki";
@@ -45,7 +45,7 @@ const created = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "long", timeStyle:
 
 // The label a row goes under in the "per car" tables: the plate, or "Bila gari".
 export const expenseCar = (e: ExpenseRow) => e.plate ?? NO_CAR;
-export const incomeCar = (i: IncomeRow) => (i.car ? i.source : NO_CAR);
+export const incomeCar = (i: IncomeRow) => (i.car_id !== null ? i.source : NO_CAR);
 // The month or week a row falls in, as the per-period tables label it.
 export const periodOfRow = (row: { month_start: string; week_start: string }, group: "month" | "week") =>
   periodLabel(group === "month" ? row.month_start : row.week_start, group);

@@ -87,7 +87,7 @@ export default async function DashboardPage() {
                       <td className="py-2 pr-2">
                         <span className="plate">{c.plate}</span>
                         <span className="mt-0.5 block text-xs text-muted">
-                          {c.car} · {c.driver ?? "Hakuna dereva"}
+                          {[c.car, c.driver ?? "Hakuna dereva"].filter(Boolean).join(" · ")}
                         </span>
                       </td>
                       <td className="py-2 text-right align-top tabular-nums">

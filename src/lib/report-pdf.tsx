@@ -265,7 +265,7 @@ function ReportPdf({ data }: { data: ReportData }) {
           <Table
             columns={[
               { label: "Namba", width: 16, value: (c) => c.label },
-              { label: "Gari", width: 22, value: (c) => c.car },
+              { label: "Gari", width: 22, value: (c) => c.car ?? "" },
               { label: "Mapato", width: 17, num: true, value: (c) => money(c.income), color: () => C.in },
               { label: "Matumizi", width: 17, num: true, value: (c) => money(c.spend) },
               { label: "Salio", width: 17, num: true, value: (c) => money(c.income - c.spend), color: (c) => negative(c.income - c.spend) },
@@ -382,7 +382,7 @@ function ReportPdf({ data }: { data: ReportData }) {
             columns={[
               { label: "Imerekodiwa", width: 17, value: (i) => formatWallTime(i.recorded_at) },
               { label: "Gari", width: 13, value: (i) => incomeCar(i) },
-              { label: "Maelezo", width: 38, value: (i) => i.description ?? (i.car ? "" : i.source) },
+              { label: "Maelezo", width: 38, value: (i) => i.description ?? (i.car_id !== null ? "" : i.source) },
               { label: "Na", width: 16, value: (i) => i.recorded_by ?? "" },
               { label: "Kiasi", width: 16, num: true, value: (i) => money(Number(i.amount)), color: () => C.in },
             ]}

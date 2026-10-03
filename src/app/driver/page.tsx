@@ -16,8 +16,8 @@ import { requireUser } from "@/lib/session";
 export default async function DriverPage() {
   const user = await requireUser("driver");
   const [cars, open, fuel] = await Promise.all([
-    query<{ plate: string; make: string; model: string }>(
-      "SELECT plate, make, model FROM cars WHERE driver_id = $1",
+    query<{ plate: string; name: string | null }>(
+      "SELECT plate, name FROM cars WHERE driver_id = $1",
       [user.id],
     ),
     listOpenForRequester(user.id),
@@ -41,7 +41,7 @@ export default async function DriverPage() {
               {car ? (
                 <p className="mt-0.5 flex flex-wrap items-center gap-2 font-semibold">
                   <span className="plate">{car.plate}</span>
-                  {car.make} {car.model}
+                  {car.name}
                 </p>
               ) : (
                 <p className="mt-0.5 font-semibold">Bado hujapewa gari</p>

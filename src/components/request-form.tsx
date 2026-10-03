@@ -14,8 +14,13 @@ import { MAX_REASON_LENGTH } from "@/lib/validation";
 const quickReasons = ["Matengenezo", "Maegesho", "Usafi wa gari", "Ushuru wa barabara"];
 
 // What a driver's fuel request is checked against: their car's last reading (none until the manager
-// records a starting one), and whether a fuel request is still waiting to be paid.
-export type DriverFuel = { last: { odometer: number; eighths: number; at: Date } | null; openFuel: boolean } | null;
+// records a starting one), whether a fuel request is still waiting to be paid, and what the car
+// still lacks before fuel can be asked for (its fuel type, tank or reading; empty when ready).
+export type DriverFuel = {
+  last: { odometer: number; eighths: number; at: Date } | null;
+  openFuel: boolean;
+  missing: string;
+} | null;
 
 // Drivers ask for their own car, and a fuel request carries their km and gauge reading. Managers
 // also pick the car (or none), and `cars` turns that on; their fuel requests carry no reading.
@@ -38,8 +43,8 @@ export function RequestForm({
   const [past, setPast] = useState(false);
   const [picked, setKind] = useState(failed?.values.kind ?? "other");
   const isDriver = !cars;
-  const notMeasured = isDriver && fuel !== null && fuel !== undefined && fuel.last === null;
-  const fuelBlocked = isDriver && (fuel === null || fuel?.openFuel || notMeasured);
+  const notReady = isDriver && fuel ? fuel.missing : "";
+  const fuelBlocked = isDriver && (fuel === null || fuel?.openFuel || notReady !== "");
   // After a fuel request goes in, fuel is blocked until it's paid, so the form falls back to the rest.
   const kind = fuelBlocked ? "other" : picked;
 
@@ -79,9 +84,9 @@ export function RequestForm({
           </p>
         )}
         {isDriver && fuel === null && <p className="mt-1 text-xs text-muted">Utaomba mafuta ukishapewa gari.</p>}
-        {notMeasured && (
+        {notReady && (
           <p className="mt-1 text-xs text-muted">
-            Gari lako bado halina kipimo cha kwanza cha mafuta. Meneja akishakirekodi, utaomba mafuta.
+            Gari lako bado halina {notReady}. Meneja akishakamilisha, utaomba mafuta.
           </p>
         )}
         {failed?.errors.kind && <p className="mt-1 text-sm text-danger">{failed.errors.kind}</p>}
@@ -102,18 +107,19 @@ export function RequestForm({
             <option value="" disabled>
               Chagua namba ya gari
             </option>
-            {/* Fuel bought now is measured from the car's starting reading; past fuel is history. */}
+            {/* Fuel bought now needs the car's fuel type, tank and starting reading; past fuel is history. */}
             {cars.map((c) => (
-              <option key={c.id} value={c.id} disabled={kind === "fuel" && !past && !c.measured}>
-                {c.plate} · {c.car}
-                {kind === "fuel" && !past && !c.measured && " · bado halijapimwa"}
+              <option key={c.id} value={c.id} disabled={kind === "fuel" && !past && !c.fuelReady}>
+                {c.plate}
+                {c.car && ` · ${c.car}`}
+                {kind === "fuel" && !past && !c.fuelReady && " · bado haliko tayari kwa mafuta"}
               </option>
             ))}
             {kind !== "fuel" && <option value="none">Bila gari (ofisi na mengineyo)</option>}
           </select>
-          {kind === "fuel" && !past && cars.some((c) => !c.measured) && (
+          {kind === "fuel" && !past && cars.some((c) => !c.fuelReady) && (
             <p className="mt-1 text-xs text-muted">
-              Gari lisilopimwa haliwezi kuombewa mafuta: rekodi kilomita na geji zake kwenye Mafuta kwanza.
+              Gari linaombewa mafuta likishakuwa na aina ya mafuta, tanki na kipimo cha sasa. Vikamilishe kwenye Magari.
             </p>
           )}
           {failed?.errors.carId && <p className="mt-1 text-sm text-danger">{failed.errors.carId}</p>}
