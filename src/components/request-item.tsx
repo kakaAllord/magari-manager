@@ -1,5 +1,5 @@
 import { gaugeLabel } from "@/lib/fuel-calc";
-import { formatDateTime, formatKm, formatMoney } from "@/lib/format";
+import { formatDate, formatDateTime, formatKm, formatMoney } from "@/lib/format";
 import type { MoneyRequest } from "@/lib/requests";
 
 // One request as every list shows it: amount, who asked, the reason, then each step with its time.
@@ -29,27 +29,36 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
           km {formatKm(r.odometer_km)} · {gaugeLabel(r.gauge_eighths)}
         </p>
       )}
-      <p className="mt-1 text-xs text-muted">
-        {r.car ?? "Hakuna gari"} · Imetumwa {formatDateTime(r.created_at)}
-        {r.reviewed_at &&
-          (selfApproved
-            ? " · Ombi la meneja, limekubaliwa moja kwa moja"
-            : ` · ${r.status === "rejected" ? "Imekataliwa" : "Imekubaliwa"} na ${r.reviewer_name ?? "meneja"} ${formatDateTime(r.reviewed_at)}`)}
-        {r.status === "approved" && " · Inasubiri mhasibu"}
-        {/* Requests from before there was a mhasibu were paid on approval and name no issuer. */}
-        {r.issued_at && (r.issuer_name ? ` · Imelipwa na ${r.issuer_name} ${formatDateTime(r.issued_at)}` : " · Imelipwa")}
-        {r.issue_note && ` · ${r.issue_note}`}
-        {r.receipt === "due" && (mine ? " · Peleka risiti kwa mhasibu" : " · Inasubiri risiti")}
-        {r.receipt === "added" && (
-          <>
-            {" · "}
-            <a href={`/receipts/${r.id}`} target="_blank" className="font-medium text-accent underline">
-              Ona risiti
-            </a>
-            {r.receipt_note && ` (Na. ${r.receipt_note})`}
-          </>
-        )}
-      </p>
+      {r.backfilled_at && r.issued_at ? (
+        // History typed in later: it was paid on its day, outside the app, so there are no steps to show.
+        <p className="mt-1 text-xs text-muted">
+          {r.car ?? "Hakuna gari"} · <span className="font-medium text-warn">Rekodi ya zamani</span> ya{" "}
+          {formatDate(r.issued_at)} · imeingizwa na {r.reviewer_name ?? "meneja"} {formatDateTime(r.backfilled_at)}
+        </p>
+      ) : (
+        <p className="mt-1 text-xs text-muted">
+          {r.car ?? "Hakuna gari"} · Imetumwa {formatDateTime(r.created_at)}
+          {r.reviewed_at &&
+            (selfApproved
+              ? " · Ombi la meneja, limekubaliwa moja kwa moja"
+              : ` · ${r.status === "rejected" ? "Imekataliwa" : "Imekubaliwa"} na ${r.reviewer_name ?? "meneja"} ${formatDateTime(r.reviewed_at)}`)}
+          {r.status === "approved" && " · Inasubiri mhasibu"}
+          {/* Requests from before there was a mhasibu were paid on approval and name no issuer. */}
+          {r.issued_at &&
+            (r.issuer_name ? ` · Imelipwa na ${r.issuer_name} ${formatDateTime(r.issued_at)}` : " · Imelipwa")}
+          {r.issue_note && ` · ${r.issue_note}`}
+          {r.receipt === "due" && (mine ? " · Peleka risiti kwa mhasibu" : " · Inasubiri risiti")}
+          {r.receipt === "added" && (
+            <>
+              {" · "}
+              <a href={`/receipts/${r.id}`} target="_blank" className="font-medium text-accent underline">
+                Ona risiti
+              </a>
+              {r.receipt_note && ` (Na. ${r.receipt_note})`}
+            </>
+          )}
+        </p>
+      )}
     </div>
   );
 }

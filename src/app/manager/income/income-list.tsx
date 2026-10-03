@@ -1,4 +1,4 @@
-import { formatDateTime, formatMoney } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { Income } from "@/lib/incomes";
 import { DeleteIncome } from "./delete-income";
 
@@ -16,7 +16,16 @@ export function IncomeList({ incomes, empty }: { incomes: Income[]; empty: strin
               </p>
               {i.description && <p className="text-sm break-words">{i.description}</p>}
               <p className="mt-1 text-xs text-muted">
-                {formatDateTime(i.created_at)} · Imerekodiwa na {i.recorder_name ?? "meneja"}
+                {i.backfilled_at ? (
+                  <>
+                    {formatDate(i.created_at)} · <span className="font-medium text-warn">Rekodi ya zamani</span>,
+                    imeingizwa na {i.recorder_name ?? "meneja"} {formatDateTime(i.backfilled_at)}
+                  </>
+                ) : (
+                  <>
+                    {formatDateTime(i.created_at)} · Imerekodiwa na {i.recorder_name ?? "meneja"}
+                  </>
+                )}
               </p>
             </div>
             <p className="shrink-0 font-semibold text-ok tabular-nums">+{formatMoney(i.amount)}</p>

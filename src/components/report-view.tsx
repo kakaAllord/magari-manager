@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
 import { ReportToolbar } from "@/components/report-filters";
-import { formatMoney, formatWallTime } from "@/lib/format";
+import { formatMoney, formatWallDate, formatWallTime } from "@/lib/format";
 import { parseReportParams, presets, toSearch } from "@/lib/report-params";
 import { getExpenses, getIncomes, listCars, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
 
@@ -180,10 +180,19 @@ export async function ReportView({
                             <span className="plate">{e.plate ?? "Hakuna gari"}</span> {e.reason}
                           </p>
                           <p className="mt-1 text-xs text-muted">
-                            Imetolewa {formatWallTime(e.issued_at)}
-                            {e.issued_by && ` na ${e.issued_by}`} · imekubaliwa {formatWallTime(e.approved_at)} · iliombwa{" "}
-                            {formatWallTime(e.requested_at)} · {e.requester}
-                            {e.issue_note && ` · ${e.issue_note}`}
+                            {e.backfilled ? (
+                              <>
+                                {formatWallDate(e.issued_at)} · <span className="font-medium text-warn">Rekodi ya zamani</span> ·{" "}
+                                {e.requester}
+                              </>
+                            ) : (
+                              <>
+                                Imetolewa {formatWallTime(e.issued_at)}
+                                {e.issued_by && ` na ${e.issued_by}`} · imekubaliwa {formatWallTime(e.approved_at)} · iliombwa{" "}
+                                {formatWallTime(e.requested_at)} · {e.requester}
+                                {e.issue_note && ` · ${e.issue_note}`}
+                              </>
+                            )}
                           </p>
                         </div>
                         <p className="shrink-0 font-medium tabular-nums">{formatMoney(e.amount)}</p>
@@ -246,7 +255,13 @@ export async function ReportView({
                           </p>
                           {x.description && <p className="text-sm break-words">{x.description}</p>}
                           <p className="mt-1 text-xs text-muted">
-                            Imerekodiwa {formatWallTime(x.recorded_at)}
+                            {x.backfilled ? (
+                              <>
+                                {formatWallDate(x.recorded_at)} · <span className="font-medium text-warn">Rekodi ya zamani</span>
+                              </>
+                            ) : (
+                              <>Imerekodiwa {formatWallTime(x.recorded_at)}</>
+                            )}
                             {x.recorded_by && ` · ${x.recorded_by}`}
                           </p>
                         </div>

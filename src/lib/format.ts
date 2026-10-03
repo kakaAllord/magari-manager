@@ -16,10 +16,15 @@ const dateTime = new Intl.DateTimeFormat("sw-TZ", {
 // pg returns numeric columns as strings to avoid precision loss.
 export const formatMoney = (amount: string | number) => money.format(Number(amount));
 export const formatDateTime = (d: Date) => dateTime.format(d);
+// History typed in later has a day but no real time of day.
+const dateOnly = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "medium", timeZone: TIME_ZONE });
+export const formatDate = (d: Date) => dateOnly.format(d);
 
 // Report rows already carry Tanzanian wall time as "YYYY-MM-DD HH:MI"; read it as UTC so it isn't shifted again.
 const wallTime = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
 export const formatWallTime = (local: string) => wallTime.format(new Date(`${local.replace(" ", "T")}:00Z`));
+const wallDate = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "medium", timeZone: "UTC" });
+export const formatWallDate = (local: string) => wallDate.format(new Date(`${local.slice(0, 10)}T00:00:00Z`));
 
 // Compact axis labels: 1,250,000 -> "1.3M", 40,000 -> "40K".
 export const formatCompact = (amount: number) =>
