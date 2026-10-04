@@ -41,7 +41,7 @@ export default async function DirectorDashboard() {
           Mwezi uliopita {formatMoney(o.last_month)}
         </Tile>
         <Tile label="Salio mwezi huu" value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
-          Mwezi uliopita {formatMoney(lastBalance)}
+          Mwezi uliopita {keepMinus(formatMoney(lastBalance))}
         </Tile>
         <Tile label="Salio tangu mwanzo" value={formatMoney(allTime)} tone={allTime < 0 ? "danger" : "ok"}>
           Mapato {formatMoney(income.all_time)}
