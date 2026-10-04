@@ -188,7 +188,9 @@ export async function ReportView({
                             ) : (
                               <>
                                 Imetolewa {formatWallTime(e.issued_at)}
-                                {e.issued_by && ` na ${e.issued_by}`} · imekubaliwa {formatWallTime(e.approved_at)} · iliombwa{" "}
+                                {e.issued_by && ` na ${e.issued_by}`}
+                                {e.authorised_by && ` · imeidhinishwa na ${e.authorised_by}`} · imekubaliwa{" "}
+                                {formatWallTime(e.approved_at)} · iliombwa{" "}
                                 {formatWallTime(e.requested_at)} · {e.requester}
                                 {e.issue_note && ` · ${e.issue_note}`}
                               </>

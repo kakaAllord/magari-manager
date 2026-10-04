@@ -91,6 +91,7 @@ function addSpendSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     x.reason,
     Number(x.amount),
     x.approved_by ?? "",
+    x.authorised_by ?? "",
     x.issued_by ?? "",
     x.issue_note ?? "",
     excelDate(x.requested_at),
@@ -111,15 +112,16 @@ function addSpendSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
       { name: "Sababu", filterButton: true },
       { name: "Kiasi", filterButton: true, totalsRowFunction: "sum" },
       { name: "Imekubaliwa na", filterButton: true },
+      { name: "Imeidhinishwa na", filterButton: true },
       { name: "Imetolewa na", filterButton: true },
       { name: "Kumbukumbu", filterButton: true },
       { name: "Iliombwa", filterButton: true },
     ],
-    rows: rows.length ? rows : [[null, "", "", "", "", "", "Hakuna matumizi katika kipindi hiki", 0, "", "", "", null]],
+    rows: rows.length ? rows : [[null, "", "", "", "", "", "Hakuna matumizi katika kipindi hiki", 0, "", "", "", "", null]],
   });
-  [18, 14, 12, 20, 12, 20, 40, 16, 20, 20, 24, 18].forEach((w, i) => (s.getColumn(i + 1).width = w));
+  [18, 14, 12, 20, 12, 20, 40, 16, 20, 20, 20, 24, 18].forEach((w, i) => (s.getColumn(i + 1).width = w));
   s.getColumn(1).numFmt = DATE;
-  s.getColumn(12).numFmt = DATE;
+  s.getColumn(13).numFmt = DATE;
   s.getColumn(8).numFmt = MONEY;
   const n = Math.max(rows.length, 1);
   s.addConditionalFormatting({
