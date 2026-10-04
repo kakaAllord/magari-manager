@@ -13,12 +13,12 @@ export type ManagerFormState = { ok: boolean; message: string } | undefined;
 
 const UNIQUE_VIOLATION = "23505";
 
-// The roles the signed-in person may add (or manage); anyone else is sent home.
-async function staffRoles(table: typeof staffAddedBy): Promise<StaffRole[]> {
+// The signed-in person and the roles they may add (or manage); anyone else is sent home.
+async function staffRoles(table: typeof staffAddedBy) {
   const user = await requireUser();
   const roles = table[user.role];
   if (!roles) redirect(homeFor(user.role));
-  return roles;
+  return { user, roles };
 }
 
 const refresh = () => {
@@ -27,7 +27,7 @@ const refresh = () => {
 };
 
 export async function createManager(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
-  const roles = await staffRoles(staffAddedBy);
+  const { user, roles } = await staffRoles(staffAddedBy);
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
@@ -39,11 +39,12 @@ export async function createManager(_prev: ManagerFormState, formData: FormData)
   if (error) return { ok: false, message: error };
 
   try {
-    await query("INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)", [
+    await query("INSERT INTO users (name, email, password_hash, role, added_by) VALUES ($1, $2, $3, $4, $5)", [
       name,
       email,
       await bcrypt.hash(password, 10),
       role,
+      user.id,
     ]);
   } catch (err) {
     if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
@@ -61,7 +62,7 @@ export async function createManager(_prev: ManagerFormState, formData: FormData)
 
 // Setting a new password also signs the person out everywhere.
 export async function setManagerPassword(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
-  const roles = await staffRoles(staffManagedBy);
+  const { roles } = await staffRoles(staffManagedBy);
   const managerId = Number(formData.get("managerId"));
   const password = String(formData.get("password") ?? "");
   const passwordError = checkNewPassword(password);
@@ -83,7 +84,7 @@ export async function setManagerPassword(_prev: ManagerFormState, formData: Form
 
 // Switching someone off signs them out and blocks sign-in; their past decisions, payouts and income keep their name.
 export async function setManagerActive(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
-  const roles = await staffRoles(staffManagedBy);
+  const { roles } = await staffRoles(staffManagedBy);
   const managerId = Number(formData.get("managerId"));
   const active = formData.get("active") === "1";
   if (!Number.isInteger(managerId)) return { ok: false, message: "Mfanyakazi hajulikani." };

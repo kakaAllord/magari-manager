@@ -8,6 +8,7 @@ type StaffRow = {
   name: string;
   email: string;
   role: StaffRole;
+  added_by: string | null;
   handled: number;
   last_active: Date | null;
   deactivated_at: Date | null;
@@ -31,7 +32,7 @@ const handledLabel: Record<StaffRole, string> = {
 export async function StaffList({ roles, empty }: { roles: StaffRole[]; empty: string }) {
   // "Last active" is the latest decision, payment or income recorded.
   const staff = await query<StaffRow>(
-    `SELECT u.id, u.name, u.email, u.role, u.deactivated_at,
+    `SELECT u.id, u.name, u.email, u.role, u.deactivated_at, a.name AS added_by,
             CASE u.role
               WHEN 'manager' THEN (SELECT count(*)::int FROM money_requests r WHERE r.reviewed_by = u.id AND r.requester_id <> u.id)
               WHEN 'factory_manager' THEN (SELECT count(*)::int FROM money_requests r WHERE r.factory_reviewed_by = u.id)
@@ -43,7 +44,8 @@ export async function StaffList({ roles, empty }: { roles: StaffRole[]; empty: s
               (SELECT max(issued_at) FROM money_requests r WHERE r.issued_by = u.id),
               (SELECT max(coalesce(backfilled_at, created_at)) FROM incomes i WHERE i.recorded_by = u.id)
             ) AS last_active
-       FROM users u WHERE u.role = ANY($1::text[])
+       FROM users u LEFT JOIN users a ON a.id = u.added_by
+      WHERE u.role = ANY($1::text[])
       ORDER BY u.deactivated_at IS NOT NULL, array_position($1::text[], u.role), u.name`,
     [roles],
   );
@@ -87,7 +89,10 @@ export async function StaffList({ roles, empty }: { roles: StaffRole[]; empty: s
                     </span>
                   )}
                 </p>
-                <p className="truncate text-sm text-muted">{m.email}</p>
+                <p className="truncate text-sm text-muted">
+                  {m.email}
+                  {m.added_by && <span className="text-xs"> · ameongezwa na {m.added_by}</span>}
+                </p>
                 <p className="text-xs text-muted">
                   {m.deactivated_at
                     ? `Alizimwa ${formatDateTime(m.deactivated_at)}`
