@@ -115,13 +115,15 @@ export async function createRequest(
   }
   revalidatePath("/driver");
   revalidatePath("/manager", "layout");
+  revalidatePath("/factory", "layout");
   revalidatePath("/director", "layout");
   await notify([MANAGERS_CHANNEL]);
   return { ok: true };
 }
 
-// A manager's own request is approved as it's made and goes straight to the mhasibu. With a past
-// date it is history instead: entered as already paid on that day, with no mhasibu or receipt step.
+// A vehicle manager's own request is approved as it's made and goes to the factory manager, then the
+// mhasibu. With a past date it is history instead: entered as already paid on that day, with no
+// factory manager, mhasibu or receipt step.
 export async function createManagerRequest(
   _prev: RequestFormState,
   formData: FormData,
@@ -168,11 +170,12 @@ export async function createManagerRequest(
   const inserted = await query(
     `WITH at AS (SELECT CASE WHEN $6::date IS NULL THEN now() ELSE ($6::date + time '12:00') AT TIME ZONE $7 END AS t)
      INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at, kind, fuel_price,
-                                 created_at, issued_at, backfilled_at)
+                                 created_at, factory_reviewed_at, issued_at, backfilled_at)
      SELECT $1, $2::int, $3, $4, 'approved', $1, at.t, $5,
             CASE WHEN $5 = 'fuel' THEN (SELECT p.price_per_litre FROM cars c JOIN fuel_prices p ON p.fuel_type = c.fuel_type
                                          WHERE c.id = $2::int) END,
             at.t,
+            CASE WHEN $6::date IS NULL THEN NULL ELSE at.t END,
             CASE WHEN $6::date IS NULL THEN NULL ELSE at.t END,
             CASE WHEN $6::date IS NULL THEN NULL ELSE now() END
        FROM at
@@ -184,6 +187,7 @@ export async function createManagerRequest(
     return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." }, values };
   }
   revalidatePath("/manager", "layout");
+  revalidatePath("/factory", "layout");
   revalidatePath("/accountant", "layout");
   revalidatePath("/director", "layout");
   await notify([MANAGERS_CHANNEL]);
@@ -203,13 +207,39 @@ export async function reviewRequest(formData: FormData) {
     [id, decision, manager.id],
   );
   revalidatePath("/manager", "layout");
+  revalidatePath("/factory", "layout");
   revalidatePath("/driver");
   // Tell the driver, and other managers looking at the same list.
   if (updated[0]) await notify([driverChannel(updated[0].requester_id), MANAGERS_CHANNEL]);
 }
 
-// The mhasibu pays out an approved request, with an optional note such as an M-Pesa reference.
-// Only unpaid approved requests match, so a double tap or a second mhasibu is a no-op.
+// The factory manager authorises what the vehicle manager approved, sending it on to the mhasibu,
+// or declines it. Only approved requests not yet decided here match, so a double tap or a second
+// factory manager is a no-op.
+export async function authoriseRequest(formData: FormData) {
+  const factoryManager = await requireUser("factory_manager");
+  const id = Number(formData.get("id"));
+  const decision = formData.get("decision");
+  if (!Number.isInteger(id) || (decision !== "authorised" && decision !== "rejected")) return;
+
+  const updated = await query<{ requester_id: number }>(
+    `UPDATE money_requests
+        SET factory_reviewed_at = now(), factory_reviewed_by = $3,
+            status = CASE WHEN $2 = 'rejected' THEN 'rejected' ELSE status END
+      WHERE id = $1 AND status = 'approved' AND factory_reviewed_at IS NULL
+      RETURNING requester_id`,
+    [id, decision, factoryManager.id],
+  );
+  revalidatePath("/factory", "layout");
+  revalidatePath("/manager", "layout");
+  revalidatePath("/accountant", "layout");
+  revalidatePath("/director", "layout");
+  revalidatePath("/driver");
+  if (updated[0]) await notify([driverChannel(updated[0].requester_id), MANAGERS_CHANNEL]);
+}
+
+// The mhasibu pays out an authorised request, with an optional note such as an M-Pesa reference.
+// Only unpaid authorised requests match, so a double tap or a second mhasibu is a no-op.
 // The payment then waits for its receipt.
 export async function issueRequest(formData: FormData) {
   const accountant = await requireUser("accountant");
@@ -219,11 +249,13 @@ export async function issueRequest(formData: FormData) {
 
   const issued = await query<{ requester_id: number }>(
     `UPDATE money_requests SET issued_at = now(), issued_by = $2, issue_note = $3, receipt_due = true
-      WHERE id = $1 AND status = 'approved' AND issued_at IS NULL RETURNING requester_id`,
+      WHERE id = $1 AND status = 'approved' AND factory_reviewed_at IS NOT NULL AND issued_at IS NULL
+      RETURNING requester_id`,
     [id, accountant.id, note],
   );
   revalidatePath("/accountant", "layout");
   revalidatePath("/manager", "layout");
+  revalidatePath("/factory", "layout");
   revalidatePath("/director", "layout");
   revalidatePath("/driver", "layout");
   if (issued[0]) await notify([driverChannel(issued[0].requester_id), MANAGERS_CHANNEL]);
@@ -254,6 +286,7 @@ export async function addReceipt(_prev: ReceiptState, formData: FormData): Promi
   if (!added[0]) return { ok: false, message: "Risiti ya malipo haya imeshawekwa, au malipo hayapo." };
   revalidatePath("/accountant", "layout");
   revalidatePath("/manager", "layout");
+  revalidatePath("/factory", "layout");
   revalidatePath("/director", "layout");
   revalidatePath("/driver", "layout");
   await notify([driverChannel(added[0].requester_id), MANAGERS_CHANNEL]);

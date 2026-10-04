@@ -3,6 +3,7 @@ import type { RequestStatus } from "@/lib/requests";
 const styles: Record<RequestStatus, string> = {
   pending: "bg-warn-soft text-warn",
   approved: "bg-accent-soft text-accent",
+  authorised: "bg-accent-soft text-accent",
   rejected: "bg-danger-soft text-danger",
   issued: "bg-ok-soft text-ok",
 };
@@ -10,6 +11,7 @@ const styles: Record<RequestStatus, string> = {
 const labels: Record<RequestStatus, string> = {
   pending: "Linasubiri",
   approved: "Limekubaliwa",
+  authorised: "Limeidhinishwa",
   rejected: "Limekataliwa",
   issued: "Limelipwa",
 };

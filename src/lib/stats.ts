@@ -12,6 +12,8 @@ export type Overview = {
   drivers_without_car: number;
   pending_count: number;
   pending_total: string;
+  awaiting_authorisation_count: number;
+  awaiting_authorisation_total: string;
   awaiting_issue_count: number;
   awaiting_issue_total: string;
   this_month: string;
@@ -35,9 +37,14 @@ export async function getOverview() {
           AND NOT EXISTS (SELECT 1 FROM cars c WHERE c.driver_id = u.id)) AS drivers_without_car,
        (SELECT count(*)::int FROM money_requests WHERE status = 'pending') AS pending_count,
        (SELECT coalesce(sum(amount), 0) FROM money_requests WHERE status = 'pending') AS pending_total,
-       (SELECT count(*)::int FROM money_requests WHERE status = 'approved' AND issued_at IS NULL) AS awaiting_issue_count,
+       (SELECT count(*)::int FROM money_requests
+         WHERE status = 'approved' AND factory_reviewed_at IS NULL) AS awaiting_authorisation_count,
        (SELECT coalesce(sum(amount), 0) FROM money_requests
-         WHERE status = 'approved' AND issued_at IS NULL) AS awaiting_issue_total,
+         WHERE status = 'approved' AND factory_reviewed_at IS NULL) AS awaiting_authorisation_total,
+       (SELECT count(*)::int FROM money_requests
+         WHERE status = 'approved' AND factory_reviewed_at IS NOT NULL AND issued_at IS NULL) AS awaiting_issue_count,
+       (SELECT coalesce(sum(amount), 0) FROM money_requests
+         WHERE status = 'approved' AND factory_reviewed_at IS NOT NULL AND issued_at IS NULL) AS awaiting_issue_total,
        (SELECT coalesce(sum(amount), 0) FROM spend, local
          WHERE at >= date_trunc('month', now_local)) AS this_month,
        (SELECT coalesce(sum(amount), 0) FROM spend, local

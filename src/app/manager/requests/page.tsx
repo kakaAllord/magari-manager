@@ -21,7 +21,7 @@ export default async function RequestsPage() {
         title="Maombi"
         description={
           pending.length > 0
-            ? `Maombi ${pending.length} yanasubiri idhini yako, jumla ${formatMoney(pendingTotal)}. Ukikubali, yanakwenda kwa mhasibu.`
+            ? `Maombi ${pending.length} yanasubiri idhini yako, jumla ${formatMoney(pendingTotal)}. Ukikubali, yanakwenda kwa meneja wa kiwanda kuidhinishwa, kisha kwa mhasibu.`
             : "Hakuna ombi linalosubiri kwa sasa."
         }
       />

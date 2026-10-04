@@ -12,7 +12,7 @@ export default async function DriverHistoryPage({ searchParams }: PageProps<"/dr
       <PageHeader title="Historia" description="Maombi yako yote, mapya juu." />
       <RequestHistory
         searchParams={await searchParams}
-        filters={["all", "approved", "issued", "rejected"]}
+        filters={["all", "approved", "authorised", "issued", "rejected"]}
         requesterId={user.id}
         mine
         carFilter={false}

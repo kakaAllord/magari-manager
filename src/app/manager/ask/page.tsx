@@ -22,7 +22,7 @@ export default async function ManagerAskPage() {
       <LiveUpdates channel={MANAGERS_CHANNEL} />
       <PageHeader
         title="Omba pesa"
-        description="Ombi lako linakubaliwa moja kwa moja na kwenda kwa mhasibu. Kwa matumizi ya zamani, chagua tarehe yake: yanahifadhiwa kama yaliyokwisha lipwa."
+        description="Ombi lako linakubaliwa moja kwa moja na kwenda kwa meneja wa kiwanda kuidhinishwa, kisha kwa mhasibu. Kwa matumizi ya zamani, chagua tarehe yake: yanahifadhiwa kama yaliyokwisha lipwa."
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
@@ -32,7 +32,7 @@ export default async function ManagerAskPage() {
             submit={createManagerRequest}
             cars={cars}
             today={todayInTanzania()}
-            sent="Ombi limekubaliwa na limepelekwa kwa mhasibu."
+            sent="Ombi limekubaliwa na limepelekwa kwa meneja wa kiwanda."
           />
         </section>
 

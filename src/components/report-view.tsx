@@ -6,7 +6,7 @@ import { formatMoney, formatWallDate, formatWallTime, keepMinus } from "@/lib/fo
 import { parseReportParams, presets, toSearch } from "@/lib/report-params";
 import { getExpenses, getIncomes, listCars, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
 
-// The reports page, shared by managers and directors. `base` is the page's own path.
+// The reports page, shared by both managers, the mhasibu and directors. `base` is the page's own path.
 export async function ReportView({
   base,
   searchParams,

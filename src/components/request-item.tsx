@@ -6,6 +6,8 @@ import type { MoneyRequest } from "@/lib/requests";
 // `mine` hides the requester's own name on their pages.
 export function RequestSummary({ request: r, mine = false }: { request: MoneyRequest; mine?: boolean }) {
   const selfApproved = r.requester_role === "manager" && r.status !== "pending";
+  // Rejected by the factory manager, after the vehicle manager approved it.
+  const declinedByFactory = r.status === "rejected" && r.factory_reviewed_at !== null;
   return (
     <div className="min-w-0 flex-1">
       <p className="font-semibold tabular-nums">
@@ -14,7 +16,7 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
           <span className="font-normal text-muted">
             {" "}
             · {r.requester_name}
-            {r.requester_role === "manager" && " (meneja)"}
+            {r.requester_role === "manager" && " (meneja wa magari)"}
           </span>
         )}
       </p>
@@ -40,9 +42,14 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
           {r.car ?? "Hakuna gari"} · Imetumwa {formatDateTime(r.created_at)}
           {r.reviewed_at &&
             (selfApproved
-              ? " · Ombi la meneja, limekubaliwa moja kwa moja"
-              : ` · ${r.status === "rejected" ? "Imekataliwa" : "Imekubaliwa"} na ${r.reviewer_name ?? "meneja"} ${formatDateTime(r.reviewed_at)}`)}
-          {r.status === "approved" && " · Inasubiri mhasibu"}
+              ? " · Ombi la meneja wa magari, limekubaliwa moja kwa moja"
+              : ` · ${r.status === "rejected" && !declinedByFactory ? "Imekataliwa" : "Imekubaliwa"} na ${r.reviewer_name ?? "meneja"} ${formatDateTime(r.reviewed_at)}`)}
+          {r.status === "approved" && " · Inasubiri meneja wa kiwanda"}
+          {/* Approvals from before the factory manager's step count as authorised and name nobody. */}
+          {r.factory_reviewed_at &&
+            r.factory_reviewer_name &&
+            ` · ${declinedByFactory ? "Imekataliwa" : "Imeidhinishwa"} na ${r.factory_reviewer_name} (meneja wa kiwanda) ${formatDateTime(r.factory_reviewed_at)}`}
+          {r.status === "authorised" && " · Inasubiri mhasibu"}
           {/* Requests from before there was a mhasibu were paid on approval and name no issuer. */}
           {r.issued_at &&
             (r.issuer_name ? ` · Imelipwa na ${r.issuer_name} ${formatDateTime(r.issued_at)}` : " · Imelipwa")}

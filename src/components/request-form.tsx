@@ -132,7 +132,7 @@ export function RequestForm({
           defaultValue={failed?.values.date}
           error={failed?.errors.date}
           onPast={setPast}
-          pastHint="Tarehe iliyopita: litahifadhiwa kama matumizi ya zamani yaliyokwisha lipwa, bila kupitia kwa mhasibu."
+          pastHint="Tarehe iliyopita: litahifadhiwa kama matumizi ya zamani yaliyokwisha lipwa, bila kupitia kwa meneja wa kiwanda wala mhasibu."
         />
       )}
 

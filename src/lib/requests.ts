@@ -1,8 +1,9 @@
 import "server-only";
 import { query } from "@/lib/db";
 
-// "issued" isn't stored as a status: it is an approved request the mhasibu has paid out.
-export type RequestStatus = "pending" | "approved" | "rejected" | "issued";
+// Only pending, approved and rejected are stored. "authorised" is an approved request the factory
+// manager has let through to the mhasibu; "issued" is one the mhasibu has paid out.
+export type RequestStatus = "pending" | "approved" | "authorised" | "rejected" | "issued";
 
 export type MoneyRequest = {
   id: number;
@@ -11,6 +12,9 @@ export type MoneyRequest = {
   status: RequestStatus;
   created_at: Date;
   reviewed_at: Date | null;
+  // The factory manager's decision: authorised, or declined when the status is rejected.
+  factory_reviewed_at: Date | null;
+  factory_reviewer_name: string | null;
   issued_at: Date | null;
   issue_note: string | null;
   requester_id: number;
@@ -32,8 +36,10 @@ export type MoneyRequest = {
 
 const SELECT = `
   SELECT r.id, r.amount, r.reason,
-         CASE WHEN r.issued_at IS NOT NULL THEN 'issued' ELSE r.status END AS status,
-         r.created_at, r.reviewed_at, r.issued_at, r.issue_note, r.backfilled_at,
+         CASE WHEN r.issued_at IS NOT NULL THEN 'issued'
+              WHEN r.status = 'approved' AND r.factory_reviewed_at IS NOT NULL THEN 'authorised'
+              ELSE r.status END AS status,
+         r.created_at, r.reviewed_at, r.factory_reviewed_at, f.name AS factory_reviewer_name, r.issued_at, r.issue_note, r.backfilled_at,
          r.requester_id, d.name AS requester_name, d.role AS requester_role,
          m.name AS reviewer_name, a.name AS issuer_name,
          CASE WHEN c.id IS NULL THEN NULL ELSE concat_ws(' · ', c.name, c.plate) END AS car,
@@ -45,6 +51,7 @@ const SELECT = `
     FROM money_requests r
     JOIN users d ON d.id = r.requester_id
     LEFT JOIN users m ON m.id = r.reviewed_by
+    LEFT JOIN users f ON f.id = r.factory_reviewed_by
     LEFT JOIN users a ON a.id = r.issued_by
     LEFT JOIN cars c ON c.id = r.car_id
     LEFT JOIN fuel_readings fr ON fr.request_id = r.id`;
@@ -61,10 +68,17 @@ const paged = (rows: (MoneyRequest & { total_count: number })[]): Page => ({
 export const listPending = () =>
   query<MoneyRequest>(`${SELECT} WHERE r.status = 'pending' ORDER BY r.created_at ASC`);
 
-// Approved and waiting for the mhasibu, oldest approval first.
+// Approved by the vehicle manager and waiting for the factory manager, oldest approval first.
+export const listAwaitingAuthorisation = () =>
+  query<MoneyRequest>(
+    `${SELECT} WHERE r.status = 'approved' AND r.factory_reviewed_at IS NULL ORDER BY r.reviewed_at ASC`,
+  );
+
+// Authorised and waiting for the mhasibu, oldest authorisation first.
 export const listAwaitingIssue = () =>
   query<MoneyRequest>(
-    `${SELECT} WHERE r.status = 'approved' AND r.issued_at IS NULL ORDER BY r.reviewed_at ASC`,
+    `${SELECT} WHERE r.status = 'approved' AND r.factory_reviewed_at IS NOT NULL AND r.issued_at IS NULL
+      ORDER BY r.factory_reviewed_at ASC`,
   );
 
 // Paid, and the mhasibu still needs the receipt. Oldest payment first.
@@ -72,7 +86,7 @@ const AWAITING_RECEIPT = "r.receipt_due AND NOT EXISTS (SELECT 1 FROM receipts r
 export const listAwaitingReceipt = () =>
   query<MoneyRequest>(`${SELECT} WHERE ${AWAITING_RECEIPT} ORDER BY r.issued_at ASC`);
 
-// Still moving: pending, approved but not yet paid, or paid with the receipt still to bring. Newest first.
+// Still moving: pending, approved (by one or both managers) but not yet paid, or paid with the receipt still to bring. Newest first.
 export const listOpenForRequester = (requesterId: number) =>
   query<MoneyRequest>(
     `${SELECT} WHERE r.requester_id = $1
@@ -81,9 +95,9 @@ export const listOpenForRequester = (requesterId: number) =>
     [requesterId],
   );
 
-export type HistoryFilter = "all" | "approved" | "issued" | "rejected";
+export type HistoryFilter = "all" | "approved" | "authorised" | "issued" | "rejected";
 
-// Everything past the manager's decision (or everything one person asked for), newest first.
+// Everything past the vehicle manager's decision (or everything one person asked for), newest first.
 // `byEntry` sorts by when each was entered, so history just typed in shows at the top.
 export async function listHistory(opts: {
   page: number;
@@ -99,7 +113,8 @@ export async function listHistory(opts: {
         AND ($1::int IS NOT NULL OR r.status <> 'pending')
         AND ($2::int IS NULL OR r.car_id = $2)
         AND CASE $3
-              WHEN 'approved' THEN r.status = 'approved' AND r.issued_at IS NULL
+              WHEN 'approved' THEN r.status = 'approved' AND r.factory_reviewed_at IS NULL
+              WHEN 'authorised' THEN r.status = 'approved' AND r.factory_reviewed_at IS NOT NULL AND r.issued_at IS NULL
               WHEN 'issued' THEN r.issued_at IS NOT NULL
               WHEN 'rejected' THEN r.status = 'rejected'
               ELSE true

@@ -54,14 +54,14 @@ export default async function DriverPage() {
             <RequestForm
               submit={createRequest}
               fuel={fuel}
-              sent="Ombi limetumwa. Utaona jibu la meneja hapa, kisha mhasibu atakulipa."
+              sent="Ombi limetumwa. Utaona jibu la meneja hapa; meneja wa kiwanda akiidhinisha, mhasibu atakulipa."
             />
           </section>
         </div>
 
         <section className="card">
           <h2 className="text-lg font-semibold">Yanayoendelea</h2>
-          <p className="mb-2 text-sm text-muted">Yanasubiri meneja, mhasibu akulipe, au risiti yake.</p>
+          <p className="mb-2 text-sm text-muted">Yanasubiri meneja, meneja wa kiwanda, mhasibu akulipe, au risiti yake.</p>
           {open.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted">Hakuna ombi linaloendelea.</p>
           ) : (

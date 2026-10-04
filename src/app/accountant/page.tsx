@@ -10,7 +10,7 @@ import { requireUser } from "@/lib/session";
 import { MAX_ISSUE_NOTE_LENGTH } from "@/lib/validation";
 import { AddReceipt } from "./add-receipt";
 
-// Two steps share one card: approved requests to pay, oldest approval first, and paid ones whose
+// Two steps share one card: authorised requests to pay, oldest authorisation first, and paid ones whose
 // receipt is still to come, oldest payment first. The tab lives in the URL so live refreshes keep it.
 export default async function AccountantPage({ searchParams }: PageProps<"/accountant">) {
   await requireUser("accountant");

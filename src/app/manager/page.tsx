@@ -47,7 +47,10 @@ export default async function DashboardPage() {
             href="/manager/requests"
           >
             {o.pending_count > 0 ? `${formatMoney(o.pending_total)} · Yashughulikie` : "Hakuna linalosubiri"}
-            <AwaitingIssue count={o.awaiting_issue_count} total={o.awaiting_issue_total} />
+            <AwaitingIssue
+              authorisation={{ count: o.awaiting_authorisation_count, total: o.awaiting_authorisation_total }}
+              issue={{ count: o.awaiting_issue_count, total: o.awaiting_issue_total }}
+            />
           </Tile>
           <Tile label="Magari" value={String(o.cars)} href="/manager/cars">
             {o.cars_without_driver === 0 ? "Yote yana madereva" : `${o.cars_without_driver} hayana dereva`}
