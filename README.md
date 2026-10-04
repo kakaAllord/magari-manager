@@ -2,7 +2,7 @@
 
 A Next.js + Postgres app for running Zuraja Magari's fleet, in Swahili. Drivers sign in
 with their car's plate number and request money: fuel (with the car's odometer and fuel
-gauge) or anything else with a reason. Managers sign in
+gauge) or anything else with a reason. Vehicle managers (meneja wa magari) sign in
 with email, approve or reject requests, ask for money themselves (approved as they ask, for a
 car or none), record income (the car it came from, amount, optional
 description; the recorder can delete an entry within 24 hours), manage cars and
@@ -11,10 +11,13 @@ spend and income on tabs plus every entry with its date, downloadable as a PDF o
 workbook (formulas, tables and native charts) per car, month or week. On Mafuta they record each
 car's first reading, set fuel prices and tank sizes, and see km per litre by car, by driver and
 per stretch between readings, with suspicious stretches flagged.
-A mhasibu (accountant) signs in with email and pays out approved requests, with an optional
+A factory manager (meneja wa kiwanda) then authorises or declines every approved request, the
+vehicle manager's own included, and sees the month's money, where each request is, each car with
+its driver, fuel and the reports; the factory manager also adds the vehicle managers.
+A mhasibu (accountant) signs in with email and pays out authorised requests, with an optional
 note such as an M-Pesa reference. Each payment then waits on Kulipa's Risiti tab until the
-mhasibu adds a photo of its receipt; everyone who can see the request can open it. A director signs in with email, adds managers and mhasibu,
-switches them off and on, reads the same reports and Mafuta, and sees an overview of income,
+mhasibu adds a photo of its receipt; everyone who can see the request can open it. A director signs in with email, adds factory managers and the mhasibu,
+switches any staff member off and on, reads the same reports and Mafuta, and sees an overview of income,
 spending, the balance, each car and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
 Everyone can change their own password on the Akaunti page. Decisions reach
@@ -47,13 +50,14 @@ Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgr
 
 The live site is used for real, so demo data and the demo login box only exist where
 `DEMO_MODE=1` is set (add it to `.env.local` for local work). Then `npm run db:seed` loads the
-accounts below, and a box with five compartments (Mkurugenzi, Meneja, Mhasibu, Dereva 1,
-Dereva 2) below the login form fills them in with one tap. Without `DEMO_MODE=1` the seed refuses
+accounts below, and a box with six compartments (Mkurugenzi, Meneja wa kiwanda, Meneja wa magari,
+Mhasibu, Dereva 1, Dereva 2) below the login form fills them in with one tap. Without `DEMO_MODE=1` the seed refuses
 to run.
 
 | Role     | Sign in with         | Password    |
 | -------- | -------------------- | ----------- |
 | Director | director@example.com | director123 |
+| Factory manager | factory@example.com | factory123 |
 | Driver  | plate `T103ABE`     | driver123  |
 | Driver  | plate `T456BCD`     | driver123  |
 | Manager | manager@example.com | manager123 |
@@ -69,9 +73,16 @@ These passwords are public. Never set `DEMO_MODE=1` for the live database.
 
 ## Real use
 
-Migration 010 adds the company's director, `director@zuraja.com`, if that email is free. The
-director signs in, changes the password on Akaunti, and adds managers and the mhasibu on
-Wafanyakazi (emails `@zuraja.com`); managers add cars and drivers.
+Migration 010 adds the company's director, `director@zuraja.com`, and migration 013 its factory
+manager, `factory.manager@zuraja.com`, each only if the email is free. Both change their password on
+Akaunti after the first sign-in. The director adds factory managers and the mhasibu on Wafanyakazi;
+the factory manager adds vehicle managers on Mameneja (emails `@zuraja.com`); vehicle managers add
+cars and drivers. Migration 014 records who added each staff member (`users.added_by`) and moved
+the vehicle managers the director had added under the factory manager.
+
+Requests go: pending → the vehicle manager approves → the factory manager authorises → the mhasibu
+pays → the receipt. Requests approved before migration 013 count as authorised, so they stayed with
+the mhasibu. The database refuses a payment that wasn't authorised.
 
 ## Deploy to Vercel
 
@@ -103,7 +114,7 @@ approvals and rejections show up immediately.
 
 Events carry no data, only "requests changed"; pages then re-fetch through the
 normal signed-in path. Channels are private: `/api/realtime/auth` lets managers,
-directors and the mhasibu join `private-managers` and each driver only `private-driver-<their id>`.
+directors, factory managers and the mhasibu join `private-managers` and each driver only `private-driver-<their id>`.
 
 ## Scripts
 
@@ -113,19 +124,20 @@ directors and the mhasibu join `private-managers` and each driver only `private-
 | `npm run db:migrate` | Apply new files in `db/migrations/` in order   |
 | `npm run db:seed`    | Insert demo users, cars and history (safe to re-run) |
 | `npm run create-director -- "Name" email password` | Create a director or reset their password |
-| `npm run create-manager -- "Name" email password` | Create a manager or reset their password |
+| `npm run create-manager -- "Name" email password` | Create a vehicle manager or reset their password |
+| `npm run create-factory-manager -- "Name" email password` | Create a factory manager or reset their password |
 | `npm test`           | Unit tests (Node test runner)                  |
 | `npm run build`      | Production build                               |
 
 ## How it fits together
 
-- `db/migrations/`: plain SQL schema for `users` (driver, manager, director or accountant), `cars`,
+- `db/migrations/`: plain SQL schema for `users` (driver, manager, factory_manager, director or accountant), `cars`,
   `sessions`, `money_requests`, `incomes`, `fuel_readings`, `fuel_prices` and `receipts`.
 - `src/lib/session.ts`: cookie sessions stored hashed in Postgres; `requireUser(role)`
   guards every page, layout and server action.
 - `src/app/actions/`: server actions for login, requests, cars, drivers, income,
   managers and the signed-in person's own password.
-- `src/app/driver`, `src/app/manager`, `src/app/accountant`, `src/app/director`: the role-specific areas, each wrapped in
+- `src/app/driver`, `src/app/manager`, `src/app/factory`, `src/app/accountant`, `src/app/director`: the role-specific areas, each wrapped in
   `AppShell` (sidebar on desktop, top bar with tabs on phones). `src/app/account` is
   shared by all roles.
 - `src/lib/stats.ts`, `src/lib/reports.ts`: dashboard figures and report queries.
