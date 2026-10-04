@@ -1,15 +1,16 @@
-// Creates a manager (or, with --director, a director) account, or sets a new
-// password if the email already exists.
+// Creates a vehicle manager (or, with --director, a director; with --factory, a factory manager)
+// account, or sets a new password if the email already exists.
 // Usage: npm run create-manager -- "Grace Mollel" grace@example.com 'a-strong-password'
 //        npm run create-director -- "Baraka Mushi" baraka@example.com 'a-strong-password'
+//        npm run create-factory-manager -- "Daudi Mrema" daudi@example.com 'a-strong-password'
 import bcrypt from "bcryptjs";
 import pg from "pg";
 
 const args = process.argv.slice(2);
-const role = args.includes("--director") ? "director" : "manager";
-const [name, rawEmail, password] = args.filter((a) => a !== "--director");
+const role = args.includes("--director") ? "director" : args.includes("--factory") ? "factory_manager" : "manager";
+const [name, rawEmail, password] = args.filter((a) => a !== "--director" && a !== "--factory");
 if (!name || !rawEmail || !password || password.length < 8) {
-  console.error(`Usage: npm run create-${role} -- "Full Name" email password (8+ characters)`);
+  console.error(`Usage: npm run create-${role.replace("_", "-")} -- "Full Name" email password (8+ characters)`);
   process.exit(1);
 }
 const email = rawEmail.trim().toLowerCase();

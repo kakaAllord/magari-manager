@@ -18,7 +18,8 @@
     "db:setup": "npm run db:migrate && npm run db:seed",
     "test": "node --test src/**/*.test.ts",
     "create-manager": "node --env-file-if-exists=.env.local scripts/create-manager.ts",
-    "create-director": "node --env-file-if-exists=.env.local scripts/create-manager.ts --director"
+    "create-director": "node --env-file-if-exists=.env.local scripts/create-manager.ts --director",
+    "create-factory-manager": "node --env-file-if-exists=.env.local scripts/create-manager.ts --factory"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",

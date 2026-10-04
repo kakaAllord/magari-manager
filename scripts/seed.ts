@@ -6,6 +6,7 @@ import pg from "pg";
 const manager = { name: "Grace Mollel", email: "manager@example.com", password: "manager123" };
 const director = { name: "Baraka Mushi", email: "director@example.com", password: "director123" };
 const accountant = { name: "Rehema Kweka", email: "accountant@example.com", password: "accountant123" };
+const factory = { name: "Daudi Mrema", email: "factory@example.com", password: "factory123" };
 
 // Each driver signs in with their car's plate and the password below. T321DEF is only a plate, as
 // a manager may add a car before knowing more about it.
@@ -26,23 +27,30 @@ if (process.env.DEMO_MODE !== "1") {
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 try {
-  for (const [user, role] of [[manager, "manager"], [director, "director"], [accountant, "accountant"]] as const) {
+  // The director adds the factory manager and the mhasibu; the factory manager adds the vehicle managers.
+  for (const [user, role, addedBy] of [
+    [director, "director", null],
+    [factory, "factory_manager", director.email],
+    [manager, "manager", factory.email],
+    [accountant, "accountant", director.email],
+  ] as const) {
     await client.query(
-      `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)
+      `INSERT INTO users (name, email, password_hash, role, added_by)
+       VALUES ($1, $2, $3, $4, (SELECT id FROM users WHERE email = $5))
        ON CONFLICT (email) DO NOTHING`,
-      [user.name, user.email, await bcrypt.hash(user.password, 10), role],
+      [user.name, user.email, await bcrypt.hash(user.password, 10), role, addedBy],
     );
   }
   // More staff for the Wafanyakazi page: a second manager, and a mhasibu who has been switched off.
-  for (const [name, email, role, off] of [
-    ["Peter Massawe", "manager2@example.com", "manager", false],
-    ["Saida Ally", "accountant2@example.com", "accountant", true],
+  for (const [name, email, role, off, addedBy] of [
+    ["Peter Massawe", "manager2@example.com", "manager", false, factory.email],
+    ["Saida Ally", "accountant2@example.com", "accountant", true, director.email],
   ] as const) {
     await client.query(
-      `INSERT INTO users (name, email, password_hash, role, deactivated_at)
-       VALUES ($1, $2, $3, $4, CASE WHEN $5 THEN now() - interval '20 days' END)
+      `INSERT INTO users (name, email, password_hash, role, deactivated_at, added_by)
+       VALUES ($1, $2, $3, $4, CASE WHEN $5 THEN now() - interval '20 days' END, (SELECT id FROM users WHERE email = $6))
        ON CONFLICT (email) DO NOTHING`,
-      [name, email, await bcrypt.hash(role === "manager" ? "manager123" : "accountant123", 10), role, off],
+      [name, email, await bcrypt.hash(role === "manager" ? "manager123" : "accountant123", 10), role, off, addedBy],
     );
   }
   for (const c of cars) {
@@ -61,7 +69,8 @@ try {
     await client.query("UPDATE cars SET driver_id = $1 WHERE id = $2", [user.rows[0].id, carId]);
   }
   // A few months of history so the dashboard and reports have something to show. "issued" was
-  // approved and paid by the mhasibu; "approved" is still waiting for the mhasibu.
+  // approved, authorised and paid; "approved" waits for the factory manager, "authorised" for the
+  // mhasibu; "declined" was approved by the manager and turned down by the factory manager.
   const { rows: existing } = await client.query("SELECT 1 FROM money_requests LIMIT 1");
   if (existing.length === 0) {
     const history: [plate: string, daysAgo: number, amount: number, reason: string, status: string][] = [
@@ -70,11 +79,13 @@ try {
       ["T103ABE", 110, 38000, "Mafuta", "issued"],
       ["T456BCD", 95, 60000, "Kubadilisha oili na filta", "issued"],
       ["T103ABE", 80, 15000, "Maegesho bandarini", "rejected"],
+      ["T456BCD", 20, 180000, "Rangi mpya ya gari", "declined"],
       ["T456BCD", 70, 52000, "Mafuta", "issued"],
       ["T103ABE", 45, 250000, "Breki na ufundi", "issued"],
       ["T456BCD", 35, 47000, "Mafuta", "issued"],
       ["T103ABE", 12, 40000, "Mafuta ya safari ya uwanja wa ndege", "issued"],
       ["T456BCD", 5, 30000, "Usafi wa gari na mafuta", "issued"],
+      ["T456BCD", 3, 70000, "Betri mpya", "authorised"],
       ["T103ABE", 2, 60000, "Kubadilisha oili", "approved"],
       ["T456BCD", 1, 85000, "Kubadilisha taa ya mbele", "pending"],
       ["T103ABE", 0, 20000, "Ushuru wa barabara na maegesho", "pending"],
@@ -82,15 +93,18 @@ try {
     for (const [plate, daysAgo, amount, reason, status] of history) {
       await client.query(
         `INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at,
-                                    issued_by, issued_at, created_at)
-         SELECT c.driver_id, c.id, $2, $3, CASE WHEN $4 = 'issued' THEN 'approved' ELSE $4 END,
+                                    factory_reviewed_by, factory_reviewed_at, issued_by, issued_at, created_at)
+         SELECT c.driver_id, c.id, $2, $3,
+                CASE WHEN $4 IN ('issued', 'authorised') THEN 'approved' WHEN $4 = 'declined' THEN 'rejected' ELSE $4 END,
                 CASE WHEN $4 = 'pending' THEN NULL ELSE (SELECT id FROM users WHERE email = $5) END,
                 CASE WHEN $4 = 'pending' THEN NULL ELSE now() - make_interval(days => $6) + interval '3 hours' END,
+                CASE WHEN $4 IN ('issued', 'authorised', 'declined') THEN (SELECT id FROM users WHERE email = $8) END,
+                CASE WHEN $4 IN ('issued', 'authorised', 'declined') THEN now() - make_interval(days => $6) + interval '4 hours' END,
                 CASE WHEN $4 = 'issued' THEN (SELECT id FROM users WHERE email = $7) END,
                 CASE WHEN $4 = 'issued' THEN now() - make_interval(days => $6) + interval '5 hours' END,
                 now() - make_interval(days => $6)
            FROM cars c WHERE c.plate = $1 AND c.driver_id IS NOT NULL`,
-        [plate, amount, reason, status, manager.email, daysAgo, accountant.email],
+        [plate, amount, reason, status, manager.email, daysAgo, accountant.email, factory.email],
       );
     }
   }
@@ -165,16 +179,19 @@ try {
           const issued = status === "issued";
           const inserted = await client.query<{ id: number }>(
             `INSERT INTO money_requests (requester_id, car_id, amount, reason, kind, fuel_price, status,
-                                        reviewed_by, reviewed_at, issued_by, issued_at, created_at)
+                                        reviewed_by, reviewed_at, factory_reviewed_by, factory_reviewed_at,
+                                        issued_by, issued_at, created_at)
              SELECT d.id, c.id, $3, 'Mafuta', 'fuel', $4, CASE WHEN $5 THEN 'approved' ELSE 'pending' END,
                     CASE WHEN $5 THEN (SELECT id FROM users WHERE email = $6) END,
                     CASE WHEN $5 THEN ${at} + interval '1 hour' END,
+                    CASE WHEN $5 THEN (SELECT id FROM users WHERE email = $8) END,
+                    CASE WHEN $5 THEN ${at} + interval '90 minutes' END,
                     CASE WHEN $5 THEN (SELECT id FROM users WHERE email = $7) END,
                     CASE WHEN $5 THEN ${at} + interval '2 hours' END,
                     ${at}
                FROM cars c, users d WHERE c.plate = $1 AND d.name = $2 AND d.role = 'driver'
              RETURNING id`,
-            [plate, driver, amount, price, issued, manager.email, accountant.email],
+            [plate, driver, amount, price, issued, manager.email, accountant.email, factory.email],
           );
           requestId = inserted.rows[0]?.id ?? null;
         }
@@ -232,9 +249,9 @@ try {
       } else {
         await client.query(
           `INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at,
-                                      created_at, issued_at, backfilled_at)
+                                      created_at, factory_reviewed_at, issued_at, backfilled_at)
            SELECT m.id, (SELECT id FROM cars WHERE plate = $1), $2, $3, 'approved', m.id, ${day(daysAgo)},
-                  ${day(daysAgo)}, ${day(daysAgo)}, now() - interval '1 day'
+                  ${day(daysAgo)}, ${day(daysAgo)}, ${day(daysAgo)}, now() - interval '1 day'
              FROM users m WHERE m.email = $4`,
           [plate, amount, text, manager.email],
         );
