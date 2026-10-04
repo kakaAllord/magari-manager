@@ -46,9 +46,12 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
               : ` · ${r.status === "rejected" && !declinedByFactory ? "Imekataliwa" : "Imekubaliwa"} na ${r.reviewer_name ?? "meneja"} ${formatDateTime(r.reviewed_at)}`)}
           {r.status === "approved" && " · Inasubiri meneja wa kiwanda"}
           {/* Approvals from before the factory manager's step count as authorised and name nobody. */}
+          {/* Only the factory manager authorises. A refusal says who refused, unless the name already does. */}
           {r.factory_reviewed_at &&
             r.factory_reviewer_name &&
-            ` · ${declinedByFactory ? "Imekataliwa" : "Imeidhinishwa"} na ${r.factory_reviewer_name} (meneja wa kiwanda) ${formatDateTime(r.factory_reviewed_at)}`}
+            ` · ${declinedByFactory ? "Imekataliwa" : "Imeidhinishwa"} na ${r.factory_reviewer_name}${
+              declinedByFactory && !/kiwanda/i.test(r.factory_reviewer_name) ? " (meneja wa kiwanda)" : ""
+            } ${formatDateTime(r.factory_reviewed_at)}`}
           {r.status === "authorised" && " · Inasubiri mhasibu"}
           {/* Requests from before there was a mhasibu were paid on approval and name no issuer. */}
           {r.issued_at &&
