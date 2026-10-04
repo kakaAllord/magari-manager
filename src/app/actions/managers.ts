@@ -2,28 +2,38 @@
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { query, transaction } from "@/lib/db";
 import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
-import { requireUser } from "@/lib/session";
+import { homeFor, requireUser } from "@/lib/session";
+import { staffAddedBy, staffLabel, staffManagedBy, type StaffRole } from "@/lib/staff";
 import { checkEmail, checkNewPassword } from "@/lib/validation";
 
 export type ManagerFormState = { ok: boolean; message: string } | undefined;
 
 const UNIQUE_VIOLATION = "23505";
 
-// Staff the director manages: managers and the mhasibu. Both sign in with email.
-const STAFF_ROLES = ["manager", "accountant"] as const;
-type StaffRole = (typeof STAFF_ROLES)[number];
-const isStaffRole = (role: unknown): role is StaffRole => STAFF_ROLES.includes(role as StaffRole);
+// The roles the signed-in person may add (or manage); anyone else is sent home.
+async function staffRoles(table: typeof staffAddedBy): Promise<StaffRole[]> {
+  const user = await requireUser();
+  const roles = table[user.role];
+  if (!roles) redirect(homeFor(user.role));
+  return roles;
+}
+
+const refresh = () => {
+  revalidatePath("/director", "layout");
+  revalidatePath("/factory", "layout");
+};
 
 export async function createManager(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
-  await requireUser("director");
+  const roles = await staffRoles(staffAddedBy);
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const role = formData.get("role");
+  const role = formData.get("role") as StaffRole;
 
-  if (!isStaffRole(role)) return { ok: false, message: "Chagua kama ni meneja au mhasibu." };
+  if (!roles.includes(role)) return { ok: false, message: "Chagua nafasi yake." };
   if (name.length < 2) return { ok: false, message: "Andika jina lake." };
   const error = checkEmail(email) ?? checkNewPassword(password);
   if (error) return { ok: false, message: error };
@@ -41,15 +51,17 @@ export async function createManager(_prev: ManagerFormState, formData: FormData)
     }
     throw err;
   }
-  revalidatePath("/director", "layout");
+  refresh();
   await notify([MANAGERS_CHANNEL]);
-  const as = role === "manager" ? "meneja" : "mhasibu";
-  return { ok: true, message: `${name} ameongezwa kama ${as}. Ataingia kwa ${email} na nenosiri ulilochagua.` };
+  return {
+    ok: true,
+    message: `${name} ameongezwa kama ${staffLabel[role].toLowerCase()}. Ataingia kwa ${email} na nenosiri ulilochagua.`,
+  };
 }
 
 // Setting a new password also signs the person out everywhere.
 export async function setManagerPassword(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
-  await requireUser("director");
+  const roles = await staffRoles(staffManagedBy);
   const managerId = Number(formData.get("managerId"));
   const password = String(formData.get("password") ?? "");
   const passwordError = checkNewPassword(password);
@@ -59,10 +71,10 @@ export async function setManagerPassword(_prev: ManagerFormState, formData: Form
   const hash = await bcrypt.hash(password, 10);
   const updated = await transaction(async (client) => {
     const { rowCount } = await client.query(
-      "UPDATE users SET password_hash = $1 WHERE id = $2 AND role IN ('manager', 'accountant')",
-      [hash, managerId],
+      "UPDATE users SET password_hash = $1 WHERE id = $2 AND role = ANY($3::text[])",
+      [hash, managerId, roles],
     );
-    await client.query("DELETE FROM sessions WHERE user_id = $1", [managerId]);
+    if (rowCount) await client.query("DELETE FROM sessions WHERE user_id = $1", [managerId]);
     return rowCount;
   });
   if (!updated) return { ok: false, message: "Mfanyakazi hajulikani." };
@@ -71,7 +83,7 @@ export async function setManagerPassword(_prev: ManagerFormState, formData: Form
 
 // Switching someone off signs them out and blocks sign-in; their past decisions, payouts and income keep their name.
 export async function setManagerActive(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
-  await requireUser("director");
+  const roles = await staffRoles(staffManagedBy);
   const managerId = Number(formData.get("managerId"));
   const active = formData.get("active") === "1";
   if (!Number.isInteger(managerId)) return { ok: false, message: "Mfanyakazi hajulikani." };
@@ -79,12 +91,12 @@ export async function setManagerActive(_prev: ManagerFormState, formData: FormDa
   const updated = await transaction(async (client) => {
     const { rowCount } = await client.query(
       `UPDATE users SET deactivated_at = CASE WHEN $2 THEN NULL ELSE coalesce(deactivated_at, now()) END
-        WHERE id = $1 AND role IN ('manager', 'accountant')`,
-      [managerId, active],
+        WHERE id = $1 AND role = ANY($3::text[])`,
+      [managerId, active, roles],
     );
-    if (!active) await client.query("DELETE FROM sessions WHERE user_id = $1", [managerId]);
+    if (rowCount && !active) await client.query("DELETE FROM sessions WHERE user_id = $1", [managerId]);
     return rowCount;
   });
   if (!updated) return { ok: false, message: "Mfanyakazi hajulikani." };
-  revalidatePath("/director", "layout");
+  refresh();
 }

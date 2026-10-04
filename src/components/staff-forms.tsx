@@ -7,6 +7,7 @@ import { Icon } from "@/components/icons";
 import { PasswordInput } from "@/components/password-input";
 import { RowMenu } from "@/components/row-menu";
 import { Toast } from "@/components/toast";
+import { staffLabel, type StaffRole } from "@/lib/staff";
 
 function Message({ state }: { state: { ok: boolean; message: string } | undefined }) {
   if (!state) return null;
@@ -17,16 +18,18 @@ function Message({ state }: { state: { ok: boolean; message: string } | undefine
   );
 }
 
-const roleHints = {
-  manager: "Anakubali maombi ya madereva, anarekodi mapato na kufuatilia mafuta.",
-  accountant: "Analipa maombi yaliyokubaliwa na meneja.",
+const roleHints: Record<StaffRole, string> = {
+  factory_manager: "Anaidhinisha maombi yaliyokubaliwa na meneja wa magari kabla mhasibu hajalipa, na anaongeza mameneja wa magari.",
+  manager: "Anakubali maombi ya madereva, anarekodi mapato, magari, madereva na mafuta.",
+  accountant: "Analipa maombi yaliyoidhinishwa na meneja wa kiwanda, na kuweka risiti.",
 };
 
 // The header button and its dialog. Once someone is added the dialog closes and a toast confirms it.
-export function AddStaff() {
+// `roles` are the positions the signed-in person may fill; with one, there is nothing to choose.
+export function AddStaff({ roles, label = "Ongeza mfanyakazi" }: { roles: StaffRole[]; label?: string }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(createManager, undefined);
-  const [role, setRole] = useState<"manager" | "accountant">("manager");
+  const [role, setRole] = useState<StaffRole>(roles[0]);
   const [toast, setToast] = useState<string | null>(null);
   // Close the dialog once a new person has been added (React's "adjust state on change" pattern).
   const [seen, setSeen] = useState(state);
@@ -42,30 +45,35 @@ export function AddStaff() {
     <>
       <button type="button" onClick={() => setOpen(true)} className="btn btn-primary gap-2">
         <Icon name="plus" className="size-4" />
-        Ongeza mfanyakazi
+        {label}
       </button>
       {toast && <Toast key={toast} message={toast} onClose={() => setToast(null)} />}
 
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        title="Ongeza mfanyakazi"
+        title={label}
         description="Ataingia kwa barua pepe na nenosiri unaloweka hapa."
       >
         <form action={action} className="grid gap-4">
-          <label className="block">
-            <span className="label">Nafasi</span>
-            <select
-              name="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as typeof role)}
-              className="input"
-            >
-              <option value="manager">Meneja</option>
-              <option value="accountant">Mhasibu</option>
-            </select>
-            <span className="mt-1 block text-xs text-muted">{roleHints[role]}</span>
-          </label>
+          {roles.length > 1 ? (
+            <label className="block">
+              <span className="label">Nafasi</span>
+              <select name="role" value={role} onChange={(e) => setRole(e.target.value as StaffRole)} className="input">
+                {roles.map((r) => (
+                  <option key={r} value={r}>
+                    {staffLabel[r]}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs text-muted">{roleHints[role]}</span>
+            </label>
+          ) : (
+            <>
+              <input type="hidden" name="role" value={role} />
+              <p className="text-sm text-muted">{roleHints[role]}</p>
+            </>
+          )}
           <label className="block">
             <span className="label">Jina kamili</span>
             <input name="name" required autoComplete="off" placeholder="Asha Said" className="input" />
