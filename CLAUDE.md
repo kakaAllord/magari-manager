@@ -17,6 +17,9 @@ staff, cars, requests, income, fuel and receipts on Neon. Every change has to re
   flow (for example a new step with no page to act on it). Commit in small slices locally first.
 - **People are signed in.** Don't change session handling, role names or routes in a way that logs
   people out or sends them to a dead page; old links should still land somewhere sensible.
+- **The GitHub repo is public.** Never commit a real password, a hash of one, or the Neon URL. A
+  real account added by migration gets the unusable hash `'!'` and a password set afterwards
+  (`npm run create-…` or in the app), as 013 does.
 - **Never seed demo data, wipe tables or run one-off fixes on Neon.** Demo data needs `DEMO_MODE=1`,
   which production doesn't set. Real accounts are added by migration (`010`, `013`) or in the app.
 - New UI is Swahili-only and light-only, like the rest.

@@ -74,8 +74,16 @@ These passwords are public. Never set `DEMO_MODE=1` for the live database.
 ## Real use
 
 Migration 010 adds the company's director, `director@zuraja.com`, and migration 013 its factory
-manager, `factory.manager@zuraja.com`, each only if the email is free. Both change their password on
-Akaunti after the first sign-in. The director adds factory managers and the mhasibu on Wafanyakazi;
+manager, `factory.manager@zuraja.com`, each only if the email is free. The repo is public, so 013
+gives the factory manager no password: nobody can sign in to that account until one is set, either
+from a machine with the Neon URL:
+
+```sh
+DATABASE_URL='postgres://…' npm run create-factory-manager -- "Meneja wa Kiwanda" factory.manager@zuraja.com 'the-password'
+```
+
+or by the director on Wafanyakazi (⋯ → Badilisha nenosiri). Each person then changes their own
+password on Akaunti. The director adds factory managers and the mhasibu on Wafanyakazi;
 the factory manager adds vehicle managers on Mameneja (emails `@zuraja.com`); vehicle managers add
 cars and drivers. Migration 014 records who added each staff member (`users.added_by`) and moved
 the vehicle managers the director had added under the factory manager.
