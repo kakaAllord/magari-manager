@@ -10,12 +10,12 @@ export type LoginState = { error?: string; login?: string } | undefined;
 
 type Candidate = { id: number; password_hash: string; role: Role };
 
-// Managers, directors and the mhasibu sign in with their email; drivers with the plate of their car.
+// Staff (managers, directors and the mhasibu) sign in with their email; drivers with the plate of their car.
 // Switched-off accounts are treated as unknown.
 function findAccount(login: string) {
   if (login.includes("@")) {
     return query<Candidate>(
-      "SELECT id, password_hash, role FROM users WHERE email = $1 AND role IN ('manager', 'director', 'accountant') AND deactivated_at IS NULL",
+      "SELECT id, password_hash, role FROM users WHERE email = $1 AND role IN ('manager', 'director', 'accountant', 'factory_manager') AND deactivated_at IS NULL",
       [login.toLowerCase()],
     );
   }

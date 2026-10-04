@@ -8,13 +8,15 @@ import { query } from "@/lib/db";
 const COOKIE = "session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
-export type Role = "driver" | "manager" | "director" | "accountant";
+export type Role = "driver" | "manager" | "director" | "accountant" | "factory_manager";
 
+// "manager" is the vehicle manager; the factory manager authorises what they approve.
 export const roleName: Record<Role, string> = {
   driver: "Dereva",
-  manager: "Meneja",
+  manager: "Meneja wa magari",
   director: "Mkurugenzi",
   accountant: "Mhasibu",
+  factory_manager: "Meneja wa kiwanda",
 };
 export type User = { id: number; name: string; email: string | null; role: Role };
 
@@ -71,4 +73,11 @@ export async function requireUser(role?: Role): Promise<User> {
   return user;
 }
 
-export const homeFor = (role: Role) => `/${role}`;
+const homes: Record<Role, string> = {
+  driver: "/driver",
+  manager: "/manager",
+  director: "/director",
+  accountant: "/accountant",
+  factory_manager: "/factory",
+};
+export const homeFor = (role: Role) => homes[role];
