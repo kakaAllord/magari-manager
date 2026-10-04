@@ -16,6 +16,7 @@ export type Overview = {
   awaiting_authorisation_total: string;
   awaiting_issue_count: number;
   awaiting_issue_total: string;
+  awaiting_receipt_count: number;
   this_month: string;
   last_month: string;
   this_week: string;
@@ -45,6 +46,8 @@ export async function getOverview() {
          WHERE status = 'approved' AND factory_reviewed_at IS NOT NULL AND issued_at IS NULL) AS awaiting_issue_count,
        (SELECT coalesce(sum(amount), 0) FROM money_requests
          WHERE status = 'approved' AND factory_reviewed_at IS NOT NULL AND issued_at IS NULL) AS awaiting_issue_total,
+       (SELECT count(*)::int FROM money_requests r
+         WHERE r.receipt_due AND NOT EXISTS (SELECT 1 FROM receipts rc WHERE rc.request_id = r.id)) AS awaiting_receipt_count,
        (SELECT coalesce(sum(amount), 0) FROM spend, local
          WHERE at >= date_trunc('month', now_local)) AS this_month,
        (SELECT coalesce(sum(amount), 0) FROM spend, local
@@ -98,8 +101,17 @@ export async function getMonthlyIncomeAndSpend(months = 6) {
 }
 
 // This month's income and issued spend for every car, plus a row for anything with no car.
+export type CarMoney = {
+  id: number | null;
+  plate: string | null;
+  car: string | null;
+  driver: string | null;
+  income: string;
+  spend: string;
+};
+
 export function getCarMoneyThisMonth() {
-  return query<{ id: number | null; plate: string | null; car: string | null; income: string; spend: string }>(
+  return query<CarMoney>(
     `WITH local AS (SELECT date_trunc('month', now() AT TIME ZONE $1) AS month),
      income AS (
        SELECT i.car_id, sum(i.amount) AS total FROM incomes i, local
@@ -109,11 +121,12 @@ export function getCarMoneyThisMonth() {
        SELECT r.car_id, sum(r.amount) AS total FROM money_requests r, local
         WHERE r.issued_at IS NOT NULL AND r.issued_at AT TIME ZONE $1 >= month GROUP BY r.car_id
      )
-     SELECT c.id, c.plate, c.name AS car,
+     SELECT c.id, c.plate, c.name AS car, u.name AS driver,
             coalesce(i.total, 0) AS income, coalesce(s.total, 0) AS spend
-       FROM cars c LEFT JOIN income i ON i.car_id = c.id LEFT JOIN spend s ON s.car_id = c.id
+       FROM cars c LEFT JOIN users u ON u.id = c.driver_id
+       LEFT JOIN income i ON i.car_id = c.id LEFT JOIN spend s ON s.car_id = c.id
      UNION ALL
-     SELECT NULL, NULL, NULL, coalesce((SELECT total FROM income WHERE car_id IS NULL), 0),
+     SELECT NULL, NULL, NULL, NULL, coalesce((SELECT total FROM income WHERE car_id IS NULL), 0),
             coalesce((SELECT total FROM spend WHERE car_id IS NULL), 0)
      ORDER BY 1 NULLS LAST`,
     [TIME_ZONE],
