@@ -6,7 +6,7 @@ import { EntryDate } from "@/components/entry-date";
 import { GaugePicker } from "@/components/gauge-picker";
 import { Icon } from "@/components/icons";
 import { gaugeLabel } from "@/lib/fuel-calc";
-import { formatDateTime, formatKm } from "@/lib/format";
+import { formatDateTime, formatKm, formatLitres } from "@/lib/format";
 import type { CarOption } from "@/lib/reports";
 import { MAX_REASON_LENGTH } from "@/lib/validation";
 
@@ -24,6 +24,7 @@ export type DriverFuel = {
 
 // Drivers ask for their own car, and a fuel request carries their km and gauge reading. Managers
 // also pick the car (or none), and `cars` turns that on; their fuel requests carry no reading.
+// Every fuel request carries the price per litre at the station, which differs from place to place.
 // `today` adds a date, so a manager can type in past expenses as history.
 export function RequestForm({
   submit,
@@ -47,6 +48,16 @@ export function RequestForm({
   const fuelBlocked = isDriver && (fuel === null || fuel?.openFuel || notReady !== "");
   // After a fuel request goes in, fuel is blocked until it's paid, so the form falls back to the rest.
   const kind = fuelBlocked ? "other" : picked;
+  // Amount and price as typed, to show roughly how many litres that buys. They follow the form: kept
+  // when it comes back with an error, cleared once a request goes in.
+  const [typed, setTyped] = useState({ amount: failed?.values.amount ?? "", price: failed?.values.fuelPrice ?? "" });
+  const [seen, setSeen] = useState(state);
+  if (state !== seen) {
+    setSeen(state);
+    setTyped(state && !state.ok ? { amount: state.values.amount, price: state.values.fuelPrice ?? "" } : { amount: "", price: "" });
+  }
+  const shillings = (text: string) => Number(text.replace(/[,\s]/g, ""));
+  const litres = shillings(typed.amount) > 0 && shillings(typed.price) >= 500 ? shillings(typed.amount) / shillings(typed.price) : null;
 
   return (
     <form action={action} className="grid gap-4">
@@ -170,11 +181,35 @@ export function RequestForm({
             placeholder="40,000"
             required
             defaultValue={failed?.values.amount}
+            onInput={(e) => setTyped((t) => ({ ...t, amount: e.currentTarget.value }))}
             className="input pl-12 text-lg font-semibold tabular-nums sm:text-lg"
           />
         </div>
         {failed?.errors.amount && <p className="mt-1 text-sm text-danger">{failed.errors.amount}</p>}
       </label>
+      {kind === "fuel" && (
+        <label className="block">
+          <span className="label">Bei ya lita moja</span>
+          <div className="relative">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
+            <input
+              name="fuelPrice"
+              inputMode="numeric"
+              placeholder="3,000"
+              required
+              defaultValue={failed?.values.fuelPrice}
+              onInput={(e) => setTyped((t) => ({ ...t, price: e.currentTarget.value }))}
+              className="input pl-12 tabular-nums"
+            />
+          </div>
+          <p className="mt-1 text-xs text-muted">
+            {litres === null
+              ? "Bei ya kituo cha mafuta, kwa lita moja. Inatofautiana kati ya vituo."
+              : `≈ lita ${formatLitres(litres)} kwa kiasi hiki.`}
+          </p>
+          {failed?.errors.fuelPrice && <p className="mt-1 text-sm text-danger">{failed.errors.fuelPrice}</p>}
+        </label>
+      )}
       <label className="block">
         <span className="label">{kind === "fuel" ? "Maelezo (si lazima)" : "Sababu"}</span>
         <textarea

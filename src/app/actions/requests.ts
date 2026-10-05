@@ -13,16 +13,18 @@ import {
   MAX_ISSUE_NOTE_LENGTH,
   parseCarChoice,
   parseEntryDate,
+  parseFuelPrice,
   parseMoneyRequest,
   parseReading,
   type ReadingErrors,
   type RequestErrors,
 } from "@/lib/validation";
 
-type FormErrors = RequestErrors & ReadingErrors & { carId?: string; kind?: string; date?: string };
+type FormErrors = RequestErrors & ReadingErrors & { carId?: string; kind?: string; date?: string; fuelPrice?: string };
 type FormValues = {
   kind: string;
   amount: string;
+  fuelPrice?: string;
   reason: string;
   carId?: string;
   odometer?: string;
@@ -52,21 +54,28 @@ export async function createRequest(
   const values: FormValues = {
     kind,
     amount: String(formData.get("amount") ?? ""),
+    fuelPrice: String(formData.get("fuelPrice") ?? ""),
     reason: String(formData.get("reason") ?? ""),
     odometer: String(formData.get("odometer") ?? ""),
     gauge: String(formData.get("gauge") ?? ""),
   };
   const parsed = parseMoneyRequest({ amount: values.amount, reason: reasonFor(kind, values.reason) });
   const reading = kind === "fuel" ? parseReading({ odometer: values.odometer!, gauge: values.gauge! }) : null;
-  if (!parsed.ok || (reading && !reading.ok)) {
+  // Fuel costs differ from station to station, so the driver types the price per litre each time.
+  const price = kind === "fuel" ? parseFuelPrice(values.fuelPrice!) : null;
+  if (!parsed.ok || (reading && !reading.ok) || (price && "error" in price)) {
     return {
       ok: false,
-      errors: { ...(parsed.ok ? {} : parsed.errors), ...(reading && !reading.ok ? reading.errors : {}) },
+      errors: {
+        ...(parsed.ok ? {} : parsed.errors),
+        ...(reading && !reading.ok ? reading.errors : {}),
+        ...(price && "error" in price ? { fuelPrice: price.error } : {}),
+      },
       values,
     };
   }
 
-  if (!reading) {
+  if (!reading || !price) {
     await query(
       `INSERT INTO money_requests (requester_id, car_id, amount, reason)
        VALUES ($1, (SELECT id FROM cars WHERE driver_id = $1), $2, $3)`,
@@ -100,9 +109,9 @@ export async function createRequest(
       if (odometerError) return { odometer: odometerError };
       const inserted = await client.query<{ id: number }>(
         `INSERT INTO money_requests (requester_id, car_id, amount, reason, kind, fuel_price)
-         VALUES ($1, $2, $3, $4, 'fuel', (SELECT price_per_litre FROM fuel_prices WHERE fuel_type = $5))
+         VALUES ($1, $2, $3, $4, 'fuel', $5)
          RETURNING id`,
-        [driver.id, carRow.id, parsed.amount, parsed.reason, carRow.fuel_type],
+        [driver.id, carRow.id, parsed.amount, parsed.reason, price.price],
       );
       await client.query(
         `INSERT INTO fuel_readings (car_id, driver_id, recorded_by, request_id, odometer_km, gauge_eighths)
@@ -133,6 +142,7 @@ export async function createManagerRequest(
   const values: FormValues = {
     kind,
     amount: String(formData.get("amount") ?? ""),
+    fuelPrice: String(formData.get("fuelPrice") ?? ""),
     reason: String(formData.get("reason") ?? ""),
     carId: String(formData.get("carId") ?? ""),
     date: String(formData.get("date") ?? ""),
@@ -141,13 +151,16 @@ export async function createManagerRequest(
   let car = parseCarChoice(values.carId!);
   if (kind === "fuel" && !("error" in car) && car.carId === null) car = { error: "Mafuta ni ya gari: chagua gari." };
   const date = parseEntryDate(values.date!, todayInTanzania());
-  if (!parsed.ok || "error" in car || "error" in date) {
+  // Past fuel too: the price paid that day is what turns its amount into litres.
+  const price = kind === "fuel" ? parseFuelPrice(values.fuelPrice!) : null;
+  if (!parsed.ok || "error" in car || "error" in date || (price && "error" in price)) {
     return {
       ok: false,
       errors: {
         ...(parsed.ok ? {} : parsed.errors),
         ...("error" in car ? { carId: car.error } : {}),
         ...("error" in date ? { date: date.error } : {}),
+        ...(price && "error" in price ? { fuelPrice: price.error } : {}),
       },
       values,
     };
@@ -165,15 +178,13 @@ export async function createManagerRequest(
     if (missing) return { ok: false, errors: { carId: notReadyForManager(missing) }, values };
   }
 
-  // A manager's fuel has no reading: the driver's next one measures it. Past fuel uses today's
-  // price per litre, the only one the app knows. History is dated midday that day.
+  // A manager's fuel has no reading: the driver's next one measures it. History is dated midday that day.
   const inserted = await query(
     `WITH at AS (SELECT CASE WHEN $6::date IS NULL THEN now() ELSE ($6::date + time '12:00') AT TIME ZONE $7 END AS t)
      INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at, kind, fuel_price,
                                  created_at, factory_reviewed_at, issued_at, backfilled_at)
      SELECT $1, $2::int, $3, $4, 'approved', $1, at.t, $5,
-            CASE WHEN $5 = 'fuel' THEN (SELECT p.price_per_litre FROM cars c JOIN fuel_prices p ON p.fuel_type = c.fuel_type
-                                         WHERE c.id = $2::int) END,
+            CASE WHEN $5 = 'fuel' THEN $8::int END,
             at.t,
             CASE WHEN $6::date IS NULL THEN NULL ELSE at.t END,
             CASE WHEN $6::date IS NULL THEN NULL ELSE at.t END,
@@ -181,7 +192,7 @@ export async function createManagerRequest(
        FROM at
       WHERE $2::int IS NULL OR EXISTS (SELECT 1 FROM cars WHERE id = $2::int)
      RETURNING id`,
-    [manager.id, car.carId, parsed.amount, parsed.reason, kind, date.date, TIME_ZONE],
+    [manager.id, car.carId, parsed.amount, parsed.reason, kind, date.date, TIME_ZONE, price?.price ?? null],
   );
   if (inserted.length === 0) {
     return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." }, values };
