@@ -23,7 +23,7 @@ export type ChartSpec = {
   type: "pie" | "doughnut" | "column" | "bar";
   title: string;
   series: ChartSeries[];
-  pointColors?: string[]; // slice colours for pie and doughnut
+  pointColors?: string[]; // slice colours for pie and doughnut, or bar colours for a one-series bar chart
   numberFormat?: string;
 };
 
@@ -74,10 +74,15 @@ function chartXml(spec: ChartSpec) {
         ? `<c:pieChart><c:varyColors val="1"/>${ser}<c:firstSliceAng val="0"/></c:pieChart>`
         : `<c:doughnutChart><c:varyColors val="1"/>${ser}<c:firstSliceAng val="0"/><c:holeSize val="55"/></c:doughnutChart>`;
   } else {
+    const barPoints = (n: number) =>
+      (spec.pointColors ?? [])
+        .slice(0, n)
+        .map((color, i) => `<c:dPt><c:idx val="${i}"/><c:invertIfNegative val="0"/><c:bubble3D val="0"/><c:spPr>${solid(color)}</c:spPr></c:dPt>`)
+        .join("");
     const sers = spec.series
       .map(
         (s, i) =>
-          `<c:ser><c:idx val="${i}"/><c:order val="${i}"/><c:tx><c:v>${esc(s.name)}</c:v></c:tx>${s.color ? `<c:spPr>${solid(s.color)}</c:spPr>` : ""}<c:invertIfNegative val="0"/><c:cat>${strRef(s.categoriesRef, s.categories)}</c:cat><c:val>${numRef(s.valuesRef, s.values, format)}</c:val></c:ser>`,
+          `<c:ser><c:idx val="${i}"/><c:order val="${i}"/><c:tx><c:v>${esc(s.name)}</c:v></c:tx>${s.color ? `<c:spPr>${solid(s.color)}</c:spPr>` : ""}<c:invertIfNegative val="0"/>${spec.series.length === 1 ? barPoints(s.values.length) : ""}<c:cat>${strRef(s.categoriesRef, s.categories)}</c:cat><c:val>${numRef(s.valuesRef, s.values, format)}</c:val></c:ser>`,
       )
       .join("");
     const grid = `<c:majorGridlines><c:spPr><a:ln w="6350">${solid("E1E6E4")}</a:ln></c:spPr></c:majorGridlines>`;
