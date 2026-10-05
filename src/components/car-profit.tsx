@@ -82,7 +82,7 @@ function Bar({ label, value, max, fill, text }: { label: string; value: number; 
   return (
     <div className="grid grid-cols-[3.75rem_1fr_6rem] items-center gap-2 text-xs">
       <span className="text-muted">{label}</span>
-      <span className="h-2.5 overflow-hidden rounded-full bg-background">
+      <span className="h-2.5 overflow-hidden rounded-full bg-line">
         <span className={`block h-full rounded-full ${fill}`} style={{ width: `${(value / max) * 100}%` }} />
       </span>
       <span className={`text-right font-medium tabular-nums ${text}`}>{formatMoney(value)}</span>
