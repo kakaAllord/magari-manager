@@ -27,6 +27,8 @@ export type MoneyRequest = {
   // The driver's reading that came with a fuel request.
   odometer_km: number | null;
   gauge_eighths: number | null;
+  // The price per litre typed with a fuel request (or the fixed one older requests were saved with).
+  fuel_price: number | null;
   // A paid request's receipt: still awaited, or added by the mhasibu. Older payments have none.
   receipt: "due" | "added" | null;
   receipt_note: string | null;
@@ -43,7 +45,7 @@ const SELECT = `
          r.requester_id, d.name AS requester_name, d.role AS requester_role,
          m.name AS reviewer_name, a.name AS issuer_name,
          CASE WHEN c.id IS NULL THEN NULL ELSE concat_ws(' · ', c.name, c.plate) END AS car,
-         r.kind, fr.odometer_km, fr.gauge_eighths,
+         r.kind, fr.odometer_km, fr.gauge_eighths, r.fuel_price,
          CASE WHEN EXISTS (SELECT 1 FROM receipts rc WHERE rc.request_id = r.id) THEN 'added'
               WHEN r.receipt_due THEN 'due' END AS receipt,
          (SELECT rc.note FROM receipts rc WHERE rc.request_id = r.id) AS receipt_note,

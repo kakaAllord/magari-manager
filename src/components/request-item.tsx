@@ -1,5 +1,5 @@
 import { gaugeLabel } from "@/lib/fuel-calc";
-import { formatDate, formatDateTime, formatKm, formatMoney } from "@/lib/format";
+import { formatDate, formatDateTime, formatKm, formatLitres, formatMoney } from "@/lib/format";
 import type { MoneyRequest } from "@/lib/requests";
 
 // One request as every list shows it: amount, who asked, the reason, then each step with its time.
@@ -26,9 +26,16 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
         )}
         {r.reason}
       </p>
-      {r.odometer_km !== null && r.gauge_eighths !== null && (
+      {(r.odometer_km !== null || r.fuel_price !== null) && (
         <p className="text-sm text-muted tabular-nums">
-          km {formatKm(r.odometer_km)} · {gaugeLabel(r.gauge_eighths)}
+          {[
+            r.odometer_km !== null && `km ${formatKm(r.odometer_km)}`,
+            r.gauge_eighths !== null && gaugeLabel(r.gauge_eighths),
+            r.fuel_price !== null && `${formatMoney(r.fuel_price)} kwa lita`,
+            r.fuel_price !== null && `≈ lita ${formatLitres(Number(r.amount) / r.fuel_price)}`,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
       )}
       {r.backfilled_at && r.issued_at ? (
