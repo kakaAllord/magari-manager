@@ -2,7 +2,7 @@
 
 A Next.js + Postgres app for running Zuraja Magari's fleet, in Swahili. Drivers sign in
 with their car's plate number and request money: fuel (with the car's odometer and fuel
-gauge) or anything else with a reason. Vehicle managers (meneja wa magari) sign in
+gauge) or anything else with a reason. Vehicle managers (meneja) sign in
 with email, approve or reject requests, ask for money themselves (approved as they ask, for a
 car or none), record income (the car it came from, amount, optional
 description; the recorder can delete an entry within 24 hours), manage cars and
@@ -50,7 +50,7 @@ Requires Node 22.18+ (scripts use Node's built-in TypeScript support) and Postgr
 
 The live site is used for real, so demo data and the demo login box only exist where
 `DEMO_MODE=1` is set (add it to `.env.local` for local work). Then `npm run db:seed` loads the
-accounts below, and a box with six compartments (Mkurugenzi, Meneja wa kiwanda, Meneja wa magari,
+accounts below, and a box with six compartments (Mkurugenzi, Meneja wa kiwanda, Meneja,
 Mhasibu, Dereva 1, Dereva 2) below the login form fills them in with one tap. Without `DEMO_MODE=1` the seed refuses
 to run.
 
@@ -74,12 +74,12 @@ These passwords are public. Never set `DEMO_MODE=1` for the live database.
 ## Real use
 
 Migration 010 adds the company's director, `director@zuraja.com`, and migration 013 its factory
-manager, `factory.manager@zuraja.com`, each only if the email is free. The repo is public, so 013
+manager, each only if the email is free; 015 moved the factory manager to `factorymanager@zuraja.com`. The repo is public, so 013
 gives the factory manager no password: nobody can sign in to that account until one is set, either
 from a machine with the Neon URL:
 
 ```sh
-DATABASE_URL='postgres://…' npm run create-factory-manager -- "Meneja wa Kiwanda" factory.manager@zuraja.com 'the-password'
+DATABASE_URL='postgres://…' npm run create-factory-manager -- "Meneja wa Kiwanda" factorymanager@zuraja.com 'the-password'
 ```
 
 or by the director on Wafanyakazi (⋯ → Badilisha nenosiri). Each person then changes their own
