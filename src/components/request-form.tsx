@@ -181,7 +181,10 @@ export function RequestForm({
             placeholder="40,000"
             required
             defaultValue={failed?.values.amount}
-            onInput={(e) => setTyped((t) => ({ ...t, amount: e.currentTarget.value }))}
+            onInput={(e) => {
+              const value = e.currentTarget.value;
+              setTyped((t) => ({ ...t, amount: value }));
+            }}
             className="input pl-12 text-lg font-semibold tabular-nums sm:text-lg"
           />
         </div>
@@ -198,7 +201,10 @@ export function RequestForm({
               placeholder="3,000"
               required
               defaultValue={failed?.values.fuelPrice}
-              onInput={(e) => setTyped((t) => ({ ...t, price: e.currentTarget.value }))}
+              onInput={(e) => {
+                const value = e.currentTarget.value;
+                setTyped((t) => ({ ...t, price: value }));
+              }}
               className="input pl-12 tabular-nums"
             />
           </div>
