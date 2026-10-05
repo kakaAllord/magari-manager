@@ -7,19 +7,20 @@ with email, approve or reject requests, ask for money themselves (approved as th
 car or none), record income (the car it came from, amount, optional
 description; the recorder can delete an entry within 24 hours), manage cars and
 drivers, watch income and spending on a dashboard, and see reports with separate
-spend and income on tabs plus every entry with its date, downloadable as a PDF or an Excel
+each car's faida or hasara (income against spending, as bars), spend and income on tabs plus
+every entry with its date, downloadable as a PDF or an Excel
 workbook (formulas, tables and native charts) per car, month or week. On Mafuta they record each
-car's first reading, set fuel prices and tank sizes, and see km per litre by car, by driver and
-per stretch between readings, with suspicious stretches flagged.
+car's first reading, set fuel prices and tank sizes, and see km, litres, km per litre and TSh
+per km by car and by driver (measured between readings; the stretches themselves aren't shown).
 A factory manager (meneja wa kiwanda) then authorises or declines every approved request, the
-vehicle manager's own included, and sees the month's money, where each request is, each car with
-its driver, fuel and the reports; the factory manager also adds the vehicle managers.
+vehicle manager's own included, and sees the month's money, where each request is, each car's faida or hasara
+with its driver, fuel and the reports (no Historia page); the factory manager also adds the vehicle managers.
 A mhasibu (accountant) signs in with email and pays out authorised requests, with an optional
 note such as an M-Pesa reference. Each payment then waits on Kulipa's Risiti tab until the
 mhasibu adds a photo of its receipt; everyone who can see the request can open it. A director signs in with email, adds factory managers and the mhasibu,
 gives any staff member a new password (nobody can be switched off from the app; anyone
 switched off earlier can be switched back on), reads the same reports and Mafuta, and sees an overview of income,
-spending, the balance, each car and fuel. Long lists (requests,
+spending, the balance, each car's faida or hasara and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
 Everyone can change their own password on the Akaunti page. Decisions reach
 the driver instantly (Pusher), or within 10 seconds without Pusher. Amounts are
@@ -66,8 +67,8 @@ to run.
 | Manager | manager2@example.com | manager123 |
 | Mhasibu (switched off) | accountant2@example.com | accountant123 |
 
-The seed also loads two months of fuel readings: the Hiace handed from Juma to Neema, one
-flagged stretch, a fuel request waiting for the manager, and an unmeasured Carry. Each part of
+The seed also loads two months of fuel readings: the Hiace handed from Juma to Neema, a
+fuel request waiting for the manager, and an unmeasured Carry. Each part of
 the seed runs only when its table is empty, so re-running it is safe.
 
 These passwords are public. Never set `DEMO_MODE=1` for the live database.
