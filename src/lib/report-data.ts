@@ -5,9 +5,12 @@ import {
   getExpenses,
   getIncomes,
   listCars,
+  moneyByCar,
   summarise,
   summariseIncome,
   todayInTanzania,
+  WITHOUT_CAR,
+  type CarMoneyRow,
   type CarOption,
   type ExpenseRow,
   type IncomeRow,
@@ -16,7 +19,7 @@ import {
 } from "@/lib/reports";
 import { TIME_ZONE } from "@/lib/time";
 
-export const NO_CAR = "Bila gari";
+export const NO_CAR = WITHOUT_CAR;
 
 // Everything a downloaded report (Excel or PDF) shows, worked out once.
 export type ReportData = {
@@ -32,7 +35,7 @@ export type ReportData = {
   income: IncomeSummary;
   totals: { income: number; spend: number; balance: number };
   // Per car (and "Bila gari" when something had no car): income, spending and how many requests.
-  byCar: { label: string; car: string | null; income: number; spend: number; count: number }[];
+  byCar: CarMoneyRow[];
   byKind: { label: string; total: number }[];
   // Months, or weeks when the report is grouped by week.
   periodName: "Mwezi" | "Wiki";
@@ -61,21 +64,7 @@ export async function getReportData(searchParams: Record<string, string | string
   const chosen = params.carIds.length ? cars.filter((c) => params.carIds.includes(c.id)) : cars;
   const sum = (xs: { amount: string }[]) => xs.reduce((s, x) => s + Number(x.amount), 0);
 
-  const byCar = chosen.map((c) => {
-    const spent = expenses.filter((e) => e.car_id === c.id);
-    return {
-      label: c.plate,
-      car: c.car,
-      income: sum(incomes.filter((i) => incomeCar(i) === c.plate)),
-      spend: sum(spent),
-      count: spent.length,
-    };
-  });
-  const noCarSpend = expenses.filter((e) => e.car_id === null);
-  const noCarIncome = incomes.filter((i) => incomeCar(i) === NO_CAR);
-  if (noCarSpend.length || noCarIncome.length) {
-    byCar.push({ label: NO_CAR, car: "Ofisi na mengineyo", income: sum(noCarIncome), spend: sum(noCarSpend), count: noCarSpend.length });
-  }
+  const byCar = moneyByCar(chosen, expenses, incomes);
 
   const periodGroup = params.group === "week" ? "week" : "month";
   const periods = periodStarts(params.from, params.to, periodGroup).map((start) => {

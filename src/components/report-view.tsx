@@ -4,7 +4,8 @@ import { PageHeader } from "@/components/page-header";
 import { ReportToolbar } from "@/components/report-filters";
 import { formatMoney, formatWallDate, formatWallTime, keepMinus } from "@/lib/format";
 import { parseReportParams, presets, toSearch } from "@/lib/report-params";
-import { getExpenses, getIncomes, listCars, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
+import { CarProfit } from "@/components/car-profit";
+import { getExpenses, getIncomes, listCars, moneyByCar, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
 
 // The reports page, shared by both managers, the mhasibu and directors. `base` is the page's own path.
 export async function ReportView({
@@ -20,6 +21,8 @@ export async function ReportView({
   const summary = summarise(expenses, cars, params);
   const income = summariseIncome(incomes, params);
   const balance = income.total - summary.grandTotal;
+  const chosen = params.carIds.length ? cars.filter((c) => params.carIds.includes(c.id)) : cars;
+  const byCar = moneyByCar(chosen, expenses, incomes);
   const search = toSearch(params);
   // Spending and income share one card; the tab lives in the URL so filtering keeps it.
   const tab = searchParams.tab === "mapato" ? "mapato" : "matumizi";
@@ -66,6 +69,20 @@ export async function ReportView({
             label="Salio"
             value={balance}
             note={balance < 0 ? "Matumizi yamezidi mapato" : "Mapato toa matumizi"}
+          />
+        </section>
+
+        <section className="card">
+          <h2 className="font-semibold">Faida kwa gari</h2>
+          <p className="text-sm text-muted">Mapato ya kila gari ukilinganisha na matumizi yake katika kipindi hiki.</p>
+          <CarProfit
+            rows={byCar.map((c) => ({
+              key: String(c.id ?? "none"),
+              plate: c.id === null ? null : c.label,
+              sub: c.id === null ? null : c.car,
+              income: c.income,
+              spend: c.spend,
+            }))}
           />
         </section>
 

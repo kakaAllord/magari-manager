@@ -162,3 +162,24 @@ export function summariseIncome(incomes: IncomeRow[], p: ReportParams): IncomeSu
   }));
   return { rows, total, count: incomes.length };
 }
+
+// How "per car" tables name money that had no car.
+export const WITHOUT_CAR = "Bila gari";
+
+export type CarMoneyRow = { id: number | null; label: string; car: string | null; income: number; spend: number; count: number };
+
+// Per chosen car: income, spending and how many paid requests, plus a "Bila gari" row when some
+// spending or income had no car.
+export function moneyByCar(chosen: CarOption[], expenses: ExpenseRow[], incomes: IncomeRow[]): CarMoneyRow[] {
+  const sum = (xs: { amount: string }[]) => xs.reduce((s, x) => s + Number(x.amount), 0);
+  const rows: CarMoneyRow[] = chosen.map((c) => {
+    const spent = expenses.filter((e) => e.car_id === c.id);
+    return { id: c.id, label: c.plate, car: c.car, income: sum(incomes.filter((i) => i.car_id === c.id)), spend: sum(spent), count: spent.length };
+  });
+  const noCarSpend = expenses.filter((e) => e.car_id === null);
+  const noCarIncome = incomes.filter((i) => i.car_id === null);
+  if (noCarSpend.length || noCarIncome.length) {
+    rows.push({ id: null, label: WITHOUT_CAR, car: "Ofisi na mengineyo", income: sum(noCarIncome), spend: sum(noCarSpend), count: noCarSpend.length });
+  }
+  return rows;
+}
