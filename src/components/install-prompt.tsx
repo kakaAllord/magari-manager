@@ -13,7 +13,7 @@ type Kind = { install: InstallEvent } | { steps: "ios" | "mac" };
 const noop = () => () => {};
 
 const DISMISSED = "install-dismissed";
-// "Baadaye" keeps the card away for this long, then it asks again until the app is installed.
+// "Later" keeps the card away for this long, then it asks again until the app is installed.
 const QUIET_FOR = 3 * 24 * 60 * 60 * 1000;
 
 function installed() {
@@ -39,7 +39,7 @@ function stepsFor(): "ios" | "mac" | null {
   return null;
 }
 
-// Asks when the app is opened, at the bottom of the screen, to install the app on the phone or computer.
+// Asks in English when the app is opened, at the bottom of the screen, to install the app on the phone or computer.
 // Never shows inside the installed app, and floats over the page so nothing moves under it.
 export function InstallPrompt() {
   // Everything it checks lives in the browser, so the server and the first render show nothing.
@@ -77,7 +77,7 @@ export function InstallPrompt() {
   const install = async (e: InstallEvent) => {
     await e.prompt();
     const { outcome } = await e.userChoice;
-    // The browser offers the event only once; a "no" there counts as "Baadaye".
+    // The browser offers the event only once; a "no" there counts as "Later".
     if (outcome === "accepted") setClosed(true);
     else later();
   };
@@ -93,38 +93,38 @@ export function InstallPrompt() {
         <img src="/icon.svg" alt="" className="size-10 shrink-0" />
         <div className="min-w-0 flex-1">
           <p id="install-title" className="font-semibold">
-            Sakinisha {COMPANY}
+            Install {COMPANY}
           </p>
           {"install" in kind ? (
             <p className="mt-0.5 text-sm text-muted">
               {phone
-                ? "Ifungue moja kwa moja kutoka skrini ya simu yako, kama programu nyingine."
-                : "Ifungue moja kwa moja kutoka kwenye kompyuta yako, bila kutafuta tovuti."}
+                ? "Open it straight from your phone's home screen, like any other app."
+                : "Open it straight from your computer, without looking for the website."}
             </p>
           ) : kind.steps === "ios" ? (
             <p className="mt-0.5 text-sm text-muted">
-              Bonyeza kitufe cha <ShareIcon /> <b className="text-foreground">Share</b>, kisha chagua{" "}
+              Tap the <ShareIcon /> <b className="text-foreground">Share</b> button, then choose{" "}
               <b className="text-foreground">Add to Home Screen</b>.
             </p>
           ) : (
             <p className="mt-0.5 text-sm text-muted">
-              Kwenye menyu ya <b className="text-foreground">File</b> ya Safari, chagua{" "}
+              In Safari&rsquo;s <b className="text-foreground">File</b> menu, choose{" "}
               <b className="text-foreground">Add to Dock</b>.
             </p>
           )}
         </div>
-        <button type="button" onClick={later} aria-label="Funga" className="-m-1 shrink-0 rounded-md p-1 hover:bg-background">
+        <button type="button" onClick={later} aria-label="Close" className="-m-1 shrink-0 rounded-md p-1 hover:bg-background">
           <Icon name="close" className="size-4" />
         </button>
       </div>
       <div className="mt-3 flex justify-end gap-2">
         <button type="button" onClick={later} className="btn btn-ghost">
-          {"install" in kind ? "Baadaye" : "Sawa"}
+          {"install" in kind ? "Later" : "OK"}
         </button>
         {"install" in kind && (
           <button type="button" onClick={() => install(kind.install)} className="btn btn-primary gap-2">
             <Icon name="download" className="size-4" />
-            Sakinisha
+            Install
           </button>
         )}
       </div>

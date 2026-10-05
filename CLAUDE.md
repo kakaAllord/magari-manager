@@ -22,7 +22,8 @@ staff, cars, requests, income, fuel and receipts on Neon. Every change has to re
   (`npm run create-…` or in the app), as 013 does.
 - **Never seed demo data, wipe tables or run one-off fixes on Neon.** Demo data needs `DEMO_MODE=1`,
   which production doesn't set. Real accounts are added by migration (`010`, `013`) or in the app.
-- New UI is Swahili-only and light-only, like the rest.
+- New UI is Swahili-only and light-only, like the rest. The one exception is the install card
+  (`install-prompt.tsx`), which is in English.
 
 # Who does what
 
@@ -30,10 +31,10 @@ staff, cars, requests, income, fuel and receipts on Neon. Every change has to re
   and the **mhasibu**, and can switch any staff member off.
 - **Meneja wa kiwanda** (role `factory_manager`, `/factory`): authorises or declines what the vehicle
   manager approved; sees the fleet's money, cars, fuel and reports; adds the vehicle managers.
-- **Meneja wa magari** (role `manager`, `/manager`): approves drivers' requests, asks for money
+- **Meneja** (role `manager`, `/manager`): approves drivers' requests, asks for money
   themselves, records income, runs cars, drivers and fuel.
 - **Mhasibu** (role `accountant`, `/accountant`): pays authorised requests and adds their receipts.
 - **Dereva** (driver, `/driver`): signs in with the car's plate and asks for money.
 
-Request flow: pending → meneja wa magari approves → meneja wa kiwanda authorises → mhasibu pays →
+Request flow: pending → meneja approves → meneja wa kiwanda authorises → mhasibu pays →
 receipt.
