@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createManager, setManagerActive, setManagerPassword } from "@/app/actions/managers";
+import { createManager, reactivateStaff, setManagerPassword } from "@/app/actions/managers";
 import { Dialog } from "@/components/dialog";
 import { Icon } from "@/components/icons";
 import { PasswordInput } from "@/components/password-input";
@@ -107,10 +107,11 @@ export function AddStaff({ roles, label = "Ongeza mfanyakazi" }: { roles: StaffR
   );
 }
 
-// The "⋯" menu on each row: a new password, or switching the person off or back on.
+// The "⋯" menu on each row: a new password. Nobody can be switched off from the app; someone switched off
+// before that was removed can only be switched back on.
 export function StaffMenu({ id, name, active }: { id: number; name: string; active: boolean }) {
   const [dialog, setDialog] = useState<"password" | "active" | null>(null);
-  // Switching someone off or on re-renders the row with the new status: close its dialog then.
+  // Switching someone back on re-renders the row with the new status: close its dialog then.
   const [wasActive, setWasActive] = useState(active);
   if (wasActive !== active) {
     setWasActive(active);
@@ -121,15 +122,11 @@ export function StaffMenu({ id, name, active }: { id: number; name: string; acti
     <>
       <RowMenu
         label={`Vitendo kwa ${name}`}
-        items={[
-          ...(active ? [{ label: "Badilisha nenosiri", icon: "key" as const, onSelect: () => setDialog("password") }] : []),
-          {
-            label: active ? "Zima" : "Washa tena",
-            icon: "power",
-            tone: active ? "danger" : "ok",
-            onSelect: () => setDialog("active"),
-          },
-        ]}
+        items={
+          active
+            ? [{ label: "Badilisha nenosiri", icon: "key", onSelect: () => setDialog("password") }]
+            : [{ label: "Washa tena", icon: "power", tone: "ok", onSelect: () => setDialog("active") }]
+        }
       />
 
       <Dialog
@@ -143,14 +140,10 @@ export function StaffMenu({ id, name, active }: { id: number; name: string; acti
       <Dialog
         open={dialog === "active"}
         onClose={() => setDialog(null)}
-        title={active ? `Zima ${name}?` : `Washa ${name} tena?`}
-        description={
-          active
-            ? "Hataweza kuingia hadi umwashe tena. Jina lake linabaki kwenye historia."
-            : "Ataweza kuingia tena kwa nenosiri lake la zamani."
-        }
+        title={`Washa ${name} tena?`}
+        description="Ataweza kuingia tena kwa nenosiri lake la zamani."
       >
-        <ActiveForm id={id} active={active} onCancel={() => setDialog(null)} />
+        <ReactivateForm id={id} onCancel={() => setDialog(null)} />
       </Dialog>
     </>
   );
@@ -177,23 +170,18 @@ function PasswordForm({ id, onDone }: { id: number; onDone: () => void }) {
   );
 }
 
-function ActiveForm({ id, active, onCancel }: { id: number; active: boolean; onCancel: () => void }) {
-  const [state, action, pending] = useActionState(setManagerActive, undefined);
+function ReactivateForm({ id, onCancel }: { id: number; onCancel: () => void }) {
+  const [state, action, pending] = useActionState(reactivateStaff, undefined);
   return (
     <form action={action} className="grid gap-4">
       <input type="hidden" name="managerId" value={id} />
-      <input type="hidden" name="active" value={active ? "0" : "1"} />
       <Message state={state} />
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancel} className="btn btn-ghost">
           Hapana
         </button>
-        <button
-          type="submit"
-          disabled={pending}
-          className={`btn ${active ? "bg-danger text-white hover:opacity-90" : "btn-primary"}`}
-        >
-          {pending ? "Subiri…" : active ? "Ndiyo, zima" : "Ndiyo, washa"}
+        <button type="submit" disabled={pending} className="btn btn-primary">
+          {pending ? "Subiri…" : "Ndiyo, washa"}
         </button>
       </div>
     </form>

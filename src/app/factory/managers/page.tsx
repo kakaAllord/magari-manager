@@ -11,7 +11,7 @@ export default async function FactoryManagersPage() {
     <main className="page">
       <PageHeader
         title="Mameneja"
-        description="Wanakubali maombi ya madereva, wanarekodi mapato na kusimamia magari. Ukimzima mtu hataweza kuingia, lakini jina lake linabaki kwenye historia."
+        description="Wanakubali maombi ya madereva, wanarekodi mapato na kusimamia magari."
         action={<AddStaff roles={staffAddedBy.factory_manager!} label="Ongeza meneja" />}
       />
       <StaffList roles={staffAddedBy.factory_manager!} empty="Bado hakuna meneja. Bonyeza “Ongeza meneja”." />

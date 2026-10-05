@@ -82,22 +82,17 @@ export async function setManagerPassword(_prev: ManagerFormState, formData: Form
   return { ok: true, message: "Nenosiri jipya limehifadhiwa. Mpe mwenyewe." };
 }
 
-// Switching someone off signs them out and blocks sign-in; their past decisions, payouts and income keep their name.
-export async function setManagerActive(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
+// Staff can no longer be switched off from the app. Anyone switched off before that can be switched back on,
+// with their old password; until then they can't sign in.
+export async function reactivateStaff(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
   const { roles } = await staffRoles(staffManagedBy);
   const managerId = Number(formData.get("managerId"));
-  const active = formData.get("active") === "1";
   if (!Number.isInteger(managerId)) return { ok: false, message: "Mfanyakazi hajulikani." };
 
-  const updated = await transaction(async (client) => {
-    const { rowCount } = await client.query(
-      `UPDATE users SET deactivated_at = CASE WHEN $2 THEN NULL ELSE coalesce(deactivated_at, now()) END
-        WHERE id = $1 AND role = ANY($3::text[])`,
-      [managerId, active, roles],
-    );
-    if (rowCount && !active) await client.query("DELETE FROM sessions WHERE user_id = $1", [managerId]);
-    return rowCount;
-  });
-  if (!updated) return { ok: false, message: "Mfanyakazi hajulikani." };
+  const updated = await query("UPDATE users SET deactivated_at = NULL WHERE id = $1 AND role = ANY($2::text[]) RETURNING id", [
+    managerId,
+    roles,
+  ]);
+  if (!updated.length) return { ok: false, message: "Mfanyakazi hajulikani." };
   refresh();
 }

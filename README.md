@@ -17,7 +17,8 @@ its driver, fuel and the reports; the factory manager also adds the vehicle mana
 A mhasibu (accountant) signs in with email and pays out authorised requests, with an optional
 note such as an M-Pesa reference. Each payment then waits on Kulipa's Risiti tab until the
 mhasibu adds a photo of its receipt; everyone who can see the request can open it. A director signs in with email, adds factory managers and the mhasibu,
-switches any staff member off and on, reads the same reports and Mafuta, and sees an overview of income,
+gives any staff member a new password (nobody can be switched off from the app; anyone
+switched off earlier can be switched back on), reads the same reports and Mafuta, and sees an overview of income,
 spending, the balance, each car and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
 Everyone can change their own password on the Akaunti page. Decisions reach
@@ -187,7 +188,7 @@ existed were marked paid at their approval time. Income is dated by when it was 
 car (`incomes.car_id`; `source` keeps the plate, and entries from before cars were
 picked keep their typed source). The report's car filter narrows both spend and
 income; income from before cars were picked shows only with all cars. Deleted income and
-switched-off staff stay in the database (`deleted_at`, `deactivated_at`) so
+staff switched off before that was removed stay in the database (`deleted_at`, `deactivated_at`) so
 history keeps their names. Review is only possible while a request is pending, and payment
 only while it is approved and unpaid, so two people clicking at once can't overwrite each
 other.
