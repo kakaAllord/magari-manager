@@ -1,7 +1,6 @@
 import "server-only";
 import { Circle, Document, Page, Path, renderToBuffer, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import { COMPANY } from "@/lib/company";
-import { flagText } from "@/lib/fuel-calc";
 import { formatKm, formatLitres, formatMoney, formatRate, formatWallTime } from "@/lib/format";
 import { expenseCar, incomeCar, type ReportData } from "@/lib/report-data";
 
@@ -297,19 +296,18 @@ function ReportPdf({ data }: { data: ReportData }) {
           <Text style={s.h2}>Mafuta</Text>
           <Text style={[s.muted, { marginBottom: 6 }]}>
             Km {formatKm(fuel.all.km)} · lita {formatLitres(fuel.all.litres)} · wastani {formatRate(fuel.all.kmPerLitre)} km kwa lita
-            {fuel.all.costPerKm !== null ? ` · ${money(fuel.all.costPerKm)} kwa km` : ""} · vipindi {fuel.all.stretches}, tahadhari{" "}
-            {fuel.all.flagged}
+            {fuel.all.costPerKm !== null ? ` · ${money(fuel.all.costPerKm)} kwa km` : ""}
           </Text>
           <View style={[s.row, { gap: 8 }]}>
             <View style={{ flex: 3 }}>
               <Table
                 columns={[
                   { label: "Gari", width: 17, value: (c) => c.plate },
-                  { label: "Dereva", width: 23, value: (c) => c.driver ?? "Hana dereva" },
-                  { label: "Km", width: 13, num: true, value: (c) => (c.totals.stretches ? formatKm(c.totals.km) : "-") },
+                  { label: "Dereva", width: 27, value: (c) => c.driver ?? "Hana dereva" },
+                  { label: "Km", width: 15, num: true, value: (c) => (c.totals.stretches ? formatKm(c.totals.km) : "-") },
                   { label: "Lita", width: 13, num: true, value: (c) => (c.totals.stretches ? formatLitres(c.totals.litres) : "-") },
                   { label: "Km/L", width: 12, num: true, value: (c) => formatRate(c.totals.kmPerLitre).replace("–", "-") },
-                  { label: "Tahadhari", width: 22, num: true, value: (c) => String(c.totals.flagged), color: (c) => (c.totals.flagged ? C.out : undefined) },
+                  { label: "TSh/km", width: 16, num: true, value: (c) => (c.totals.costPerKm === null ? "-" : money(c.totals.costPerKm)) },
                 ]}
                 rows={fuel.cars}
               />
@@ -330,34 +328,17 @@ function ReportPdf({ data }: { data: ReportData }) {
             <Text style={s.h2}>Mafuta kwa dereva</Text>
             <Table
               columns={[
-                { label: "Dereva", width: 30, value: (d) => d.name },
-                { label: "Km", width: 14, num: true, value: (d) => formatKm(d.totals.km) },
-                { label: "Lita", width: 14, num: true, value: (d) => formatLitres(d.totals.litres) },
+                { label: "Dereva", width: 36, value: (d) => d.name },
+                { label: "Km", width: 16, num: true, value: (d) => formatKm(d.totals.km) },
+                { label: "Lita", width: 16, num: true, value: (d) => formatLitres(d.totals.litres) },
                 { label: "Km/L", width: 14, num: true, value: (d) => formatRate(d.totals.kmPerLitre).replace("–", "-") },
-                { label: "TSh kwa km", width: 16, num: true, value: (d) => (d.totals.costPerKm === null ? "-" : money(d.totals.costPerKm)) },
-                { label: "Tahadhari", width: 12, num: true, value: (d) => String(d.totals.flagged), color: (d) => (d.totals.flagged ? C.out : undefined) },
+                { label: "TSh kwa km", width: 18, num: true, value: (d) => (d.totals.costPerKm === null ? "-" : money(d.totals.costPerKm)) },
               ]}
               rows={fuel.drivers}
             />
           </View>
         )}
 
-        {fuel.stretches.some((x) => x.flag) && (
-          <View style={s.section} wrap={false}>
-            <Text style={[s.h2, { color: C.out }]}>Vipindi vyenye tahadhari</Text>
-            <Table
-              columns={[
-                { label: "Gari", width: 13, value: (x) => x.plate },
-                { label: "Dereva", width: 20, value: (x) => x.driver },
-                { label: "Km", width: 10, num: true, value: (x) => formatKm(x.km) },
-                { label: "Lita", width: 10, num: true, value: (x) => formatLitres(x.litresUsed) },
-                { label: "Km/L", width: 10, num: true, value: (x) => formatRate(x.kmPerLitre).replace("–", "-") },
-                { label: "Sababu", width: 37, value: (x) => flagText[x.flag!].long, color: () => C.out },
-              ]}
-              rows={fuel.stretches.filter((x) => x.flag)}
-            />
-          </View>
-        )}
         {footer}
       </Page>
 

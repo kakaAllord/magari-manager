@@ -1,7 +1,6 @@
 import "server-only";
 import ExcelJS from "exceljs";
 import { COMPANY } from "@/lib/company";
-import { flagText, gaugeLabel } from "@/lib/fuel-calc";
 import type { ReportParams } from "@/lib/report-params";
 import { expenseCar, incomeCar, periodOfRow, type ReportData } from "@/lib/report-data";
 import { addCharts, type ChartSpec } from "@/lib/xlsx-charts";
@@ -44,10 +43,6 @@ const excelDate = (local: string) => {
   const [y, mo, da] = d.split("-").map(Number);
   const [h, mi] = t.split(":").map(Number);
   return new Date(Date.UTC(y, mo - 1, da, h, mi));
-};
-const toExcelTime = (ms: number) => {
-  const d = new Date(ms + 3 * 3_600_000); // Tanzania is UTC+3 all year
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes()));
 };
 
 const fill = (argb: string): ExcelJS.Fill => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
@@ -283,19 +278,18 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
   // A short fuel line, pointing at the Mafuta sheet.
   r = kEnd + 3;
   const f = data.fuel.all;
-  sectionHeader(s, r, "Mafuta", ["Km", "Lita", "Km kwa lita", "TSh kwa km", "Tahadhari"]);
+  sectionHeader(s, r, "Mafuta", ["Km", "Lita", "Km kwa lita", "TSh kwa km"]);
   s.getRow(r + 2).values = [
     f.km,
     Number(f.litres.toFixed(1)),
     { formula: `IFERROR(A${r + 2}/B${r + 2},"")`, result: f.kmPerLitre ?? "" },
     f.costPerKm === null ? "" : Math.round(f.costPerKm),
-    f.flagged,
   ];
   s.getCell(`A${r + 2}`).numFmt = NUMBER;
   s.getCell(`B${r + 2}`).numFmt = DECIMAL;
   s.getCell(`C${r + 2}`).numFmt = DECIMAL;
   s.getCell(`D${r + 2}`).numFmt = MONEY;
-  s.getCell(`A${r + 3}`).value = "Maelezo kamili yako kwenye karatasi za Mafuta na Vipindi vya mafuta.";
+  s.getCell(`A${r + 3}`).value = "Maelezo kamili yako kwenye karatasi ya Mafuta.";
   s.getCell(`A${r + 3}`).font = { italic: true, size: 9, color: { argb: COLOR.muted } };
 
   s.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 };
@@ -352,17 +346,17 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
   return charts;
 }
 
-// Fuel by car and by driver, and every measured stretch with its flag.
+// Fuel by car and by driver.
 function addFuelSheets(wb: ExcelJS.Workbook, data: ReportData): ChartSpec[] {
   const fuel = data.fuel;
   const s = wb.addWorksheet("Mafuta", { properties: { tabColor: { argb: COLOR.balance } }, views: [{ showGridLines: false }] });
-  [12, 20, 20, 12, 12, 13, 16, 13, 11, 3].forEach((w, i) => (s.getColumn(i + 1).width = w));
+  [12, 20, 20, 12, 12, 13, 16, 13, 3].forEach((w, i) => (s.getColumn(i + 1).width = w));
   s.getCell("A1").value = "Matumizi ya mafuta";
   s.getCell("A1").font = { bold: true, size: 14, color: { argb: COLOR.accent } };
   s.getCell("A2").value = `${data.rangeLabel}. Km na lita ni kati ya vipimo vya kilomita na geji. Km kwa lita na TSh kwa km ni fomula.`;
   s.getCell("A2").font = { color: { argb: COLOR.muted } };
 
-  const head = ["Namba", "Gari", "Dereva", "Km", "Lita", "Km kwa lita", "Gharama", "TSh kwa km", "Tahadhari"];
+  const head = ["Namba", "Gari", "Dereva", "Km", "Lita", "Km kwa lita", "Gharama", "TSh kwa km"];
   const carStart = sectionHeader(s, 4, "Kwa gari", head) + 1;
   fuel.cars.forEach((c, i) => {
     const row = carStart + i;
@@ -375,17 +369,16 @@ function addFuelSheets(wb: ExcelJS.Workbook, data: ReportData): ChartSpec[] {
       { formula: `IFERROR(D${row}/E${row},"")`, result: c.totals.kmPerLitre ?? "" },
       Math.round(c.totals.cost),
       { formula: `IFERROR(G${row}/D${row},"")`, result: c.totals.costPerKm ?? "" },
-      c.totals.flagged,
     ];
   });
   const carEnd = carStart + Math.max(fuel.cars.length, 1) - 1;
-  totalRow(s, carEnd + 1, carStart, carEnd, ["D", "E", "G", "I"]);
+  totalRow(s, carEnd + 1, carStart, carEnd, ["D", "E", "G"]);
   s.getCell(`F${carEnd + 1}`).value = { formula: `IFERROR(D${carEnd + 1}/E${carEnd + 1},"")`, result: fuel.all.kmPerLitre ?? "" };
   s.getCell(`H${carEnd + 1}`).value = { formula: `IFERROR(G${carEnd + 1}/D${carEnd + 1},"")`, result: fuel.all.costPerKm ?? "" };
   fuelFormats(s, carStart, carEnd + 1);
   colorScale(s, `F${carStart}:F${carEnd}`);
 
-  const dStart = sectionHeader(s, carEnd + 3, "Kwa dereva", ["Dereva", "", "", "Km", "Lita", "Km kwa lita", "Gharama", "TSh kwa km", "Tahadhari"]) + 1;
+  const dStart = sectionHeader(s, carEnd + 3, "Kwa dereva", ["Dereva", "", "", "Km", "Lita", "Km kwa lita", "Gharama", "TSh kwa km"]) + 1;
   fuel.drivers.forEach((d, i) => {
     const row = dStart + i;
     s.getRow(row).values = [
@@ -397,7 +390,6 @@ function addFuelSheets(wb: ExcelJS.Workbook, data: ReportData): ChartSpec[] {
       { formula: `IFERROR(D${row}/E${row},"")`, result: d.totals.kmPerLitre ?? "" },
       Math.round(d.totals.cost),
       { formula: `IFERROR(G${row}/D${row},"")`, result: d.totals.costPerKm ?? "" },
-      d.totals.flagged,
     ];
     s.mergeCells(`A${row}:C${row}`);
   });
@@ -405,71 +397,6 @@ function addFuelSheets(wb: ExcelJS.Workbook, data: ReportData): ChartSpec[] {
   fuelFormats(s, dStart, dEnd);
   colorScale(s, `F${dStart}:F${dEnd}`);
   s.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 };
-
-  // Every stretch between two readings, flagged ones shaded.
-  const v = wb.addWorksheet("Vipindi vya mafuta", { views: [{ state: "frozen", ySplit: 1 }], properties: { tabColor: { argb: COLOR.balance } } });
-  const rows = fuel.stretches.map((x, i) => {
-    const row = i + 2;
-    return [
-      x.plate,
-      x.driver,
-      toExcelTime(x.from.at),
-      toExcelTime(x.to.at),
-      x.from.odometer,
-      x.to.odometer,
-      { formula: `F${row}-E${row}`, result: x.km },
-      gaugeLabel(x.from.eighths),
-      gaugeLabel(x.to.eighths),
-      Number(x.litresAdded.toFixed(1)),
-      Number(x.litresUsed.toFixed(1)),
-      { formula: `IFERROR(IF(K${row}>0,G${row}/K${row},""),"")`, result: x.kmPerLitre ?? "" },
-      Math.round(x.cost),
-      x.flag ? flagText[x.flag].short : "",
-    ];
-  });
-  v.addTable({
-    name: "VipindiMafuta",
-    ref: "A1",
-    headerRow: true,
-    totalsRow: true,
-    style: { theme: "TableStyleMedium2", showRowStripes: true },
-    columns: [
-      { name: "Namba", filterButton: true, totalsRowLabel: "Jumla" },
-      { name: "Dereva", filterButton: true },
-      { name: "Kuanzia", filterButton: true },
-      { name: "Hadi", filterButton: true },
-      { name: "Km mwanzo", filterButton: true },
-      { name: "Km mwisho", filterButton: true },
-      { name: "Km", filterButton: true, totalsRowFunction: "sum" },
-      { name: "Geji mwanzo", filterButton: true },
-      { name: "Geji mwisho", filterButton: true },
-      { name: "Lita zilizonunuliwa", filterButton: true, totalsRowFunction: "sum" },
-      { name: "Lita zilizotumika", filterButton: true, totalsRowFunction: "sum" },
-      { name: "Km kwa lita", filterButton: true },
-      { name: "Gharama", filterButton: true, totalsRowFunction: "sum" },
-      { name: "Tahadhari", filterButton: true },
-    ],
-    rows: rows.length ? rows : [["", "Hakuna kipindi kilichopimwa", null, null, 0, 0, 0, "", "", 0, 0, "", 0, ""]],
-  });
-  [11, 18, 18, 18, 12, 12, 9, 12, 12, 13, 13, 11, 14, 20].forEach((w, i) => (v.getColumn(i + 1).width = w));
-  v.getColumn(3).numFmt = DATE;
-  v.getColumn(4).numFmt = DATE;
-  for (const c of [5, 6, 7]) v.getColumn(c).numFmt = NUMBER;
-  for (const c of [10, 11, 12]) v.getColumn(c).numFmt = DECIMAL;
-  v.getColumn(13).numFmt = MONEY;
-  const n = Math.max(rows.length, 1);
-  v.addConditionalFormatting({
-    ref: `A2:N${n + 1}`,
-    rules: [
-      {
-        type: "expression",
-        priority: 1,
-        formulae: ['$N2<>""'],
-        style: { font: { color: { argb: COLOR.out }, bold: true }, fill: { type: "pattern", pattern: "solid", bgColor: { argb: COLOR.outSoft } } },
-      },
-    ],
-  });
-  setupPrint(v);
 
   if (!fuel.cars.length) return [];
   const sheet = "Mafuta";
