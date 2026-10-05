@@ -10,6 +10,7 @@ import {
   parseEntryDate,
   parseIncome,
   parseMoneyRequest,
+  parseFuelPrice,
   parsePricePerLitre,
   parseReading,
   parseStartingReading,
@@ -109,6 +110,16 @@ test("checks fuel prices and tank sizes", () => {
   assert.deepEqual(parseTankLitres("45"), { litres: 45 });
   assert.ok("error" in parseTankLitres("5"));
   assert.ok("error" in parseTankLitres("45.5"));
+});
+
+test("a fuel request's price per litre is required and in shillings", () => {
+  assert.deepEqual(parseFuelPrice("2,950"), { price: 2950 });
+  assert.deepEqual(parseFuelPrice(" 3100 "), { price: 3100 });
+  assert.ok("error" in parseFuelPrice(""));
+  assert.ok("error" in parseFuelPrice("abc"));
+  assert.ok("error" in parseFuelPrice("3"));
+  assert.ok("error" in parseFuelPrice("0"));
+  assert.ok("error" in parseFuelPrice("150,000"));
 });
 
 test("knows a receipt photo by its first bytes", () => {

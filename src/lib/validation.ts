@@ -134,6 +134,16 @@ export function parsePricePerLitre(input: string): { price: number } | { error: 
   return { price };
 }
 
+// The price per litre typed with each fuel request, since it differs from one station to the next.
+// Under TSh 500 is almost certainly a slip (e.g. "3" for 3,000).
+export function parseFuelPrice(input: string): { price: number } | { error: string } {
+  if (!input.trim()) return { error: "Andika bei ya lita moja kwenye kituo cha mafuta." };
+  const parsed = parsePricePerLitre(input);
+  if ("error" in parsed) return parsed.error.includes("kubwa") ? parsed : { error: "Andika bei ya lita moja kwa namba, mfano 3,000." };
+  if (parsed.price < 500) return { error: "Bei ya lita moja ni ndogo mno. Andika kwa shilingi, mfano 3,000." };
+  return parsed;
+}
+
 export function parseTankLitres(input: string): { litres: number } | { error: string } {
   const litres = Number(input.trim());
   if (!/^\d+$/.test(input.trim()) || litres < 10 || litres > 1000) {
