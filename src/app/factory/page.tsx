@@ -58,7 +58,7 @@ export default async function FactoryDashboard() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr] lg:items-start">
-        <CarMoneyCard cars={cars} income={income.this_month} spend={o.this_month} reportHref="/factory/reports" />
+        <CarMoneyCard cars={cars} reportHref="/factory/reports" />
 
         <div className="grid gap-6">
           <section className="card">

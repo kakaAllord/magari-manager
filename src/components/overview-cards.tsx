@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CarProfit } from "@/components/car-profit";
 import type { FuelOverview } from "@/lib/fuel";
 import { formatMoney, formatRate, keepMinus } from "@/lib/format";
 import type { CarMoney } from "@/lib/stats";
@@ -36,94 +37,25 @@ export function StatTile({
   );
 }
 
-// This month's income, spending and balance for every car, with its driver.
-export function CarMoneyCard({
-  cars,
-  income,
-  spend,
-  reportHref,
-}: {
-  cars: CarMoney[];
-  income: string;
-  spend: string;
-  reportHref: string;
-}) {
-  const balance = Number(income) - Number(spend);
-  // The "no car" row only shows when something was booked without a car this month.
-  const rows = cars.filter((c) => c.id !== null || Number(c.income) || Number(c.spend));
-  const sub = (c: CarMoney) => (c.id === null ? null : [c.car, c.driver ?? "Hana dereva"].filter(Boolean).join(" · "));
-
+// This month's faida or hasara for every car, with its driver, from its income and spending.
+export function CarMoneyCard({ cars, reportHref }: { cars: CarMoney[]; reportHref: string }) {
   return (
     <section className="card">
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <h2 className="font-semibold">Kila gari mwezi huu</h2>
+      <div className="mb-1 flex items-baseline justify-between gap-3">
+        <h2 className="font-semibold">Faida kwa gari, mwezi huu</h2>
         <Link href={reportHref} className="text-sm font-medium text-accent underline">
           Ripoti kamili →
         </Link>
       </div>
-      {/* Phones: four money columns don't fit, so each car is a row with its balance on the right. */}
-      <ul className="divide-y divide-line text-sm sm:hidden">
-        {rows.map((c) => {
-          const net = Number(c.income) - Number(c.spend);
-          return (
-            <li key={c.id ?? "none"} className="py-2.5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  {c.plate ? <span className="plate">{c.plate}</span> : "Bila gari"}
-                  {sub(c) && <span className="ml-2 text-xs text-muted">{sub(c)}</span>}
-                </div>
-                <span className={`shrink-0 font-semibold tabular-nums ${net < 0 ? "text-danger" : "text-ok"}`}>
-                  {formatMoney(net)}
-                </span>
-              </div>
-              <p className="mt-0.5 text-xs text-muted tabular-nums">
-                Mapato <span className="text-ok">{formatMoney(c.income)}</span> · Matumizi{" "}
-                <span className="text-foreground">{formatMoney(c.spend)}</span>
-              </p>
-            </li>
-          );
-        })}
-        <li className="flex items-start justify-between gap-3 py-2.5 font-semibold">
-          Jumla
-          <span className={`tabular-nums ${balance < 0 ? "text-danger" : "text-ok"}`}>{formatMoney(balance)}</span>
-        </li>
-      </ul>
-      <div className="hidden overflow-x-auto sm:block">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Gari</th>
-              <th className="num">Mapato</th>
-              <th className="num">Matumizi</th>
-              <th className="num">Salio</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((c) => {
-              const net = Number(c.income) - Number(c.spend);
-              return (
-                <tr key={c.id ?? "none"}>
-                  <td>
-                    {c.plate ? <span className="plate">{c.plate}</span> : "Bila gari"}
-                    {sub(c) && <span className="mt-0.5 block text-xs text-muted">{sub(c)}</span>}
-                  </td>
-                  <td className="num text-ok">{formatMoney(c.income)}</td>
-                  <td className="num">{formatMoney(c.spend)}</td>
-                  <td className={`num font-medium ${net < 0 ? "text-danger" : "text-ok"}`}>{formatMoney(net)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td>Jumla</td>
-              <td className="num text-ok">{formatMoney(income)}</td>
-              <td className="num">{formatMoney(spend)}</td>
-              <td className={`num ${balance < 0 ? "text-danger" : "text-ok"}`}>{formatMoney(balance)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+      <CarProfit
+        rows={cars.map((c) => ({
+          key: String(c.id ?? "none"),
+          plate: c.plate,
+          sub: c.id === null ? null : [c.car, c.driver ?? "Hana dereva"].filter(Boolean).join(" · "),
+          income: Number(c.income),
+          spend: Number(c.spend),
+        }))}
+      />
     </section>
   );
 }

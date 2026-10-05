@@ -46,7 +46,7 @@ export default async function DirectorDashboard() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr] lg:items-start">
-        <CarMoneyCard cars={cars} income={income.this_month} spend={o.this_month} reportHref="/director/reports" />
+        <CarMoneyCard cars={cars} reportHref="/director/reports" />
         <FuelCard fuel={fuel} href="/director/fuel" />
       </div>
     </main>
