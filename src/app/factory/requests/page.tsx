@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { authoriseRequest } from "@/app/actions/requests";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
@@ -9,7 +8,7 @@ import { listAwaitingAuthorisation } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
 import { getOverview } from "@/lib/stats";
 
-// Only what the vehicle manager approved and waits for the factory manager. Everything decided lives on Historia.
+// Only what the vehicle manager approved and waits for the factory manager. Decided requests show in Ripoti.
 export default async function FactoryRequestsPage() {
   await requireUser("factory_manager");
   const [waiting, o] = await Promise.all([listAwaitingAuthorisation(), getOverview()]);
@@ -62,11 +61,6 @@ export default async function FactoryRequestsPage() {
             {formatMoney(o.pending_total)}). Yakikubaliwa yatafika hapa.
           </p>
         )}
-        <p className="mt-3 text-sm">
-          <Link href="/factory/history" className="font-medium text-accent underline">
-            Historia ya maombi yote →
-          </Link>
-        </p>
       </section>
     </main>
   );
