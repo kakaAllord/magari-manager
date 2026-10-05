@@ -13,18 +13,20 @@ import {
   MAX_ISSUE_NOTE_LENGTH,
   parseCarChoice,
   parseEntryDate,
-  parseFuelPrice,
+  parseFuelOrder,
   parseMoneyRequest,
   parseReading,
   type ReadingErrors,
   type RequestErrors,
 } from "@/lib/validation";
 
-type FormErrors = RequestErrors & ReadingErrors & { carId?: string; kind?: string; date?: string; fuelPrice?: string };
+type FormErrors = RequestErrors &
+  ReadingErrors & { carId?: string; kind?: string; date?: string; fuelPrice?: string; litres?: string };
 type FormValues = {
   kind: string;
   amount: string;
   fuelPrice?: string;
+  litres?: string;
   reason: string;
   carId?: string;
   odometer?: string;
@@ -45,6 +47,16 @@ const notReadyForManager = (missing: string) =>
 const readKind = (formData: FormData) => (formData.get("kind") === "fuel" ? "fuel" : "other");
 const reasonFor = (kind: string, reason: string) => (kind === "fuel" && !reason.trim() ? "Mafuta" : reason);
 
+// Fuel is asked for as a price per litre (it differs between stations) and a number of litres; the
+// amount is worked out here from the two, never taken from the form. Other requests give an amount.
+type FuelOrder = ReturnType<typeof parseFuelOrder>;
+const readFuelOrder = (kind: string, values: FormValues): FuelOrder | null =>
+  kind === "fuel" ? parseFuelOrder(values.fuelPrice ?? "", values.litres ?? "") : null;
+// A fuel order with mistakes reports them itself, so its amount stands in as valid meanwhile.
+const amountFor = (values: FormValues, order: FuelOrder | null) =>
+  order ? ("amount" in order ? String(order.amount) : "1") : values.amount;
+const orderErrors = (order: FuelOrder | null) => (order && "errors" in order ? order.errors : {});
+
 export async function createRequest(
   _prev: RequestFormState,
   formData: FormData,
@@ -55,27 +67,23 @@ export async function createRequest(
     kind,
     amount: String(formData.get("amount") ?? ""),
     fuelPrice: String(formData.get("fuelPrice") ?? ""),
+    litres: String(formData.get("litres") ?? ""),
     reason: String(formData.get("reason") ?? ""),
     odometer: String(formData.get("odometer") ?? ""),
     gauge: String(formData.get("gauge") ?? ""),
   };
-  const parsed = parseMoneyRequest({ amount: values.amount, reason: reasonFor(kind, values.reason) });
+  const order = readFuelOrder(kind, values);
+  const parsed = parseMoneyRequest({ amount: amountFor(values, order), reason: reasonFor(kind, values.reason) });
   const reading = kind === "fuel" ? parseReading({ odometer: values.odometer!, gauge: values.gauge! }) : null;
-  // Fuel costs differ from station to station, so the driver types the price per litre each time.
-  const price = kind === "fuel" ? parseFuelPrice(values.fuelPrice!) : null;
-  if (!parsed.ok || (reading && !reading.ok) || (price && "error" in price)) {
+  if (!parsed.ok || (reading && !reading.ok) || (order && "errors" in order)) {
     return {
       ok: false,
-      errors: {
-        ...(parsed.ok ? {} : parsed.errors),
-        ...(reading && !reading.ok ? reading.errors : {}),
-        ...(price && "error" in price ? { fuelPrice: price.error } : {}),
-      },
+      errors: { ...(parsed.ok ? {} : parsed.errors), ...(reading && !reading.ok ? reading.errors : {}), ...orderErrors(order) },
       values,
     };
   }
 
-  if (!reading || !price) {
+  if (!reading || !order) {
     await query(
       `INSERT INTO money_requests (requester_id, car_id, amount, reason)
        VALUES ($1, (SELECT id FROM cars WHERE driver_id = $1), $2, $3)`,
@@ -111,7 +119,7 @@ export async function createRequest(
         `INSERT INTO money_requests (requester_id, car_id, amount, reason, kind, fuel_price)
          VALUES ($1, $2, $3, $4, 'fuel', $5)
          RETURNING id`,
-        [driver.id, carRow.id, parsed.amount, parsed.reason, price.price],
+        [driver.id, carRow.id, parsed.amount, parsed.reason, order.price],
       );
       await client.query(
         `INSERT INTO fuel_readings (car_id, driver_id, recorded_by, request_id, odometer_km, gauge_eighths)
@@ -143,24 +151,25 @@ export async function createManagerRequest(
     kind,
     amount: String(formData.get("amount") ?? ""),
     fuelPrice: String(formData.get("fuelPrice") ?? ""),
+    litres: String(formData.get("litres") ?? ""),
     reason: String(formData.get("reason") ?? ""),
     carId: String(formData.get("carId") ?? ""),
     date: String(formData.get("date") ?? ""),
   };
-  const parsed = parseMoneyRequest({ amount: values.amount, reason: reasonFor(kind, values.reason) });
+  // Past fuel too: the price paid that day and the litres give its amount.
+  const order = readFuelOrder(kind, values);
+  const parsed = parseMoneyRequest({ amount: amountFor(values, order), reason: reasonFor(kind, values.reason) });
   let car = parseCarChoice(values.carId!);
   if (kind === "fuel" && !("error" in car) && car.carId === null) car = { error: "Mafuta ni ya gari: chagua gari." };
   const date = parseEntryDate(values.date!, todayInTanzania());
-  // Past fuel too: the price paid that day is what turns its amount into litres.
-  const price = kind === "fuel" ? parseFuelPrice(values.fuelPrice!) : null;
-  if (!parsed.ok || "error" in car || "error" in date || (price && "error" in price)) {
+  if (!parsed.ok || "error" in car || "error" in date || (order && "errors" in order)) {
     return {
       ok: false,
       errors: {
         ...(parsed.ok ? {} : parsed.errors),
         ...("error" in car ? { carId: car.error } : {}),
         ...("error" in date ? { date: date.error } : {}),
-        ...(price && "error" in price ? { fuelPrice: price.error } : {}),
+        ...orderErrors(order),
       },
       values,
     };
@@ -192,7 +201,7 @@ export async function createManagerRequest(
        FROM at
       WHERE $2::int IS NULL OR EXISTS (SELECT 1 FROM cars WHERE id = $2::int)
      RETURNING id`,
-    [manager.id, car.carId, parsed.amount, parsed.reason, kind, date.date, TIME_ZONE, price?.price ?? null],
+    [manager.id, car.carId, parsed.amount, parsed.reason, kind, date.date, TIME_ZONE, order && "price" in order ? order.price : null],
   );
   if (inserted.length === 0) {
     return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." }, values };

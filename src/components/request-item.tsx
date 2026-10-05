@@ -31,8 +31,7 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
           {[
             r.odometer_km !== null && `km ${formatKm(r.odometer_km)}`,
             r.gauge_eighths !== null && gaugeLabel(r.gauge_eighths),
-            r.fuel_price !== null && `${formatMoney(r.fuel_price)} kwa lita`,
-            r.fuel_price !== null && `≈ lita ${formatLitres(Number(r.amount) / r.fuel_price)}`,
+            r.fuel_price !== null && `lita ${formatLitres(Number(r.amount) / r.fuel_price)} × ${formatMoney(r.fuel_price)}`,
           ]
             .filter(Boolean)
             .join(" · ")}

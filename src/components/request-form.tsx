@@ -6,7 +6,7 @@ import { EntryDate } from "@/components/entry-date";
 import { GaugePicker } from "@/components/gauge-picker";
 import { Icon } from "@/components/icons";
 import { gaugeLabel } from "@/lib/fuel-calc";
-import { formatDateTime, formatKm, formatLitres } from "@/lib/format";
+import { formatDateTime, formatKm, formatMoney } from "@/lib/format";
 import type { CarOption } from "@/lib/reports";
 import { MAX_REASON_LENGTH } from "@/lib/validation";
 
@@ -24,7 +24,8 @@ export type DriverFuel = {
 
 // Drivers ask for their own car, and a fuel request carries their km and gauge reading. Managers
 // also pick the car (or none), and `cars` turns that on; their fuel requests carry no reading.
-// Every fuel request carries the price per litre at the station, which differs from place to place.
+// Fuel is asked for as the price per litre at the station (it differs from place to place) and the
+// litres needed; the amount is their product.
 // `today` adds a date, so a manager can type in past expenses as history.
 export function RequestForm({
   submit,
@@ -48,16 +49,19 @@ export function RequestForm({
   const fuelBlocked = isDriver && (fuel === null || fuel?.openFuel || notReady !== "");
   // After a fuel request goes in, fuel is blocked until it's paid, so the form falls back to the rest.
   const kind = fuelBlocked ? "other" : picked;
-  // Amount and price as typed, to show roughly how many litres that buys. They follow the form: kept
-  // when it comes back with an error, cleared once a request goes in.
-  const [typed, setTyped] = useState({ amount: failed?.values.amount ?? "", price: failed?.values.fuelPrice ?? "" });
+  // Price and litres as typed, to show what the fuel will cost. They follow the form: kept when it
+  // comes back with an error, cleared once a request goes in. The server works the amount out again.
+  const [typed, setTyped] = useState({ price: failed?.values.fuelPrice ?? "", litres: failed?.values.litres ?? "" });
   const [seen, setSeen] = useState(state);
   if (state !== seen) {
     setSeen(state);
-    setTyped(state && !state.ok ? { amount: state.values.amount, price: state.values.fuelPrice ?? "" } : { amount: "", price: "" });
+    setTyped(
+      state && !state.ok ? { price: state.values.fuelPrice ?? "", litres: state.values.litres ?? "" } : { price: "", litres: "" },
+    );
   }
-  const shillings = (text: string) => Number(text.replace(/[,\s]/g, ""));
-  const litres = shillings(typed.amount) > 0 && shillings(typed.price) >= 500 ? shillings(typed.amount) / shillings(typed.price) : null;
+  const price = Number(typed.price.replace(/[,\s]/g, ""));
+  const litres = Number(/^\s*\d+,\d{1,2}\s*$/.test(typed.litres) ? typed.litres.replace(",", ".") : typed.litres.replace(/[,\s]/g, ""));
+  const fuelTotal = price >= 500 && litres > 0 ? Math.round(price * litres) : null;
 
   return (
     <form action={action} className="grid gap-4">
@@ -171,50 +175,71 @@ export function RequestForm({
         </>
       )}
 
-      <label className="block">
-        <span className="label">Kiasi</span>
-        <div className="relative">
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
-          <input
-            name="amount"
-            inputMode="numeric"
-            placeholder="40,000"
-            required
-            defaultValue={failed?.values.amount}
-            onInput={(e) => {
-              const value = e.currentTarget.value;
-              setTyped((t) => ({ ...t, amount: value }));
-            }}
-            className="input pl-12 text-lg font-semibold tabular-nums sm:text-lg"
-          />
-        </div>
-        {failed?.errors.amount && <p className="mt-1 text-sm text-danger">{failed.errors.amount}</p>}
-      </label>
-      {kind === "fuel" && (
+      {kind !== "fuel" && (
         <label className="block">
-          <span className="label">Bei ya lita moja</span>
+          <span className="label">Kiasi</span>
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
             <input
-              name="fuelPrice"
+              name="amount"
               inputMode="numeric"
-              placeholder="3,000"
+              placeholder="40,000"
               required
-              defaultValue={failed?.values.fuelPrice}
-              onInput={(e) => {
-                const value = e.currentTarget.value;
-                setTyped((t) => ({ ...t, price: value }));
-              }}
-              className="input pl-12 tabular-nums"
+              defaultValue={failed?.values.amount}
+              className="input pl-12 text-lg font-semibold tabular-nums sm:text-lg"
             />
           </div>
-          <p className="mt-1 text-xs text-muted">
-            {litres === null
-              ? "Bei ya kituo cha mafuta, kwa lita moja. Inatofautiana kati ya vituo."
-              : `≈ lita ${formatLitres(litres)} kwa kiasi hiki.`}
-          </p>
-          {failed?.errors.fuelPrice && <p className="mt-1 text-sm text-danger">{failed.errors.fuelPrice}</p>}
+          {failed?.errors.amount && <p className="mt-1 text-sm text-danger">{failed.errors.amount}</p>}
         </label>
+      )}
+      {kind === "fuel" && (
+        <div className="grid gap-2">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="label">Bei ya lita moja</span>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
+                <input
+                  name="fuelPrice"
+                  inputMode="numeric"
+                  placeholder="3,000"
+                  required
+                  defaultValue={failed?.values.fuelPrice}
+                  onInput={(e) => {
+                    const value = e.currentTarget.value;
+                    setTyped((t) => ({ ...t, price: value }));
+                  }}
+                  className="input pl-12 tabular-nums"
+                />
+              </div>
+              {failed?.errors.fuelPrice && <p className="mt-1 text-sm text-danger">{failed.errors.fuelPrice}</p>}
+            </label>
+            <label className="block">
+              <span className="label">Lita ngapi</span>
+              <div className="relative">
+                <input
+                  name="litres"
+                  inputMode="decimal"
+                  placeholder="20"
+                  required
+                  defaultValue={failed?.values.litres}
+                  onInput={(e) => {
+                    const value = e.currentTarget.value;
+                    setTyped((t) => ({ ...t, litres: value }));
+                  }}
+                  className="input pr-10 tabular-nums"
+                />
+                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted">L</span>
+              </div>
+              {failed?.errors.litres && <p className="mt-1 text-sm text-danger">{failed.errors.litres}</p>}
+            </label>
+          </div>
+          <div className="flex items-baseline justify-between gap-3 rounded-lg bg-background px-3 py-2.5" aria-live="polite">
+            <span className="text-sm text-muted">Jumla ya kuomba</span>
+            <span className="text-lg font-semibold tabular-nums">{fuelTotal === null ? "–" : formatMoney(fuelTotal)}</span>
+          </div>
+          <p className="text-xs text-muted">Bei ya kituo cha mafuta, kwa lita moja. Inatofautiana kati ya vituo.</p>
+        </div>
       )}
       <label className="block">
         <span className="label">{kind === "fuel" ? "Maelezo (si lazima)" : "Sababu"}</span>
