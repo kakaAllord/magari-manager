@@ -5,7 +5,7 @@ export type StaffRole = "factory_manager" | "manager" | "accountant";
 
 export const staffLabel: Record<StaffRole, string> = {
   factory_manager: "Meneja wa kiwanda",
-  manager: "Meneja wa magari",
+  manager: "Meneja",
   accountant: "Mhasibu",
 };
 

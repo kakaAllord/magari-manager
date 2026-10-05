@@ -9,7 +9,7 @@ export default async function FactoryHistoryPage({ searchParams }: PageProps<"/f
   return (
     <main className="page">
       <LiveUpdates channel={MANAGERS_CHANNEL} />
-      <PageHeader title="Historia" description="Maombi yote yaliyoamuliwa na meneja wa magari, mapya juu." />
+      <PageHeader title="Historia" description="Maombi yote yaliyoamuliwa na meneja, mapya juu." />
       <RequestHistory
         searchParams={await searchParams}
         filters={["all", "approved", "authorised", "issued", "rejected"]}

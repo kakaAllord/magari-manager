@@ -16,7 +16,7 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
           <span className="font-normal text-muted">
             {" "}
             · {r.requester_name}
-            {r.requester_role === "manager" && " (meneja wa magari)"}
+            {r.requester_role === "manager" && " (meneja)"}
           </span>
         )}
       </p>
@@ -42,7 +42,7 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
           {r.car ?? "Hakuna gari"} · Imetumwa {formatDateTime(r.created_at)}
           {r.reviewed_at &&
             (selfApproved
-              ? " · Ombi la meneja wa magari, limekubaliwa moja kwa moja"
+              ? " · Ombi la meneja, limekubaliwa moja kwa moja"
               : ` · ${r.status === "rejected" && !declinedByFactory ? "Imekataliwa" : "Imekubaliwa"} na ${r.reviewer_name ?? "meneja"} ${formatDateTime(r.reviewed_at)}`)}
           {r.status === "approved" && " · Inasubiri meneja wa kiwanda"}
           {/* Approvals from before the factory manager's step count as authorised and name nobody. */}

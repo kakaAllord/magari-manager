@@ -12,7 +12,7 @@ export default async function ManagersPage() {
     <main className="page">
       <PageHeader
         title="Wafanyakazi"
-        description="Mameneja wa kiwanda, mameneja wa magari na wahasibu. Mameneja wa magari wanaongezwa na meneja wa kiwanda. Ukimzima mtu hataweza kuingia, lakini jina lake linabaki kwenye historia."
+        description="Mameneja wa kiwanda, mameneja na wahasibu. Mameneja wanaongezwa na meneja wa kiwanda. Ukimzima mtu hataweza kuingia, lakini jina lake linabaki kwenye historia."
         action={<AddStaff roles={staffAddedBy.director!} />}
       />
       <StaffList roles={staffManagedBy.director!} empty="Bado hakuna mfanyakazi. Bonyeza “Ongeza mfanyakazi”." />

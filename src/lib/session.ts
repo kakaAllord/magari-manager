@@ -13,7 +13,7 @@ export type Role = "driver" | "manager" | "director" | "accountant" | "factory_m
 // "manager" is the vehicle manager; the factory manager authorises what they approve.
 export const roleName: Record<Role, string> = {
   driver: "Dereva",
-  manager: "Meneja wa magari",
+  manager: "Meneja",
   director: "Mkurugenzi",
   accountant: "Mhasibu",
   factory_manager: "Meneja wa kiwanda",

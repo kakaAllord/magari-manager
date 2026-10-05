@@ -19,7 +19,7 @@ function Message({ state }: { state: { ok: boolean; message: string } | undefine
 }
 
 const roleHints: Record<StaffRole, string> = {
-  factory_manager: "Anaidhinisha maombi yaliyokubaliwa na meneja wa magari kabla mhasibu hajalipa, na anaongeza mameneja wa magari.",
+  factory_manager: "Anaidhinisha maombi yaliyokubaliwa na meneja kabla mhasibu hajalipa, na anaongeza mameneja.",
   manager: "Anakubali maombi ya madereva, anarekodi mapato, magari, madereva na mafuta.",
   accountant: "Analipa maombi yaliyoidhinishwa na meneja wa kiwanda, na kuweka risiti.",
 };

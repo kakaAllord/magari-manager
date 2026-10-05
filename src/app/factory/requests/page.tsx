@@ -58,7 +58,7 @@ export default async function FactoryRequestsPage() {
         )}
         {o.pending_count > 0 && (
           <p className="mt-3 text-sm text-muted">
-            {o.pending_count === 1 ? "Ombi 1 bado liko" : `Maombi ${o.pending_count} bado yako`} kwa meneja wa magari (
+            {o.pending_count === 1 ? "Ombi 1 bado liko" : `Maombi ${o.pending_count} bado yako`} kwa meneja (
             {formatMoney(o.pending_total)}). Yakikubaliwa yatafika hapa.
           </p>
         )}

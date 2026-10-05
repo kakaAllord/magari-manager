@@ -26,7 +26,7 @@ export default async function FactoryDashboard() {
   const waiting = o.awaiting_authorisation_count;
 
   const stages = [
-    { label: "Kwa meneja wa magari", count: o.pending_count, total: o.pending_total },
+    { label: "Kwa meneja", count: o.pending_count, total: o.pending_total },
     { label: "Kwa idhini yako", count: waiting, total: o.awaiting_authorisation_total, href: "/factory/requests" },
     { label: "Kwa mhasibu kulipa", count: o.awaiting_issue_count, total: o.awaiting_issue_total },
     { label: "Yamelipwa, risiti bado", count: o.awaiting_receipt_count },

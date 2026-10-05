@@ -7,7 +7,7 @@ import { login } from "@/app/actions/auth";
 const demoAccounts = [
   { label: "Mkurugenzi", name: "Baraka Mushi", login: "director@example.com", password: "director123" },
   { label: "Meneja wa kiwanda", name: "Daudi Mrema", login: "factory@example.com", password: "factory123" },
-  { label: "Meneja wa magari", name: "Grace Mollel", login: "manager@example.com", password: "manager123" },
+  { label: "Meneja", name: "Grace Mollel", login: "manager@example.com", password: "manager123" },
   { label: "Mhasibu", name: "Rehema Kweka", login: "accountant@example.com", password: "accountant123" },
   { label: "Dereva 1", name: "Juma Hassan", login: "T103ABE", password: "driver123" },
   { label: "Dereva 2", name: "Neema Mushi", login: "T456BCD", password: "driver123" },
