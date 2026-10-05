@@ -2,7 +2,8 @@
 
 A Next.js + Postgres app for running Zuraja Magari's fleet, in Swahili. Drivers sign in
 with their car's plate number and request money: fuel (with the car's odometer and fuel
-gauge) or anything else with a reason. Vehicle managers (meneja) sign in
+gauge, and the price per litre at the station, typed each time since it differs between
+stations) or anything else with a reason. Vehicle managers (meneja) sign in
 with email, approve or reject requests, ask for money themselves (approved as they ask, for a
 car or none), record income (the car it came from, amount, optional
 description; the recorder can delete an entry within 24 hours), manage cars and
@@ -10,7 +11,7 @@ drivers, watch income and spending on a dashboard, and see reports with separate
 each car's faida or hasara (income against spending, as bars), spend and income on tabs plus
 every entry with its date, downloadable as a PDF or an Excel
 workbook (formulas, tables and native charts) per car, month or week. On Mafuta they record each
-car's first reading, set fuel prices and tank sizes, and see km, litres, km per litre and TSh
+car's first reading, set tank sizes, and see km, litres, km per litre and TSh
 per km by car and by driver (measured between readings; the stretches themselves aren't shown).
 A factory manager (meneja wa kiwanda) then authorises or declines every approved request, the
 vehicle manager's own included, and sees the month's money, where each request is, each car's faida or hasara
@@ -142,7 +143,8 @@ directors, factory managers and the mhasibu join `private-managers` and each dri
 ## How it fits together
 
 - `db/migrations/`: plain SQL schema for `users` (driver, manager, factory_manager, director or accountant), `cars`,
-  `sessions`, `money_requests`, `incomes`, `fuel_readings`, `fuel_prices` and `receipts`.
+  `sessions`, `money_requests`, `incomes`, `fuel_readings`, `fuel_prices` (no longer edited: only a fallback for old fuel requests saved
+  without a price) and `receipts`.
 - `src/lib/session.ts`: cookie sessions stored hashed in Postgres; `requireUser(role)`
   guards every page, layout and server action.
 - `src/app/actions/`: server actions for login, requests, cars, drivers, income,
