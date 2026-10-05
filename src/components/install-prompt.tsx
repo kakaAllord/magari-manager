@@ -12,23 +12,11 @@ type Kind = { install: InstallEvent } | { steps: "ios" | "mac" };
 
 const noop = () => () => {};
 
-const DISMISSED = "install-dismissed";
-// "Later" keeps the card away for this long, then it asks again until the app is installed.
-const QUIET_FOR = 3 * 24 * 60 * 60 * 1000;
-
 function installed() {
   return (
     matchMedia("(display-mode: standalone)").matches ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true
   );
-}
-
-function dismissedRecently() {
-  try {
-    return Date.now() - Number(localStorage.getItem(DISMISSED) ?? 0) < QUIET_FOR;
-  } catch {
-    return false;
-  }
 }
 
 function stepsFor(): "ios" | "mac" | null {
@@ -39,8 +27,9 @@ function stepsFor(): "ios" | "mac" | null {
   return null;
 }
 
-// Asks in English when the app is opened, at the bottom of the screen, to install the app on the phone or computer.
-// Never shows inside the installed app, and floats over the page so nothing moves under it.
+// Asks in English every time the app is opened in a browser, at the bottom of the screen, to install it on the
+// phone or computer. "Later" hides it only until the app is opened again. Never shows inside the installed app;
+// Chrome and Edge also stop offering once it is installed. Floats over the page so nothing moves under it.
 export function InstallPrompt() {
   // Everything it checks lives in the browser, so the server and the first render show nothing.
   const client = useSyncExternalStore(noop, () => true, () => false);
@@ -61,18 +50,13 @@ export function InstallPrompt() {
     };
   }, []);
 
-  if (!client || closed || installed() || dismissedRecently()) return null;
+  if (!client || closed || installed()) return null;
   const steps = stepsFor();
   const kind: Kind | null = steps ? { steps } : offer ? { install: offer } : null;
   if (!kind) return null;
   const phone = matchMedia("(pointer: coarse)").matches;
 
-  const later = () => {
-    try {
-      localStorage.setItem(DISMISSED, String(Date.now()));
-    } catch {}
-    setClosed(true);
-  };
+  const later = () => setClosed(true);
 
   const install = async (e: InstallEvent) => {
     await e.prompt();
