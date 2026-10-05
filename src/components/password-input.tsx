@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Icon } from "./icons";
 import { MIN_PASSWORD_LENGTH } from "@/lib/validation";
 
-// A new password the director hands over in person, so it can be shown to read it out.
+// A new password the director hands over in person, so it can be shown to read it out. Shown as text,
+// phone keyboards would capitalise or correct it, saving a password other than the one typed.
 export function PasswordInput({ label, name = "password" }: { label: string; name?: string }) {
   const [shown, setShown] = useState(false);
   return (
@@ -17,6 +18,9 @@ export function PasswordInput({ label, name = "password" }: { label: string; nam
           required
           minLength={MIN_PASSWORD_LENGTH}
           autoComplete="new-password"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           className="input pr-11"
         />
         <button
