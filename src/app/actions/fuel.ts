@@ -6,7 +6,6 @@ import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
 import {
   checkOdometer,
-  parsePricePerLitre,
   parseReading,
   parseTankLitres,
   type ReadingErrors,
@@ -83,27 +82,6 @@ export async function deleteLatestReading(formData: FormData) {
 }
 
 export type SettingsState = { ok: boolean; message: string } | undefined;
-
-// Prices change monthly; a blank field leaves that price as it was.
-export async function saveFuelPrices(_prev: SettingsState, formData: FormData): Promise<SettingsState> {
-  const manager = await requireUser("manager");
-  const saved: string[] = [];
-  for (const type of ["petrol", "diesel"] as const) {
-    const raw = String(formData.get(type) ?? "").trim();
-    if (!raw) continue;
-    const parsed = parsePricePerLitre(raw);
-    if ("error" in parsed) return { ok: false, message: parsed.error };
-    await query(
-      `INSERT INTO fuel_prices (fuel_type, price_per_litre, updated_by) VALUES ($1, $2, $3)
-       ON CONFLICT (fuel_type) DO UPDATE SET price_per_litre = $2, updated_by = $3, updated_at = now()`,
-      [type, parsed.price, manager.id],
-    );
-    saved.push(type === "petrol" ? "petroli" : "dizeli");
-  }
-  if (!saved.length) return { ok: false, message: "Andika bei ya lita moja." };
-  await refresh();
-  return { ok: true, message: `Bei ya ${saved.join(" na ")} imehifadhiwa.` };
-}
 
 export async function saveTank(_prev: SettingsState, formData: FormData): Promise<SettingsState> {
   await requireUser("manager");

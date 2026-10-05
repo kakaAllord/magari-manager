@@ -52,7 +52,6 @@ export type FuelOverview = {
   drivers: DriverFuel[];
   stretches: StretchRow[];
   all: Totals;
-  prices: Record<FuelType, number | null>;
 };
 
 // A period picked on the Mafuta page, as the time range a stretch must end in.
@@ -92,6 +91,8 @@ export async function getFuelOverview(range: FuelRange, carIds: number[] = []): 
     query<{ id: number; name: string }>("SELECT id, name FROM users WHERE role = 'driver'"),
   ]);
 
+  // Each fuel request carries the price typed with it. Older ones without a price fall back to the
+  // fixed price managers used to set on Mafuta, which nobody can change any more.
   const prices: Record<FuelType, number | null> = { petrol: null, diesel: null };
   for (const p of priceRows) prices[p.fuel_type] = p.price_per_litre;
   const names = new Map(users.map((u) => [u.id, u.name]));
@@ -148,7 +149,6 @@ export async function getFuelOverview(range: FuelRange, carIds: number[] = []): 
     drivers,
     stretches: inPeriod.toSorted((a, b) => b.to.at - a.to.at),
     all: totalsOf(inPeriod),
-    prices,
   };
 }
 

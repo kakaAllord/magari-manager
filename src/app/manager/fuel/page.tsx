@@ -5,7 +5,7 @@ import { getFuelOverview, parseFuelPeriod, periodRange } from "@/lib/fuel";
 import { formatKm } from "@/lib/format";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
-import { PricesForm, ReadingForm, TankForm } from "./fuel-forms";
+import { ReadingForm, TankForm } from "./fuel-forms";
 
 export default async function ManagerFuelPage({ searchParams }: PageProps<"/manager/fuel">) {
   await requireUser("manager");
@@ -13,7 +13,6 @@ export default async function ManagerFuelPage({ searchParams }: PageProps<"/mana
   const period = parseFuelPeriod(sp.kipindi);
   const data = await getFuelOverview(periodRange(period));
   const missingTanks = data.cars.filter((c) => !c.tank_litres).length;
-  const missingPrice = data.prices.petrol === null && data.prices.diesel === null;
 
   return (
     <main className="page">
@@ -23,33 +22,23 @@ export default async function ManagerFuelPage({ searchParams }: PageProps<"/mana
         description="Kila ombi la mafuta, dereva anaandika kilomita na geji. Kati ya vipimo viwili tunajua km zilizotembewa na lita zilizotumika."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
-        <section className="card">
-          <h2 className="text-lg font-semibold">Rekodi kipimo</h2>
-          <p className="mb-4 text-sm text-muted">
-            Kipimo cha kwanza kinaanza ufuatiliaji wa gari, na gari halitaombewa mafuta kabla yake. Gari likibadilisha
-            dereva, mpe dereva mpya gari kwanza, kisha rekodi kipimo hapa.
-          </p>
-          <ReadingForm
-            preselect={Number(sp.gari) || undefined}
-            cars={data.cars.map((c) => ({
-              id: c.id,
-              plate: c.plate,
-              car: c.car,
-              driver: c.driver,
-              last: c.last ? formatKm(c.last.odometer) : null,
-            }))}
-          />
-        </section>
-
-        <section className={`card ${missingPrice ? "border-warn/50" : ""}`}>
-          <h2 className="text-lg font-semibold">Bei ya lita moja</h2>
-          <p className="mb-4 text-sm text-muted">
-            Lita za kila ombi zinahesabiwa kwa bei ya siku lilipoombwa. Badilisha bei EWURA wanapotangaza mpya.
-          </p>
-          <PricesForm petrol={data.prices.petrol} diesel={data.prices.diesel} />
-        </section>
-      </div>
+      <section className="card">
+        <h2 className="text-lg font-semibold">Rekodi kipimo</h2>
+        <p className="mb-4 text-sm text-muted">
+          Kipimo cha kwanza kinaanza ufuatiliaji wa gari, na gari halitaombewa mafuta kabla yake. Gari likibadilisha
+          dereva, mpe dereva mpya gari kwanza, kisha rekodi kipimo hapa.
+        </p>
+        <ReadingForm
+          preselect={Number(sp.gari) || undefined}
+          cars={data.cars.map((c) => ({
+            id: c.id,
+            plate: c.plate,
+            car: c.car,
+            driver: c.driver,
+            last: c.last ? formatKm(c.last.odometer) : null,
+          }))}
+        />
+      </section>
 
       <FuelOverview data={data} period={period} tab={parseFuelTab(sp.tab)} manage />
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { recordReading, saveFuelPrices, saveTank } from "@/app/actions/fuel";
+import { recordReading, saveTank } from "@/app/actions/fuel";
 import { GaugePicker } from "@/components/gauge-picker";
 
 type CarChoice = { id: number; plate: string; car: string | null; driver: string | null; last: string | null };
@@ -56,42 +56,6 @@ export function ReadingForm({ cars, preselect }: { cars: CarChoice[]; preselect?
           {state.message}
         </p>
       )}
-    </form>
-  );
-}
-
-export function PricesForm({ petrol, diesel }: { petrol: number | null; diesel: number | null }) {
-  const [state, action, pending] = useActionState(saveFuelPrices, undefined);
-  return (
-    <form action={action} className="grid gap-3">
-      <div className="grid grid-cols-2 gap-3">
-        {(
-          [
-            ["petrol", "Petroli", petrol],
-            ["diesel", "Dizeli", diesel],
-          ] as const
-        ).map(([name, label, value]) => (
-          <label key={name}>
-            <span className="label">{label}</span>
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">
-                TSh
-              </span>
-              <input
-                name={name}
-                inputMode="numeric"
-                placeholder="3,000"
-                defaultValue={value ?? undefined}
-                className="input pl-12 tabular-nums"
-              />
-            </div>
-          </label>
-        ))}
-      </div>
-      <button type="submit" disabled={pending} className="btn btn-ghost w-full sm:w-auto sm:justify-self-start">
-        {pending ? "Inahifadhi…" : "Hifadhi bei"}
-      </button>
-      {state && <p className={`text-sm ${state.ok ? "text-ok" : "text-danger"}`}>{state.message}</p>}
     </form>
   );
 }
