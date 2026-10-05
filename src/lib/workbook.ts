@@ -76,7 +76,7 @@ type DataRange = { sheet: string; rows: number; amountCol: string; carCol: strin
 function addSpendSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
   const s = wb.addWorksheet("Matumizi", { views: [{ state: "frozen", ySplit: 1 }], properties: { tabColor: { argb: COLOR.out } } });
   const periodGroup = data.params.group === "week" ? "week" : "month";
-  const rows = data.expenses.map((x) => [
+  const rows = data.expenses.map((x, i) => [
     excelDate(x.issued_at),
     periodOfRow(x, periodGroup),
     expenseCar(x),
@@ -90,6 +90,8 @@ function addSpendSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     x.issued_by ?? "",
     x.issue_note ?? "",
     excelDate(x.requested_at),
+    x.fuel_price ?? "",
+    x.fuel_price ? { formula: `IF(N${i + 2}>0,H${i + 2}/N${i + 2},"")`, result: Number(x.amount) / x.fuel_price } : "",
   ]);
   s.addTable({
     name: "Matumizi",
@@ -111,13 +113,17 @@ function addSpendSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
       { name: "Imetolewa na", filterButton: true },
       { name: "Kumbukumbu", filterButton: true },
       { name: "Iliombwa", filterButton: true },
+      { name: "Bei kwa lita", filterButton: true },
+      { name: "Lita", filterButton: true },
     ],
-    rows: rows.length ? rows : [[null, "", "", "", "", "", "Hakuna matumizi katika kipindi hiki", 0, "", "", "", "", null]],
+    rows: rows.length ? rows : [[null, "", "", "", "", "", "Hakuna matumizi katika kipindi hiki", 0, "", "", "", "", null, "", ""]],
   });
-  [18, 14, 12, 20, 12, 20, 40, 16, 20, 20, 20, 24, 18].forEach((w, i) => (s.getColumn(i + 1).width = w));
+  [18, 14, 12, 20, 12, 20, 40, 16, 20, 20, 20, 24, 18, 14, 10].forEach((w, i) => (s.getColumn(i + 1).width = w));
   s.getColumn(1).numFmt = DATE;
   s.getColumn(13).numFmt = DATE;
   s.getColumn(8).numFmt = MONEY;
+  s.getColumn(14).numFmt = MONEY;
+  s.getColumn(15).numFmt = DECIMAL;
   const n = Math.max(rows.length, 1);
   s.addConditionalFormatting({
     ref: `H2:H${n + 1}`,

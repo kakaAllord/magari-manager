@@ -22,6 +22,7 @@ export type ExpenseRow = {
   issued_by: string | null;
   issue_note: string | null;
   kind: "fuel" | "other";
+  fuel_price: number | null;
   backfilled: boolean;
 };
 
@@ -44,7 +45,7 @@ export function getExpenses(p: ReportParams) {
             to_char(date_trunc('week', r.issued_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
             c.id AS car_id, c.plate, c.name AS car,
             d.name AS requester, r.reason, r.amount, m.name AS approved_by, f.name AS authorised_by, a.name AS issued_by, r.issue_note,
-            r.kind, r.backfilled_at IS NOT NULL AS backfilled
+            r.kind, r.fuel_price, r.backfilled_at IS NOT NULL AS backfilled
        FROM money_requests r
        JOIN users d ON d.id = r.requester_id
        LEFT JOIN users m ON m.id = r.reviewed_by
