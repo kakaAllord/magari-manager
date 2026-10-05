@@ -1,15 +1,13 @@
 import Link from "next/link";
 import { deleteLatestReading } from "@/app/actions/fuel";
 import { AutoSubmitSelect } from "@/components/auto-submit-select";
-import { flagText, gaugeLabel, type Totals } from "@/lib/fuel-calc";
+import { gaugeLabel, type Totals } from "@/lib/fuel-calc";
 import { fuelPeriods, fuelTypeName, type FuelOverview as Overview, type FuelPeriod } from "@/lib/fuel";
 import { formatDateTime, formatKm, formatLitres, formatMoney, formatRate } from "@/lib/format";
 
-export type FuelTab = "magari" | "madereva" | "vipindi";
-export const parseFuelTab = (v: unknown): FuelTab => (v === "madereva" || v === "vipindi" ? v : "magari");
-
-
-const dayFormat = new Intl.DateTimeFormat("sw-TZ", { day: "numeric", month: "short", timeZone: "Africa/Dar_es_Salaam" });
+// Old links to the removed "vipindi" tab land on "Kwa gari".
+export type FuelTab = "magari" | "madereva";
+export const parseFuelTab = (v: unknown): FuelTab => (v === "madereva" ? v : "magari");
 
 // The fuel picture, shared by managers (who can also delete a car's latest reading) and directors.
 export function FuelOverview({
@@ -23,12 +21,11 @@ export function FuelOverview({
   tab: FuelTab;
   manage?: boolean;
 }) {
-  const flagged = data.stretches.filter((s) => s.flag).length;
+  const measured = data.cars.filter((c) => c.totals.stretches > 0).length;
   const href = (t: FuelTab) => `?${new URLSearchParams({ kipindi: period, ...(t === "magari" ? {} : { tab: t }) })}`;
-  const tabs: { key: FuelTab; label: string; count?: number }[] = [
+  const tabs: { key: FuelTab; label: string }[] = [
     { key: "magari", label: "Kwa gari" },
     { key: "madereva", label: "Kwa dereva" },
-    { key: "vipindi", label: "Vipindi", count: flagged },
   ];
 
   return (
@@ -45,24 +42,15 @@ export function FuelOverview({
             className="input w-auto"
           />
         </form>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <Tile label="Km zilizotembewa" value={formatKm(data.all.km)}>
-            Vipindi {data.all.stretches} vilivyopimwa
+            {measured === 1 ? "Gari 1 limepimwa" : `Magari ${measured} yamepimwa`}
           </Tile>
           <Tile label="Lita zilizotumika" value={formatLitres(data.all.litres)}>
             Gharama {formatMoney(data.all.cost)}
           </Tile>
-          <Tile label="Km kwa lita" value={formatRate(data.all.kmPerLitre)}>
+          <Tile wide label="Km kwa lita" value={formatRate(data.all.kmPerLitre)}>
             {data.all.costPerKm === null ? "Bado haijapimwa" : `${formatMoney(data.all.costPerKm)} kwa km`}
-          </Tile>
-          <Tile label="Tahadhari" value={String(flagged)} tone={flagged ? "warn" : undefined}>
-            {flagged ? (
-              <Link href={href("vipindi")} className="underline">
-                Ona vipindi vyenye tahadhari
-              </Link>
-            ) : (
-              "Hakuna kipindi cha kutiliwa shaka"
-            )}
           </Tile>
         </div>
       </section>
@@ -78,16 +66,12 @@ export function FuelOverview({
               className="flex flex-1 items-center justify-center gap-1.5 border-b-2 border-transparent px-3 py-3 text-sm font-medium text-muted hover:text-foreground aria-[current=page]:border-accent aria-[current=page]:text-foreground"
             >
               {t.label}
-              {!!t.count && (
-                <span className="rounded-full bg-warn-soft px-1.5 text-xs font-semibold text-warn">{t.count}</span>
-              )}
             </Link>
           ))}
         </nav>
 
         {tab === "magari" && <CarsTable data={data} manage={manage} />}
         {tab === "madereva" && <DriversTable data={data} />}
-        {tab === "vipindi" && <StretchList data={data} />}
       </section>
     </>
   );
@@ -100,9 +84,6 @@ function TotalsCells({ t }: { t: Totals }) {
       <td className="num">{t.stretches ? formatLitres(t.litres) : "–"}</td>
       <td className="num font-medium">{formatRate(t.kmPerLitre)}</td>
       <td className="num">{t.costPerKm === null ? "–" : formatMoney(t.costPerKm)}</td>
-      <td className="num">
-        {t.flagged ? <span className="font-semibold text-warn">{t.flagged}</span> : <span className="text-muted">0</span>}
-      </td>
     </>
   );
 }
@@ -113,9 +94,6 @@ const TotalsHead = () => (
     <th className="num">Lita</th>
     <th className="num">Km/L</th>
     <th className="num">TSh/km</th>
-    <th className="num" title="Vipindi vyenye tahadhari">
-      ⚠
-    </th>
   </>
 );
 
@@ -211,61 +189,21 @@ function DriversTable({ data }: { data: Overview }) {
         </tbody>
       </table>
       <p className="mt-3 text-xs text-muted">
-        Kila kipindi ni cha dereva aliyekuwa na gari kuanzia kipimo cha kwanza cha kipindi hicho.
+        Km na lita zinahesabiwa kwa dereva aliyekuwa na gari wakati huo.
       </p>
     </div>
   );
 }
 
-function StretchList({ data }: { data: Overview }) {
-  if (!data.stretches.length) return <Empty />;
-  return (
-    <ul className="divide-y divide-line">
-      {data.stretches.map((s) => (
-        <li key={`${s.from.id}-${s.to.id}`} className={`flex items-start gap-4 py-3 ${s.flag ? "-mx-2 rounded-lg bg-warn-soft px-2" : ""}`}>
-          <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-center gap-x-2">
-              <span className="plate">{s.plate}</span>
-              <span className="font-medium">{s.driver}</span>
-              <span className="text-xs text-muted">
-                {dayFormat.format(s.from.at)} → {dayFormat.format(s.to.at)}
-              </span>
-            </p>
-            <p className="mt-1 text-sm tabular-nums">
-              km {formatKm(s.km)} · lita {formatLitres(s.litresUsed)}
-              {s.litresAdded > 0 && <span className="text-muted"> · +{formatLitres(s.litresAdded)} zilinunuliwa</span>}
-            </p>
-            {s.flag && <p className="mt-1 text-xs font-medium text-warn">{flagText[s.flag].long}</p>}
-          </div>
-          <div className="shrink-0 text-right">
-            <p className={`font-semibold tabular-nums ${s.flag ? "text-warn" : ""}`}>{formatRate(s.kmPerLitre)}</p>
-            <p className="text-xs text-muted">km/L</p>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 const Empty = () => (
-  <p className="py-6 text-center text-sm text-muted">Bado hakuna kipindi kilichopimwa katika muda huu.</p>
+  <p className="py-6 text-center text-sm text-muted">Bado hakuna vipimo vya kutosha katika muda huu.</p>
 );
 
-function Tile({
-  label,
-  value,
-  tone,
-  children,
-}: {
-  label: string;
-  value: string;
-  tone?: "warn";
-  children: React.ReactNode;
-}) {
+function Tile({ label, value, wide = false, children }: { label: string; value: string; wide?: boolean; children: React.ReactNode }) {
   return (
-    <div className={`card @container ${tone === "warn" ? "border-warn/50 bg-warn-soft" : ""}`}>
+    <div className={`card @container ${wide ? "col-span-2 lg:col-span-1" : ""}`}>
       <p className="text-xs font-medium tracking-wide text-muted uppercase">{label}</p>
-      <p className={`figure mt-1 ${tone === "warn" ? "text-warn" : ""}`}>{value}</p>
+      <p className="figure mt-1">{value}</p>
       <p className="mt-1 text-xs text-muted">{children}</p>
     </div>
   );

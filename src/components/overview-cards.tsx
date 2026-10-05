@@ -128,9 +128,8 @@ export function CarMoneyCard({
   );
 }
 
-// The last 30 days of fuel: km per litre for each car, and a link to suspicious stretches.
+// The last 30 days of fuel: km per litre for each car.
 export function FuelCard({ fuel, href }: { fuel: FuelOverview; href: string }) {
-  const flagged = fuel.stretches.filter((s) => s.flag).length;
   return (
     <section className="card">
       <div className="mb-2 flex items-baseline justify-between gap-3">
@@ -153,19 +152,10 @@ export function FuelCard({ fuel, href }: { fuel: FuelOverview; href: string }) {
             <span className="shrink-0 text-right tabular-nums">
               <span className="font-semibold">{formatRate(c.totals.kmPerLitre)}</span>
               <span className="text-xs text-muted"> km/L</span>
-              {c.totals.flagged > 0 && <span className="ml-2 text-xs font-medium text-warn">⚠ {c.totals.flagged}</span>}
             </span>
           </li>
         ))}
       </ul>
-      {flagged > 0 && (
-        <p className="mt-2 text-xs font-medium text-warn">
-          Vipindi {flagged} vina matumizi ya kutiliwa shaka.{" "}
-          <Link href={`${href}?kipindi=30&tab=vipindi`} className="underline">
-            Viangalie
-          </Link>
-        </p>
-      )}
     </section>
   );
 }
