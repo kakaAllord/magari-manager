@@ -144,6 +144,33 @@ export function parseFuelPrice(input: string): { price: number } | { error: stri
   return parsed;
 }
 
+// How many litres a fuel request asks for: whole or with up to two decimals, "20.5" or "20,5".
+export function parseLitres(input: string): { litres: number } | { error: string } {
+  const typed = input.trim().replace(/\s/g, "");
+  if (!typed) return { error: "Andika lita ngapi unahitaji." };
+  const raw = /^\d{1,3}(,\d{3})+(\.\d+)?$/.test(typed) ? typed.replaceAll(",", "") : typed.replace(",", ".");
+  if (!/^\d+(\.\d{1,2})?$/.test(raw)) return { error: "Andika lita kwa namba, mfano 20 au 20.5." };
+  const litres = Number(raw);
+  if (litres <= 0) return { error: "Lita lazima ziwe zaidi ya sifuri." };
+  if (litres > 2000) return { error: "Lita ni nyingi mno kwa ombi moja." };
+  return { litres };
+}
+
+// A fuel request gives the price per litre and the litres; the amount is their product, in whole
+// shillings. Errors are keyed by the field that caused them.
+export function parseFuelOrder(
+  priceInput: string,
+  litresInput: string,
+): { price: number; litres: number; amount: number } | { errors: { fuelPrice?: string; litres?: string } } {
+  const price = parseFuelPrice(priceInput);
+  const litres = parseLitres(litresInput);
+  const errors = { ...("error" in price ? { fuelPrice: price.error } : {}), ...("error" in litres ? { litres: litres.error } : {}) };
+  if ("error" in price || "error" in litres) return { errors };
+  const amount = Math.round(price.price * litres.litres);
+  if (amount > MAX_AMOUNT) return { errors: { litres: "Kiasi ni kikubwa mno. Punguza lita." } };
+  return { price: price.price, litres: litres.litres, amount };
+}
+
 export function parseTankLitres(input: string): { litres: number } | { error: string } {
   const litres = Number(input.trim());
   if (!/^\d+$/.test(input.trim()) || litres < 10 || litres > 1000) {

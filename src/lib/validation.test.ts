@@ -10,7 +10,9 @@ import {
   parseEntryDate,
   parseIncome,
   parseMoneyRequest,
+  parseFuelOrder,
   parseFuelPrice,
+  parseLitres,
   parsePricePerLitre,
   parseReading,
   parseStartingReading,
@@ -120,6 +122,27 @@ test("a fuel request's price per litre is required and in shillings", () => {
   assert.ok("error" in parseFuelPrice("3"));
   assert.ok("error" in parseFuelPrice("0"));
   assert.ok("error" in parseFuelPrice("150,000"));
+});
+
+test("litres for a fuel request, whole or with decimals", () => {
+  assert.deepEqual(parseLitres("20"), { litres: 20 });
+  assert.deepEqual(parseLitres("20.5"), { litres: 20.5 });
+  assert.deepEqual(parseLitres("20,5"), { litres: 20.5 });
+  assert.deepEqual(parseLitres("1,200"), { litres: 1200 });
+  assert.ok("error" in parseLitres(""));
+  assert.ok("error" in parseLitres("0"));
+  assert.ok("error" in parseLitres("abc"));
+  assert.ok("error" in parseLitres("20.555"));
+  assert.ok("error" in parseLitres("2001"));
+});
+
+test("a fuel request's amount is price times litres, in whole shillings", () => {
+  assert.deepEqual(parseFuelOrder("3,125", "16"), { price: 3125, litres: 16, amount: 50000 });
+  assert.deepEqual(parseFuelOrder("2,985", "20.5"), { price: 2985, litres: 20.5, amount: 61193 });
+  assert.deepEqual(parseFuelOrder("", "abc"), {
+    errors: { fuelPrice: "Andika bei ya lita moja kwenye kituo cha mafuta.", litres: "Andika lita kwa namba, mfano 20 au 20.5." },
+  });
+  assert.ok("errors" in parseFuelOrder("3,000", "0"));
 });
 
 test("knows a receipt photo by its first bytes", () => {
