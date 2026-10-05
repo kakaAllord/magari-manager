@@ -2,8 +2,8 @@
 
 A Next.js + Postgres app for running Zuraja Magari's fleet, in Swahili. Drivers sign in
 with their car's plate number and request money: fuel (with the car's odometer and fuel
-gauge, and the price per litre at the station, typed each time since it differs between
-stations) or anything else with a reason. Vehicle managers (meneja) sign in
+gauge, the price per litre at the station, typed each time since it differs between
+stations, and the litres needed; the amount is worked out from the two) or anything else with a reason. Vehicle managers (meneja) sign in
 with email, approve or reject requests, ask for money themselves (approved as they ask, for a
 car or none), record income (the car it came from, amount, optional
 description; the recorder can delete an entry within 24 hours), manage cars and
