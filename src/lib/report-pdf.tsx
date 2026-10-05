@@ -4,7 +4,7 @@ import { COMPANY } from "@/lib/company";
 import { formatKm, formatLitres, formatMoney, formatRate, formatWallTime } from "@/lib/format";
 import { expenseCar, incomeCar, type ReportData } from "@/lib/report-data";
 
-// The PDF report: headline numbers and charts first, then the tables, then every entry.
+// The PDF report: headline numbers and charts first, then the tables (flowing on from the charts), then every entry.
 // Built-in Helvetica only covers Western European characters, so the text avoids symbols like ⚠.
 
 const C = {
@@ -136,7 +136,17 @@ function Legend({ color, label }: { color: string; label: string }) {
 }
 
 // A pie (or a doughnut with a hole), with its legend beside it.
-function Pie({ items, hole = false, size = 110 }: { items: { label: string; value: number; color: string }[]; hole?: boolean; size?: number }) {
+function Pie({
+  items,
+  hole = false,
+  size = 110,
+  empty = "Hakuna matumizi",
+}: {
+  items: { label: string; value: number; color: string }[];
+  hole?: boolean;
+  size?: number;
+  empty?: string;
+}) {
   const total = items.reduce((a, b) => a + b.value, 0);
   const r = size / 2;
   // Each slice starts where the ones before it end, from twelve o'clock.
@@ -176,7 +186,7 @@ function Pie({ items, hole = false, size = 110 }: { items: { label: string; valu
             </Text>
           </View>
         ))}
-        {total === 0 && <Text style={[s.muted, { fontSize: 8 }]}>Hakuna matumizi</Text>}
+        {total === 0 && <Text style={[s.muted, { fontSize: 8 }]}>{empty}</Text>}
       </View>
     </View>
   );
@@ -200,11 +210,50 @@ function BarList({ items, format, color }: { items: { label: string; value: numb
   );
 }
 
+// Each car's faida as a green bar to the right of a middle line, or its hasara as a red one to the left.
+function ProfitBars({ items }: { items: { label: string; value: number }[] }) {
+  const max = Math.max(1, ...items.map((i) => Math.abs(i.value)));
+  if (!items.length) return <Text style={[s.muted, { fontSize: 8 }]}>Hakuna gari lenye mapato au matumizi</Text>;
+  return (
+    <View style={{ gap: 5 }}>
+      {items.map((i) => (
+        <View key={i.label} style={[s.row, { alignItems: "center", gap: 6 }]}>
+          <Text style={{ width: 50, fontSize: 8 }}>{i.label}</Text>
+          <View style={[s.row, { flex: 1, height: 9 }]}>
+            <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end", borderRightWidth: 0.75, borderRightColor: C.muted }}>
+              {i.value < 0 && <View style={{ width: `${(-i.value / max) * 100}%`, height: 9, backgroundColor: C.danger }} />}
+            </View>
+            <View style={{ flex: 1, flexDirection: "row" }}>
+              {i.value > 0 && <View style={{ width: `${(i.value / max) * 100}%`, height: 9, backgroundColor: C.in }} />}
+            </View>
+          </View>
+          <Text style={{ width: 64, fontSize: 8, textAlign: "right", fontFamily: "Helvetica-Bold", color: profitColor(i.value) }}>
+            {signed(i.value)}
+          </Text>
+        </View>
+      ))}
+      <View style={[s.row, { marginTop: 4, gap: 12, justifyContent: "center" }]}>
+        <Legend color={C.in} label="Faida" />
+        <Legend color={C.danger} label="Hasara" />
+      </View>
+    </View>
+  );
+}
+
 const money = (n: number) => formatMoney(n);
+const signed = (n: number) => `${n < 0 ? "-" : ""}${formatMoney(Math.abs(n))}`;
 const negative = (n: number) => (n < 0 ? C.danger : undefined);
+// Faida green, hasara red, nothing either way in plain ink.
+const profitColor = (n: number) => (n > 0 ? C.in : n < 0 ? C.danger : C.ink);
+const profitLabel = (n: number) => (n > 0 ? "Faida" : n < 0 ? "Hasara" : "Sawa");
 
 function ReportPdf({ data }: { data: ReportData }) {
   const { totals, fuel } = data;
+  const carColor = (i: number) => PALETTE[i % PALETTE.length];
+  const profits = data.byCar
+    .filter((c) => c.id !== null && (c.income || c.spend))
+    .map((c) => ({ label: c.label, value: c.income - c.spend }))
+    .sort((a, b) => b.value - a.value);
   const footer = (
     <View style={s.footer} fixed>
       <Text>
@@ -245,10 +294,21 @@ function ReportPdf({ data }: { data: ReportData }) {
           <ColumnChart items={data.periods} />
         </View>
 
-        <View style={[s.row, { gap: 8, marginTop: 10 }]}>
+        <View style={[s.row, { gap: 8, marginTop: 10 }]} wrap={false}>
+          <View style={[s.box, { flex: 1 }]}>
+            <Text style={s.h2}>Mapato kwa gari</Text>
+            <Pie empty="Hakuna mapato" items={data.byCar.map((c, i) => ({ label: c.label, value: c.income, color: carColor(i) }))} />
+          </View>
           <View style={[s.box, { flex: 1 }]}>
             <Text style={s.h2}>Matumizi kwa gari</Text>
-            <Pie items={data.byCar.map((c, i) => ({ label: c.label, value: c.spend, color: PALETTE[i % PALETTE.length] }))} />
+            <Pie items={data.byCar.map((c, i) => ({ label: c.label, value: c.spend, color: carColor(i) }))} />
+          </View>
+        </View>
+
+        <View style={[s.row, { gap: 8, marginTop: 10 }]} wrap={false}>
+          <View style={[s.box, { flex: 1 }]}>
+            <Text style={s.h2}>Faida kwa gari</Text>
+            <ProfitBars items={profits} />
           </View>
           <View style={[s.box, { flex: 1 }]}>
             <Text style={s.h2}>Matumizi kwa aina</Text>
@@ -263,22 +323,19 @@ function ReportPdf({ data }: { data: ReportData }) {
           <Text style={s.h2}>Kila gari</Text>
           <Table
             columns={[
-              { label: "Namba", width: 16, value: (c) => c.label },
-              { label: "Gari", width: 22, value: (c) => c.car ?? "" },
-              { label: "Mapato", width: 17, num: true, value: (c) => money(c.income), color: () => C.in },
-              { label: "Matumizi", width: 17, num: true, value: (c) => money(c.spend) },
-              { label: "Salio", width: 17, num: true, value: (c) => money(c.income - c.spend), color: (c) => negative(c.income - c.spend) },
-              { label: "Maombi", width: 11, num: true, value: (c) => String(c.count) },
+              { label: "Namba", width: 14, value: (c) => c.label },
+              { label: "Gari", width: 18, value: (c) => c.car ?? "" },
+              { label: "Mapato", width: 16, num: true, value: (c) => money(c.income), color: () => C.in },
+              { label: "Matumizi", width: 16, num: true, value: (c) => money(c.spend) },
+              { label: "Faida/Hasara", width: 17, num: true, value: (c) => signed(c.income - c.spend), color: (c) => profitColor(c.income - c.spend) },
+              { label: "Hali", width: 10, value: (c) => profitLabel(c.income - c.spend), color: (c) => profitColor(c.income - c.spend) },
+              { label: "Maombi", width: 9, num: true, value: (c) => String(c.count) },
             ]}
             rows={data.byCar}
-            total={["Jumla", "", money(totals.income), money(totals.spend), money(totals.balance), String(data.expenses.length)]}
+            total={["Jumla", "", money(totals.income), money(totals.spend), signed(totals.balance), profitLabel(totals.balance), String(data.expenses.length)]}
           />
         </View>
-        {footer}
-      </Page>
-
-      <Page size="A4" style={s.page}>
-        <View wrap={false}>
+        <View style={s.section} wrap={false}>
           <Text style={s.h2}>Kwa {data.periodName.toLowerCase()}</Text>
           <Table
             columns={[
