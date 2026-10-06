@@ -144,16 +144,52 @@ export function parseFuelPrice(input: string): { price: number } | { error: stri
   return parsed;
 }
 
+// A quantity whole or with up to two decimals: "20", "20.5", "20,5" or "1,250.5". Null when it isn't one.
+function parseDecimal(input: string): number | null {
+  const typed = input.trim().replace(/\s/g, "");
+  const raw = /^\d{1,3}(,\d{3})+(\.\d+)?$/.test(typed) ? typed.replaceAll(",", "") : typed.replace(",", ".");
+  return /^\d+(\.\d{1,2})?$/.test(raw) ? Number(raw) : null;
+}
+
 // How many litres a fuel request asks for: whole or with up to two decimals, "20.5" or "20,5".
 export function parseLitres(input: string): { litres: number } | { error: string } {
-  const typed = input.trim().replace(/\s/g, "");
-  if (!typed) return { error: "Andika lita ngapi unahitaji." };
-  const raw = /^\d{1,3}(,\d{3})+(\.\d+)?$/.test(typed) ? typed.replaceAll(",", "") : typed.replace(",", ".");
-  if (!/^\d+(\.\d{1,2})?$/.test(raw)) return { error: "Andika lita kwa namba, mfano 20 au 20.5." };
-  const litres = Number(raw);
+  if (!input.trim()) return { error: "Andika lita ngapi unahitaji." };
+  const litres = parseDecimal(input);
+  if (litres === null) return { error: "Andika lita kwa namba, mfano 20 au 20.5." };
   if (litres <= 0) return { error: "Lita lazima ziwe zaidi ya sifuri." };
   if (litres > 2000) return { error: "Lita ni nyingi mno kwa ombi moja." };
   return { litres };
+}
+
+export const MAX_DESTINATION_LENGTH = 120;
+
+// Cargo income: the rate per tonne and the tonnes carried, with an optional destination. The amount
+// is their product in whole shillings. Under TSh 100 a tonne is almost certainly a slip.
+export function parseCargo(
+  rateInput: string,
+  tonnesInput: string,
+  destinationInput: string,
+):
+  | { rate: number; tonnes: number; amount: number; destination: string | null }
+  | { errors: { rate?: string; tonnes?: string; destination?: string } } {
+  const errors: { rate?: string; tonnes?: string; destination?: string } = {};
+  const rate = rateInput.trim() ? parseAmount(rateInput) : { error: "Andika bei kwa tani moja." };
+  if ("error" in rate) errors.rate = rate.error.startsWith("Andika kiasi") ? "Andika bei kwa namba, mfano 45,000." : rate.error;
+  else if (Number(rate.amount) < 100) errors.rate = "Bei kwa tani ni ndogo mno. Andika kwa shilingi, mfano 45,000.";
+
+  const tonnes = parseDecimal(tonnesInput);
+  if (!tonnesInput.trim()) errors.tonnes = "Andika tani ngapi zimebebwa.";
+  else if (tonnes === null) errors.tonnes = "Andika tani kwa namba, mfano 30 au 28.5.";
+  else if (tonnes <= 0) errors.tonnes = "Tani lazima ziwe zaidi ya sifuri.";
+  else if (tonnes > 10_000) errors.tonnes = "Tani ni nyingi mno kwa rekodi moja.";
+
+  const destination = destinationInput.trim();
+  if (destination.length > MAX_DESTINATION_LENGTH) errors.destination = `Isizidi herufi ${MAX_DESTINATION_LENGTH}.`;
+
+  if (errors.rate || errors.tonnes || errors.destination || "error" in rate || tonnes === null) return { errors };
+  const amount = Math.round(Number(rate.amount) * tonnes);
+  if (amount > MAX_AMOUNT) return { errors: { tonnes: "Jumla ni kubwa mno. Gawa kwenye rekodi mbili." } };
+  return { rate: Number(rate.amount), tonnes, amount, destination: destination || null };
 }
 
 // A fuel request gives the price per litre and the litres; the amount is their product, in whole

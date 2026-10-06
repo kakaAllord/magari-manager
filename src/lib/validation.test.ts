@@ -6,6 +6,7 @@ import {
   checkOdometer,
   MAX_KM_BETWEEN_READINGS,
   MAX_RECEIPT_BYTES,
+  parseCargo,
   parseCarChoice,
   parseEntryDate,
   parseIncome,
@@ -143,6 +144,20 @@ test("a fuel request's amount is price times litres, in whole shillings", () => 
     errors: { fuelPrice: "Andika bei ya lita moja kwenye kituo cha mafuta.", litres: "Andika lita kwa namba, mfano 20 au 20.5." },
   });
   assert.ok("errors" in parseFuelOrder("3,000", "0"));
+});
+
+test("cargo income is rate per tonne times tonnes, in whole shillings", () => {
+  assert.deepEqual(parseCargo("45,000", "30", " Mwanza "), { rate: 45000, tonnes: 30, amount: 1350000, destination: "Mwanza" });
+  assert.deepEqual(parseCargo("42500", "28,5", ""), { rate: 42500, tonnes: 28.5, amount: 1211250, destination: null });
+  assert.deepEqual(parseCargo("", "abc", ""), {
+    errors: { rate: "Andika bei kwa tani moja.", tonnes: "Andika tani kwa namba, mfano 30 au 28.5." },
+  });
+  assert.ok("errors" in parseCargo("45", "30", ""));
+  assert.ok("errors" in parseCargo("45,000", "0", ""));
+  assert.ok("errors" in parseCargo("45,000", "", ""));
+  assert.ok("errors" in parseCargo("45,000", "10001", ""));
+  assert.ok("errors" in parseCargo("99,000,000", "30", ""));
+  assert.ok("errors" in parseCargo("45,000", "30", "x".repeat(121)));
 });
 
 test("knows a receipt photo by its first bytes", () => {
