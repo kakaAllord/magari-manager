@@ -318,7 +318,41 @@ try {
       }
     }
   }
-  console.log("seeded demo users, cars, requests, income, cargo, possible repeats, maoni, fuel, receipts and typed-in history");
+  // Two invoices: one paid last month, one still open with two trips.
+  const { rows: existingInvoices } = await client.query("SELECT 1 FROM invoices LIMIT 1");
+  if (existingInvoices.length === 0) {
+    const invoices: [daysAgo: number, customer: string, contact: string | null, paid: boolean, lines: [string, string | null, number, number][]][] = [
+      [30, "Kilimanjaro Traders Ltd", "0754 123 456\nTIN 123-456-789", true, [["Dar es Salaam - Morogoro", "T456BCD", 3, 45000]]],
+      [3, "Mbeya Cement Distributors", "0713 987 654", false, [
+        ["Dar es Salaam - Dodoma", "T456BCD", 2.75, 52000],
+        ["Dar es Salaam - Kibaha", "T789CDE", 1.5, 38000],
+      ]],
+    ];
+    for (const [daysAgo, customer, contact, paid, lines] of invoices) {
+      const total = lines.reduce((sum, [, , tonnes, rate]) => sum + Math.round(tonnes * rate), 0);
+      const inserted = await client.query<{ id: number }>(
+        `WITH day AS (SELECT (now() AT TIME ZONE 'Africa/Dar_es_Salaam')::date - $1::int AS d),
+              next AS (SELECT extract(year FROM d)::int AS year,
+                              coalesce((SELECT max(seq) FROM invoices i WHERE i.year = extract(year FROM d)), 0) + 1 AS seq FROM day)
+         INSERT INTO invoices (year, seq, number, customer_name, customer_contact, issued_on, due_on, payment_details, total,
+                               created_by, created_at, paid_at, paid_by)
+         SELECT next.year, next.seq, 'ANK-' || next.year || '-' || lpad(next.seq::text, 3, '0'), $2, $3, day.d, day.d + 14,
+                'Benki CRDB, akaunti 0150-0000000, jina Zuraja Magari', $4, m.id, now() - make_interval(days => $1),
+                CASE WHEN $5 THEN now() - make_interval(days => $1 - 7) END, CASE WHEN $5 THEN m.id END
+           FROM day, next, users m WHERE m.email = $6
+         RETURNING id`,
+        [daysAgo, customer, contact, total, paid, manager.email],
+      );
+      for (const [i, [description, plate, tonnes, rate]] of lines.entries()) {
+        await client.query(
+          `INSERT INTO invoice_lines (invoice_id, position, description, plate, tonnes, rate_per_tonne, amount)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [inserted.rows[0].id, i + 1, description, plate, tonnes, rate, Math.round(tonnes * rate)],
+        );
+      }
+    }
+  }
+  console.log("seeded demo users, cars, requests, income, cargo, possible repeats, maoni, invoices, fuel, receipts and typed-in history");
 } finally {
   await client.end();
 }
