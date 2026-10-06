@@ -34,6 +34,10 @@ export type MoneyRequest = {
   receipt_note: string | null;
   // History typed in later: when it was entered. Its dates are the day it happened.
   backfilled_at: Date | null;
+  // Sent although it looked like an earlier request: that one's amount and date, for the flag.
+  duplicate_of: number | null;
+  duplicate_amount: string | null;
+  duplicate_at: Date | null;
 };
 
 const SELECT = `
@@ -49,6 +53,7 @@ const SELECT = `
          CASE WHEN EXISTS (SELECT 1 FROM receipts rc WHERE rc.request_id = r.id) THEN 'added'
               WHEN r.receipt_due THEN 'due' END AS receipt,
          (SELECT rc.note FROM receipts rc WHERE rc.request_id = r.id) AS receipt_note,
+         r.duplicate_of, dup.amount AS duplicate_amount, dup.created_at AS duplicate_at,
          count(*) OVER ()::int AS total_count
     FROM money_requests r
     JOIN users d ON d.id = r.requester_id
@@ -56,7 +61,8 @@ const SELECT = `
     LEFT JOIN users f ON f.id = r.factory_reviewed_by
     LEFT JOIN users a ON a.id = r.issued_by
     LEFT JOIN cars c ON c.id = r.car_id
-    LEFT JOIN fuel_readings fr ON fr.request_id = r.id`;
+    LEFT JOIN fuel_readings fr ON fr.request_id = r.id
+    LEFT JOIN money_requests dup ON dup.id = r.duplicate_of`;
 
 export const PAGE_SIZE = 25;
 

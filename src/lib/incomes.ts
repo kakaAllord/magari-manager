@@ -21,6 +21,9 @@ export type Income = {
   backfilled_at: Date | null;
   recorder_name: string | null;
   can_delete: boolean;
+  // Saved although it looked like earlier income for this car: that entry's amount and date.
+  duplicate_amount: string | null;
+  duplicate_at: Date | null;
 };
 
 export const INCOME_PAGE_SIZE = 25;
@@ -34,10 +37,11 @@ export async function listIncomes(
   const limit = opts.limit ?? INCOME_PAGE_SIZE;
   const rows = await query<Income & { total_count: number }>(
     `SELECT i.id, i.source, i.amount, i.description, i.rate_per_tonne, i.tonnes, i.destination, i.car_id, c.name AS car, i.created_at,
-            i.backfilled_at, u.name AS recorder_name,
+            i.backfilled_at, u.name AS recorder_name, dup.amount AS duplicate_amount, dup.created_at AS duplicate_at,
             (i.recorded_by = $1 AND coalesce(i.backfilled_at, i.created_at) > now() - make_interval(hours => $3)) AS can_delete,
             count(*) OVER ()::int AS total_count
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
+            LEFT JOIN incomes dup ON dup.id = i.duplicate_of
       WHERE i.deleted_at IS NULL AND ($5::int IS NULL OR i.car_id = $5)
       ORDER BY CASE WHEN $6 THEN coalesce(i.backfilled_at, i.created_at) END DESC, i.created_at DESC
       LIMIT $2 OFFSET $4`,

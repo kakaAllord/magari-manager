@@ -26,6 +26,15 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
         )}
         {r.reason}
       </p>
+      {/* The person who sent it was warned already; everyone after them sees the flag. */}
+      {!mine && r.duplicate_of !== null && r.duplicate_amount !== null && r.duplicate_at !== null && (
+        <p className="mt-1 text-xs">
+          <span className="rounded bg-warn-soft px-1.5 py-px font-medium text-warn">Huenda ni marudio</span>{" "}
+          <span className="text-muted">
+            ya ombi la {formatMoney(r.duplicate_amount)} la {formatDateTime(r.duplicate_at)}
+          </span>
+        </p>
+      )}
       {(r.odometer_km !== null || r.fuel_price !== null) && (
         <p className="text-sm text-muted tabular-nums">
           {[

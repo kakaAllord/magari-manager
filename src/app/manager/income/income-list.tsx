@@ -16,6 +16,14 @@ export function IncomeList({ incomes, empty }: { incomes: Income[]; empty: strin
               </p>
               {cargoLine(i) && <p className="text-sm break-words">{cargoLine(i)}</p>}
               {i.description && <p className="text-sm break-words">{i.description}</p>}
+              {i.duplicate_amount !== null && i.duplicate_at !== null && (
+                <p className="mt-1 text-xs">
+                  <span className="rounded bg-warn-soft px-1.5 py-px font-medium text-warn">Huenda ni marudio</span>{" "}
+                  <span className="text-muted">
+                    ya {formatMoney(i.duplicate_amount)} la {formatDateTime(i.duplicate_at)}
+                  </span>
+                </p>
+              )}
               <p className="mt-1 text-xs text-muted">
                 {i.backfilled_at ? (
                   <>
