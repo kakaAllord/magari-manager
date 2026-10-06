@@ -24,6 +24,10 @@ gives any staff member a new password (nobody can be switched off from the app; 
 switched off earlier can be switched back on), reads the same reports and Mafuta, and sees an overview of income,
 spending, the balance, each car's faida or hasara and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
+Drivers have a Maoni tab, a suggestion box. The meneja, meneja wa kiwanda and mkurugenzi read the
+notes on their own Maoni tab, anonymously: they see the text and the day, never the driver or the
+car (`feedback.author_id` is kept only so drivers see their own notes). Each reader marks a note
+read for themselves (`feedback_reads`, migration 018), and the driver sees once anyone has.
 Before a request or income entry is saved, it is compared with what's already there: the same
 car, an amount within 5% (litres for fuel) and close in time (2 days for fuel, 7 for other
 requests, 3 for income) brings up "Inaonekana imeshawekwa" with the earlier entry. Pressing again
