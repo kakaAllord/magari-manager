@@ -6,6 +6,7 @@ export const managerLinks: NavLink[] = [
   { href: "/manager/ask", label: "Omba pesa", icon: "send" },
   { href: "/manager/history", label: "Historia", icon: "history" },
   { href: "/manager/income", label: "Mapato", icon: "money" },
+  { href: "/manager/invoices", label: "Ankara", icon: "receipt" },
   { href: "/manager/fuel", label: "Mafuta", icon: "fuel" },
   { href: "/manager/cars", label: "Magari", icon: "car" },
   { href: "/manager/drivers", label: "Madereva", icon: "users" },
