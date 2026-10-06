@@ -11,6 +11,7 @@ import {
   parseEntryDate,
   parseFeedback,
   parseIncome,
+  parseInvoice,
   parseMoneyRequest,
   parseFuelOrder,
   parseFuelPrice,
@@ -204,4 +205,52 @@ test("maoni are trimmed and need a few words, at most 1000 characters", () => {
   assert.ok("error" in parseFeedback("  "));
   assert.ok("error" in parseFeedback("ok"));
   assert.ok("error" in parseFeedback("x".repeat(1001)));
+});
+
+test("an invoice adds up its trips, skips empty lines and checks each one", () => {
+  const today = "2026-10-06";
+  const base = { customer: " Kilimanjaro Traders ", contact: "", issuedOn: today, dueOn: "", payment: " CRDB 0150-123 " };
+  const empty = { description: "", plate: "", tonnes: "", rate: "" };
+  const ok = parseInvoice(
+    {
+      ...base,
+      lines: [
+        { description: "Dar es Salaam - Mwanza", plate: "t 456 bcd", tonnes: "30", rate: "45,000" },
+        empty,
+        { description: "Dar es Salaam - Dodoma", plate: "", tonnes: "12.5", rate: "38000" },
+      ],
+    },
+    today,
+  );
+  assert.deepEqual(ok, {
+    ok: true,
+    invoice: {
+      customer: "Kilimanjaro Traders",
+      contact: null,
+      issuedOn: today,
+      dueOn: null,
+      payment: "CRDB 0150-123",
+      lines: [
+        { description: "Dar es Salaam - Mwanza", plate: "T456BCD", tonnes: 30, rate: 45000, amount: 1350000 },
+        { description: "Dar es Salaam - Dodoma", plate: null, tonnes: 12.5, rate: 38000, amount: 475000 },
+      ],
+      total: 1825000,
+    },
+  });
+
+  const none = parseInvoice({ ...base, lines: [empty] }, today);
+  assert.deepEqual(none, { ok: false, errors: { lines: "Ongeza angalau safari moja." } });
+
+  const bad = parseInvoice(
+    { ...base, customer: "", issuedOn: "2026-10-07", dueOn: "2026-10-01", lines: [empty, { description: "x", plate: "", tonnes: "0", rate: "45,000" }] },
+    today,
+  );
+  assert.ok(!bad.ok);
+  if (!bad.ok) {
+    assert.ok(bad.errors.customer && bad.errors.issuedOn);
+    assert.deepEqual(Object.keys(bad.errors.line ?? {}), ["1"]);
+    assert.ok(bad.errors.line?.[1].description && bad.errors.line?.[1].tonnes && !bad.errors.line?.[1].rate);
+  }
+  const early = parseInvoice({ ...base, dueOn: "2026-10-01", lines: [{ description: "Kibaha", plate: "", tonnes: "1", rate: "40000" }] }, today);
+  assert.ok(!early.ok && early.errors.dueOn);
 });

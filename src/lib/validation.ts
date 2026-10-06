@@ -233,13 +233,17 @@ export function checkReceiptImage(bytes: Uint8Array): { contentType: string } | 
 // Tanzania) or empty means "now"; the future is refused.
 export const EARLIEST_ENTRY_DATE = "2015-01-01";
 
+// "YYYY-MM-DD" naming a day that exists. Date rolls 30 Feb over to March and gives up on 32 Jan,
+// so a real date reads back unchanged.
+function isRealDate(typed: string) {
+  const parsed = new Date(`${typed}T00:00:00Z`);
+  return /^\d{4}-\d{2}-\d{2}$/.test(typed) && !isNaN(parsed.getTime()) && parsed.toISOString().startsWith(typed);
+}
+
 export function parseEntryDate(input: string, today: string): { date: string | null } | { error: string } {
   const typed = input.trim();
   if (!typed || typed === today) return { date: null };
-  // Date rolls 30 Feb over to March and gives up on 32 Jan, so a real date reads back unchanged.
-  const parsed = new Date(`${typed}T00:00:00Z`);
-  const valid = /^\d{4}-\d{2}-\d{2}$/.test(typed) && !isNaN(parsed.getTime()) && parsed.toISOString().startsWith(typed);
-  if (!valid) return { error: "Chagua tarehe sahihi." };
+  if (!isRealDate(typed)) return { error: "Chagua tarehe sahihi." };
   if (typed > today) return { error: "Tarehe haiwezi kuwa ya baadaye." };
   if (typed < EARLIEST_ENTRY_DATE) return { error: "Tarehe ni ya zamani mno." };
   return { date: typed };
@@ -263,4 +267,91 @@ export function parseFeedback(input: string): { body: string } | { error: string
   if (body.length < 3) return { error: "Andika maoni yako kwanza." };
   if (body.length > MAX_FEEDBACK_LENGTH) return { error: `Maoni yasizidi herufi ${MAX_FEEDBACK_LENGTH}.` };
   return { body };
+}
+
+// An invoice (ankara): the customer, its dates, how to pay, and up to 20 trips, each priced per
+// tonne. Lines left completely empty are skipped. Errors on a line are keyed by its index as sent.
+export const MAX_INVOICE_LINES = 20;
+export const MAX_INVOICE_TEXT = 500;
+
+export type InvoiceLineInput = { description: string; plate: string; tonnes: string; rate: string };
+export type InvoiceInput = {
+  customer: string;
+  contact: string;
+  issuedOn: string;
+  dueOn: string;
+  payment: string;
+  lines: InvoiceLineInput[];
+};
+export type InvoiceLineErrors = { description?: string; tonnes?: string; rate?: string };
+export type InvoiceErrors = {
+  customer?: string;
+  contact?: string;
+  issuedOn?: string;
+  dueOn?: string;
+  payment?: string;
+  lines?: string;
+  line?: Record<number, InvoiceLineErrors>;
+};
+export type InvoiceLine = { description: string; plate: string | null; tonnes: number; rate: number; amount: number };
+export type Invoice = {
+  customer: string;
+  contact: string | null;
+  issuedOn: string;
+  dueOn: string | null;
+  payment: string | null;
+  lines: InvoiceLine[];
+  total: number;
+};
+
+export function parseInvoice(input: InvoiceInput, today: string): { ok: true; invoice: Invoice } | { ok: false; errors: InvoiceErrors } {
+  const errors: InvoiceErrors = {};
+  const customer = input.customer.trim();
+  if (customer.length < 2) errors.customer = "Andika jina la mteja.";
+  else if (customer.length > 120) errors.customer = "Jina la mteja lisizidi herufi 120.";
+  const contact = input.contact.trim();
+  if (contact.length > MAX_INVOICE_TEXT) errors.contact = `Yasizidi herufi ${MAX_INVOICE_TEXT}.`;
+  const payment = input.payment.trim();
+  if (payment.length > MAX_INVOICE_TEXT) errors.payment = `Yasizidi herufi ${MAX_INVOICE_TEXT}.`;
+
+  const issuedOn = input.issuedOn.trim();
+  if (!isRealDate(issuedOn)) errors.issuedOn = "Chagua tarehe ya ankara.";
+  else if (issuedOn > today) errors.issuedOn = "Tarehe ya ankara haiwezi kuwa ya baadaye.";
+  else if (issuedOn < EARLIEST_ENTRY_DATE) errors.issuedOn = "Tarehe ni ya zamani mno.";
+  const dueOn = input.dueOn.trim();
+  if (dueOn && !isRealDate(dueOn)) errors.dueOn = "Chagua tarehe sahihi.";
+  else if (dueOn && !errors.issuedOn && dueOn < issuedOn) errors.dueOn = "Mwisho wa kulipa hauwezi kuwa kabla ya tarehe ya ankara.";
+
+  const lines: InvoiceLine[] = [];
+  const lineErrors: Record<number, InvoiceLineErrors> = {};
+  input.lines.forEach((l, i) => {
+    if (![l.description, l.plate, l.tonnes, l.rate].some((v) => v.trim())) return;
+    const e: InvoiceLineErrors = {};
+    const description = l.description.trim();
+    if (description.length < 2) e.description = "Andika safari, mfano Dar es Salaam - Mwanza.";
+    else if (description.length > 160) e.description = "Isizidi herufi 160.";
+    const cargo = parseCargo(l.rate, l.tonnes, "");
+    if ("errors" in cargo) Object.assign(e, { rate: cargo.errors.rate, tonnes: cargo.errors.tonnes });
+    if (e.description || e.rate || e.tonnes) lineErrors[i] = e;
+    else if ("amount" in cargo) {
+      lines.push({ description, plate: normalizePlate(l.plate) || null, tonnes: cargo.tonnes, rate: cargo.rate, amount: cargo.amount });
+    }
+  });
+  if (Object.keys(lineErrors).length) errors.line = lineErrors;
+  else if (lines.length === 0) errors.lines = "Ongeza angalau safari moja.";
+  else if (lines.length > MAX_INVOICE_LINES) errors.lines = `Ankara moja isizidi safari ${MAX_INVOICE_LINES}.`;
+
+  if (Object.keys(errors).length) return { ok: false, errors };
+  return {
+    ok: true,
+    invoice: {
+      customer,
+      contact: contact || null,
+      issuedOn,
+      dueOn: dueOn || null,
+      payment: payment || null,
+      lines,
+      total: lines.reduce((sum, l) => sum + l.amount, 0),
+    },
+  };
 }
