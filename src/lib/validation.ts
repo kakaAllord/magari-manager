@@ -254,3 +254,13 @@ export function parseStartingReading(input: ReadingInput):
   if (!parsed.ok) return parsed;
   return { ok: true, reading: { odometer: parsed.odometer, eighths: parsed.eighths } };
 }
+
+// A driver's maoni: a few words at least, at most a long paragraph.
+export const MAX_FEEDBACK_LENGTH = 1000;
+
+export function parseFeedback(input: string): { body: string } | { error: string } {
+  const body = input.trim();
+  if (body.length < 3) return { error: "Andika maoni yako kwanza." };
+  if (body.length > MAX_FEEDBACK_LENGTH) return { error: `Maoni yasizidi herufi ${MAX_FEEDBACK_LENGTH}.` };
+  return { body };
+}

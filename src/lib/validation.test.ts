@@ -9,6 +9,7 @@ import {
   parseCargo,
   parseCarChoice,
   parseEntryDate,
+  parseFeedback,
   parseIncome,
   parseMoneyRequest,
   parseFuelOrder,
@@ -196,4 +197,11 @@ test("a new car's starting reading is km and gauge together, or nothing", () => 
   assert.ok(!noGauge.ok && noGauge.errors.gauge && !noGauge.errors.odometer);
   const noKm = parseStartingReading({ odometer: " ", gauge: "8" });
   assert.ok(!noKm.ok && noKm.errors.odometer);
+});
+
+test("maoni are trimmed and need a few words, at most 1000 characters", () => {
+  assert.deepEqual(parseFeedback("  Tunaomba mafunzo ya usalama barabarani.  "), { body: "Tunaomba mafunzo ya usalama barabarani." });
+  assert.ok("error" in parseFeedback("  "));
+  assert.ok("error" in parseFeedback("ok"));
+  assert.ok("error" in parseFeedback("x".repeat(1001)));
 });
