@@ -24,6 +24,11 @@ gives any staff member a new password (nobody can be switched off from the app; 
 switched off earlier can be switched back on), reads the same reports and Mafuta, and sees an overview of income,
 spending, the balance, each car's faida or hasara and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
+Before a request or income entry is saved, it is compared with what's already there: the same
+car, an amount within 5% (litres for fuel) and close in time (2 days for fuel, 7 for other
+requests, 3 for income) brings up "Inaonekana imeshawekwa" with the earlier entry. Pressing again
+saves it with `duplicate_of` set (migration 017), and everyone who approves, authorises or pays it
+sees "Huenda ni marudio". The rules live in `src/lib/duplicate-rules.ts`; no outside service is used.
 Everyone can change their own password on the Akaunti page. Decisions reach
 the driver instantly (Pusher), or within 10 seconds without Pusher. Amounts are
 whole Tanzanian shillings.
