@@ -295,7 +295,30 @@ try {
       [manager.email, factory.email],
     );
   }
-  console.log("seeded demo users, cars, requests, income, cargo, possible repeats, fuel, receipts and typed-in history");
+  // Maoni from both drivers. The director has read the oldest; the managers haven't read any yet.
+  const { rows: existingFeedback } = await client.query("SELECT 1 FROM feedback LIMIT 1");
+  if (existingFeedback.length === 0) {
+    const notes: [plate: string, daysAgo: number, body: string, readByDirector: boolean][] = [
+      ["T456BCD", 12, "Tunaomba matairi ya akiba yakaguliwe kila mwezi. Mara mbili tumekwama njiani.", true],
+      ["T103ABE", 5, "Malipo ya mafuta yanachelewa jioni. Ingesaidia mhasibu awepo hadi saa 12.", false],
+      ["T456BCD", 1, "Asanteni kwa mafunzo ya usalama barabarani wiki iliyopita.", false],
+    ];
+    for (const [plate, daysAgo, body, readByDirector] of notes) {
+      const inserted = await client.query<{ id: number }>(
+        `INSERT INTO feedback (author_id, body, created_at)
+         SELECT driver_id, $2, now() - make_interval(days => $3) FROM cars WHERE plate = $1 AND driver_id IS NOT NULL
+         RETURNING id`,
+        [plate, body, daysAgo],
+      );
+      if (readByDirector && inserted.rows[0]) {
+        await client.query(
+          "INSERT INTO feedback_reads (feedback_id, reader_id) SELECT $1, id FROM users WHERE email = $2",
+          [inserted.rows[0].id, director.email],
+        );
+      }
+    }
+  }
+  console.log("seeded demo users, cars, requests, income, cargo, possible repeats, maoni, fuel, receipts and typed-in history");
 } finally {
   await client.end();
 }
