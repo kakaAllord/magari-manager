@@ -258,7 +258,27 @@ try {
       }
     }
   }
-  console.log("seeded demo users, cars, requests, income, fuel, receipts and typed-in history");
+  // Cargo income, priced per tonne: amount is the rate times the tonnes. Guarded on its own so a copy
+  // seeded before cargo existed gets it too.
+  const { rows: existingCargo } = await client.query("SELECT 1 FROM incomes WHERE tonnes IS NOT NULL LIMIT 1");
+  if (existingCargo.length === 0) {
+    const cargo: [daysAgo: number, plate: string, rate: number, tonnes: number, destination: string | null, text: string | null][] = [
+      [40, "T456BCD", 45000, 3, "Dar es Salaam - Morogoro", "Saruji, mteja Kilimanjaro Traders"],
+      [21, "T789CDE", 38000, 1.5, "Kibaha", null],
+      [9, "T456BCD", 52000, 2.75, "Dar es Salaam - Dodoma", "Mbolea"],
+      [2, "T103ABE", 45000, 1, "Dar es Salaam - Morogoro", null],
+    ];
+    for (const [daysAgo, plate, rate, tonnes, destination, text] of cargo) {
+      await client.query(
+        `INSERT INTO incomes (car_id, source, amount, rate_per_tonne, tonnes, destination, description, recorded_by, created_at)
+         SELECT c.id, c.plate, round($2::numeric * $3), $2, $3, $4, $5, (SELECT id FROM users WHERE email = $6),
+                now() - make_interval(days => $7)
+           FROM cars c WHERE c.plate = $1`,
+        [plate, rate, tonnes, destination, text, manager.email, daysAgo],
+      );
+    }
+  }
+  console.log("seeded demo users, cars, requests, income, cargo, fuel, receipts and typed-in history");
 } finally {
   await client.end();
 }
