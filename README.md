@@ -24,6 +24,11 @@ gives any staff member a new password (nobody can be switched off from the app; 
 switched off earlier can be switched back on), reads the same reports and Mafuta, and sees an overview of income,
 spending, the balance, each car's faida or hasara and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
+The meneja makes invoices (ankara) on the Ankara tab: a customer, trips priced as tani × bei kwa
+tani, and payment details, downloaded as a PDF. Numbers run per year (ANK-2026-001) and are never
+reused; a mistaken invoice is cancelled ("Imefutwa"), not edited. Invoices are documents only
+(`invoices`, `invoice_lines`, migration 019): marking one paid does not touch Mapato, where the
+income is still recorded.
 Drivers have a Maoni tab, a suggestion box. The meneja, meneja wa kiwanda and mkurugenzi read the
 notes on their own Maoni tab, anonymously: they see the text and the day, never the driver or the
 car (`feedback.author_id` is kept only so drivers see their own notes). Each reader marks a note
