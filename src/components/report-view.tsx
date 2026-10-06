@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
 import { ReportToolbar } from "@/components/report-filters";
-import { formatMoney, formatWallDate, formatWallTime, keepMinus } from "@/lib/format";
+import { cargoLine, formatMoney, formatWallDate, formatWallTime, keepMinus } from "@/lib/format";
 import { parseReportParams, presets, toSearch } from "@/lib/report-params";
 import { CarProfit } from "@/components/car-profit";
 import { getExpenses, getIncomes, listCars, moneyByCar, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
@@ -272,6 +272,7 @@ export async function ReportView({
                             {x.car_id !== null ? <span className="plate">{x.source}</span> : x.source}
                             {x.car && <span className="text-muted"> {x.car}</span>}
                           </p>
+                          {cargoLine(x) && <p className="text-sm break-words">{cargoLine(x)}</p>}
                           {x.description && <p className="text-sm break-words">{x.description}</p>}
                           <p className="mt-1 text-xs text-muted">
                             {x.backfilled ? (

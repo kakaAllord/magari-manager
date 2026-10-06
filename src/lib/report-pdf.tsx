@@ -1,7 +1,7 @@
 import "server-only";
 import { Circle, Document, Page, Path, renderToBuffer, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import { COMPANY } from "@/lib/company";
-import { formatKm, formatLitres, formatMoney, formatRate, formatWallTime } from "@/lib/format";
+import { cargoLine, formatKm, formatLitres, formatMoney, formatRate, formatWallTime } from "@/lib/format";
 import { expenseCar, incomeCar, type ReportData } from "@/lib/report-data";
 
 // The PDF report: headline numbers and charts first, then the tables (flowing on from the charts), then every entry.
@@ -420,7 +420,13 @@ function ReportPdf({ data }: { data: ReportData }) {
             columns={[
               { label: "Imerekodiwa", width: 17, value: (i) => formatWallTime(i.recorded_at) },
               { label: "Gari", width: 13, value: (i) => incomeCar(i) },
-              { label: "Maelezo", width: 38, value: (i) => i.description ?? (i.car_id !== null ? "" : i.source) },
+              {
+                label: "Maelezo",
+                width: 38,
+                // Helvetica has no arrow, so one typed in a destination prints as a dash.
+                value: (i) =>
+                  [cargoLine(i), i.description ?? (i.car_id !== null ? "" : i.source)].filter(Boolean).join(" · ").replaceAll("→", "-"),
+              },
               { label: "Na", width: 16, value: (i) => i.recorded_by ?? "" },
               { label: "Kiasi", width: 16, num: true, value: (i) => money(Number(i.amount)), color: () => C.in },
             ]}

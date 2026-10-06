@@ -87,7 +87,7 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
           <input
             name="destination"
             maxLength={MAX_DESTINATION_LENGTH}
-            placeholder="Mfano: Dar es Salaam → Mwanza"
+            placeholder="Mfano: Dar es Salaam - Mwanza"
             defaultValue={failed?.values.destination}
             className="input"
           />

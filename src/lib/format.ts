@@ -38,3 +38,12 @@ const oneDecimal = new Intl.NumberFormat("en", { minimumFractionDigits: 1, maxim
 export const formatKm = (km: number) => whole.format(km);
 export const formatLitres = (litres: number) => oneDecimal.format(litres);
 export const formatRate = (rate: number | null) => (rate === null ? "–" : oneDecimal.format(rate));
+
+// Cargo income: "Tani 28.5 × TSh 45,000 · Mwanza". Tonnes keep up to two decimals, no trailing zeros.
+const tonnesFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
+export const formatTonnes = (tonnes: string | number) => tonnesFormat.format(Number(tonnes));
+// Null for income that isn't cargo.
+export const cargoLine = (c: { tonnes: string | null; rate_per_tonne: number | null; destination: string | null }) =>
+  c.tonnes === null || c.rate_per_tonne === null
+    ? null
+    : `Tani ${formatTonnes(c.tonnes)} × ${formatMoney(c.rate_per_tonne)}${c.destination ? ` · ${c.destination}` : ""}`;

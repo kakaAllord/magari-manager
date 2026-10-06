@@ -114,6 +114,10 @@ export type IncomeRow = {
   car_id: number | null;
   car: string | null;
   description: string | null;
+  // Cargo income only: rate per tonne, tonnes and destination behind the amount.
+  rate_per_tonne: number | null;
+  tonnes: string | null;
+  destination: string | null;
   amount: string;
   recorded_by: string | null;
   backfilled: boolean;
@@ -126,7 +130,8 @@ export function getIncomes(p: ReportParams) {
     `SELECT to_char(i.created_at AT TIME ZONE $1, 'YYYY-MM-DD HH24:MI') AS recorded_at,
             to_char(date_trunc('month', i.created_at AT TIME ZONE $1), 'YYYY-MM-DD') AS month_start,
             to_char(date_trunc('week', i.created_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
-            i.source, i.car_id, c.name AS car, i.description, i.amount, u.name AS recorded_by,
+            i.source, i.car_id, c.name AS car, i.description, i.rate_per_tonne, i.tonnes, i.destination,
+            i.amount, u.name AS recorded_by,
             i.backfilled_at IS NOT NULL AS backfilled
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
       WHERE i.deleted_at IS NULL

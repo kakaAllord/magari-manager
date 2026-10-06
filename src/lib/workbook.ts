@@ -142,7 +142,10 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     periodOfRow(x, periodGroup),
     incomeCar(x),
     x.car_id !== null ? (x.car ?? "") : x.source,
+    x.destination ?? "",
     x.description ?? "",
+    x.tonnes === null ? null : Number(x.tonnes),
+    x.rate_per_tonne,
     Number(x.amount),
     x.recorded_by ?? "",
   ]);
@@ -157,22 +160,27 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
       { name: data.periodName, filterButton: true },
       { name: "Namba", filterButton: true },
       { name: "Gari au chanzo", filterButton: true },
+      { name: "Kwenda", filterButton: true },
       { name: "Maelezo", filterButton: true },
+      { name: "Tani", filterButton: true, totalsRowFunction: "sum" },
+      { name: "Bei kwa tani", filterButton: true },
       { name: "Kiasi", filterButton: true, totalsRowFunction: "sum" },
       { name: "Imerekodiwa na", filterButton: true },
     ],
-    rows: rows.length ? rows : [[null, "", "", "", "Hakuna mapato katika kipindi hiki", 0, ""]],
+    rows: rows.length ? rows : [[null, "", "", "", "", "Hakuna mapato katika kipindi hiki", null, null, 0, ""]],
   });
-  [18, 14, 12, 24, 44, 16, 20].forEach((w, i) => (s.getColumn(i + 1).width = w));
+  [18, 14, 12, 24, 20, 40, 10, 14, 16, 20].forEach((w, i) => (s.getColumn(i + 1).width = w));
   s.getColumn(1).numFmt = DATE;
-  s.getColumn(6).numFmt = MONEY;
+  s.getColumn(7).numFmt = "#,##0.##";
+  s.getColumn(8).numFmt = MONEY;
+  s.getColumn(9).numFmt = MONEY;
   const n = Math.max(rows.length, 1);
   s.addConditionalFormatting({
-    ref: `F2:F${n + 1}`,
+    ref: `I2:I${n + 1}`,
     rules: [{ type: "dataBar", priority: 1, minLength: 0, maxLength: 100, cfvo: [{ type: "min" }, { type: "max" }], color: { argb: "FF8FD1A5" } } as ExcelJS.DataBarRuleType],
   });
   setupPrint(s);
-  return { sheet: "Mapato", rows: n, amountCol: "F", carCol: "C", periodCol: "B" };
+  return { sheet: "Mapato", rows: n, amountCol: "I", carCol: "C", periodCol: "B" };
 }
 
 function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRange, income: DataRange): ChartSpec[] {

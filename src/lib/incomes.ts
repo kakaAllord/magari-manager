@@ -10,6 +10,10 @@ export type Income = {
   source: string;
   amount: string;
   description: string | null;
+  // Cargo income: the rate per tonne and tonnes behind the amount, and where it went. Null otherwise.
+  rate_per_tonne: number | null;
+  tonnes: string | null;
+  destination: string | null;
   car_id: number | null;
   car: string | null;
   created_at: Date;
@@ -29,7 +33,7 @@ export async function listIncomes(
 ) {
   const limit = opts.limit ?? INCOME_PAGE_SIZE;
   const rows = await query<Income & { total_count: number }>(
-    `SELECT i.id, i.source, i.amount, i.description, i.car_id, c.name AS car, i.created_at,
+    `SELECT i.id, i.source, i.amount, i.description, i.rate_per_tonne, i.tonnes, i.destination, i.car_id, c.name AS car, i.created_at,
             i.backfilled_at, u.name AS recorder_name,
             (i.recorded_by = $1 AND coalesce(i.backfilled_at, i.created_at) > now() - make_interval(hours => $3)) AS can_delete,
             count(*) OVER ()::int AS total_count

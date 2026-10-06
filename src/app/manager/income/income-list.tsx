@@ -1,4 +1,4 @@
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { cargoLine, formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { Income } from "@/lib/incomes";
 import { DeleteIncome } from "./delete-income";
 
@@ -14,6 +14,7 @@ export function IncomeList({ incomes, empty }: { incomes: Income[]; empty: strin
                 {i.source}
                 {i.car && <span className="font-normal text-muted"> · {i.car}</span>}
               </p>
+              {cargoLine(i) && <p className="text-sm break-words">{cargoLine(i)}</p>}
               {i.description && <p className="text-sm break-words">{i.description}</p>}
               <p className="mt-1 text-xs text-muted">
                 {i.backfilled_at ? (
