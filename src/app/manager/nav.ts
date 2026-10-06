@@ -10,4 +10,5 @@ export const managerLinks: NavLink[] = [
   { href: "/manager/cars", label: "Magari", icon: "car" },
   { href: "/manager/drivers", label: "Madereva", icon: "users" },
   { href: "/manager/reports", label: "Ripoti", icon: "report" },
+  { href: "/manager/maoni", label: "Maoni", icon: "chat" },
 ];

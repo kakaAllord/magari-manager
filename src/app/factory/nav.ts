@@ -6,4 +6,5 @@ export const factoryLinks: NavLink[] = [
   { href: "/factory/fuel", label: "Mafuta", icon: "fuel" },
   { href: "/factory/reports", label: "Ripoti", icon: "report" },
   { href: "/factory/managers", label: "Mameneja", icon: "users" },
+  { href: "/factory/maoni", label: "Maoni", icon: "chat" },
 ];
