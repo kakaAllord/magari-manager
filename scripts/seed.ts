@@ -278,7 +278,24 @@ try {
       );
     }
   }
-  console.log("seeded demo users, cars, requests, income, cargo, fuel, receipts and typed-in history");
+  // A possible repeat waiting for the manager: Neema asked again for nearly what she asked yesterday
+  // and sent it anyway after the warning, so it carries the "Huenda ni marudio" flag.
+  const { rows: existingRepeat } = await client.query("SELECT 1 FROM money_requests WHERE duplicate_of IS NOT NULL LIMIT 1");
+  if (existingRepeat.length === 0) {
+    await client.query(
+      `WITH neema AS (SELECT c.id AS car_id, c.driver_id FROM cars c WHERE c.plate = 'T456BCD' AND c.driver_id IS NOT NULL),
+            first AS (INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at,
+                                                 factory_reviewed_at, factory_reviewed_by, created_at)
+                      SELECT driver_id, car_id, 85000, 'Kubadilisha breki za mbele', 'approved',
+                             (SELECT id FROM users WHERE email = $1), now() - interval '20 hours',
+                             now() - interval '18 hours', (SELECT id FROM users WHERE email = $2), now() - interval '1 day'
+                        FROM neema RETURNING id, requester_id, car_id)
+       INSERT INTO money_requests (requester_id, car_id, amount, reason, duplicate_of, created_at)
+       SELECT requester_id, car_id, 85000, 'Breki za mbele', id, now() - interval '2 hours' FROM first`,
+      [manager.email, factory.email],
+    );
+  }
+  console.log("seeded demo users, cars, requests, income, cargo, possible repeats, fuel, receipts and typed-in history");
 } finally {
   await client.end();
 }
