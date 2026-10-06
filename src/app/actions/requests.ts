@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { query, transaction } from "@/lib/db";
+import { parseDuplicateOk, type DuplicateMatch } from "@/lib/duplicate-rules";
+import { findRequestDuplicate } from "@/lib/duplicates";
 import { missingForFuel } from "@/lib/fuel-ready";
 import { driverChannel, MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { todayInTanzania } from "@/lib/reports";
@@ -36,7 +38,7 @@ type FormValues = {
 
 export type RequestFormState =
   | { ok: true; backfilled?: boolean }
-  | { ok: false; errors: FormErrors; values: FormValues }
+  | { ok: false; errors: FormErrors; values: FormValues; duplicate?: DuplicateMatch }
   | undefined;
 
 const notReadyForDriver = (missing: string) => `Gari lako bado halina ${missing}. Mwombe meneja akamilishe kwanza.`;
@@ -56,6 +58,17 @@ const readFuelOrder = (kind: string, values: FormValues): FuelOrder | null =>
 const amountFor = (values: FormValues, order: FuelOrder | null) =>
   order ? ("amount" in order ? String(order.amount) : "1") : values.amount;
 const orderErrors = (order: FuelOrder | null) => (order && "errors" in order ? order.errors : {});
+
+// A request like one already there (see duplicate-rules.ts) comes back with that match to confirm.
+// Sent again with the match's id, it goes through and keeps pointing at it for the reviewers.
+async function duplicateToConfirm(
+  formData: FormData,
+  r: Parameters<typeof findRequestDuplicate>[0],
+): Promise<{ confirm: DuplicateMatch } | { duplicateOf: number | null }> {
+  const match = await findRequestDuplicate(r);
+  if (match && match.id !== parseDuplicateOk(formData.get("duplicateOk"))) return { confirm: match };
+  return { duplicateOf: match?.id ?? null };
+}
 
 export async function createRequest(
   _prev: RequestFormState,
@@ -83,11 +96,22 @@ export async function createRequest(
     };
   }
 
+  const [ownCar] = await query<{ id: number }>("SELECT id FROM cars WHERE driver_id = $1", [driver.id]);
+  const check = await duplicateToConfirm(formData, {
+    carId: ownCar?.id ?? null,
+    requesterId: driver.id,
+    kind,
+    amount: Number(parsed.amount),
+    litres: order && "litres" in order ? order.litres : null,
+    date: null,
+  });
+  if ("confirm" in check) return { ok: false, errors: {}, values, duplicate: check.confirm };
+
   if (!reading || !order) {
     await query(
-      `INSERT INTO money_requests (requester_id, car_id, amount, reason)
-       VALUES ($1, (SELECT id FROM cars WHERE driver_id = $1), $2, $3)`,
-      [driver.id, parsed.amount, parsed.reason],
+      `INSERT INTO money_requests (requester_id, car_id, amount, reason, duplicate_of)
+       VALUES ($1, (SELECT id FROM cars WHERE driver_id = $1), $2, $3, $4)`,
+      [driver.id, parsed.amount, parsed.reason, check.duplicateOf],
     );
   } else {
     // The reading and the request go in together. Locking the car keeps a double tap from making two.
@@ -116,10 +140,10 @@ export async function createRequest(
       const odometerError = checkOdometer(reading.odometer, last.rows[0].odometer_km, true);
       if (odometerError) return { odometer: odometerError };
       const inserted = await client.query<{ id: number }>(
-        `INSERT INTO money_requests (requester_id, car_id, amount, reason, kind, fuel_price)
-         VALUES ($1, $2, $3, $4, 'fuel', $5)
+        `INSERT INTO money_requests (requester_id, car_id, amount, reason, kind, fuel_price, duplicate_of)
+         VALUES ($1, $2, $3, $4, 'fuel', $5, $6)
          RETURNING id`,
-        [driver.id, carRow.id, parsed.amount, parsed.reason, order.price],
+        [driver.id, carRow.id, parsed.amount, parsed.reason, order.price, check.duplicateOf],
       );
       await client.query(
         `INSERT INTO fuel_readings (car_id, driver_id, recorded_by, request_id, odometer_km, gauge_eighths)
@@ -187,21 +211,42 @@ export async function createManagerRequest(
     if (missing) return { ok: false, errors: { carId: notReadyForManager(missing) }, values };
   }
 
+  const check = await duplicateToConfirm(formData, {
+    carId: car.carId,
+    requesterId: manager.id,
+    kind,
+    amount: Number(parsed.amount),
+    litres: order && "litres" in order ? order.litres : null,
+    date: date.date,
+  });
+  if ("confirm" in check) return { ok: false, errors: {}, values, duplicate: check.confirm };
+
   // A manager's fuel has no reading: the driver's next one measures it. History is dated midday that day.
   const inserted = await query(
     `WITH at AS (SELECT CASE WHEN $6::date IS NULL THEN now() ELSE ($6::date + time '12:00') AT TIME ZONE $7 END AS t)
      INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at, kind, fuel_price,
-                                 created_at, factory_reviewed_at, issued_at, backfilled_at)
+                                 created_at, factory_reviewed_at, issued_at, backfilled_at, duplicate_of)
      SELECT $1, $2::int, $3, $4, 'approved', $1, at.t, $5,
             CASE WHEN $5 = 'fuel' THEN $8::int END,
             at.t,
             CASE WHEN $6::date IS NULL THEN NULL ELSE at.t END,
             CASE WHEN $6::date IS NULL THEN NULL ELSE at.t END,
-            CASE WHEN $6::date IS NULL THEN NULL ELSE now() END
+            CASE WHEN $6::date IS NULL THEN NULL ELSE now() END,
+            $9::int
        FROM at
       WHERE $2::int IS NULL OR EXISTS (SELECT 1 FROM cars WHERE id = $2::int)
      RETURNING id`,
-    [manager.id, car.carId, parsed.amount, parsed.reason, kind, date.date, TIME_ZONE, order && "price" in order ? order.price : null],
+    [
+      manager.id,
+      car.carId,
+      parsed.amount,
+      parsed.reason,
+      kind,
+      date.date,
+      TIME_ZONE,
+      order && "price" in order ? order.price : null,
+      check.duplicateOf,
+    ],
   );
   if (inserted.length === 0) {
     return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." }, values };

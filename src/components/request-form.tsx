@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { RequestFormState } from "@/app/actions/requests";
+import { DuplicateWarning } from "@/components/duplicate-warning";
 import { EntryDate } from "@/components/entry-date";
 import { GaugePicker } from "@/components/gauge-picker";
 import { Icon } from "@/components/icons";
@@ -275,8 +276,17 @@ export function RequestForm({
           ))}
         </div>
       )}
+      {failed?.duplicate && <DuplicateWarning match={failed.duplicate} what="Ombi" />}
       <button type="submit" disabled={pending} className="btn btn-primary w-full">
-        {pending ? "Inatuma…" : past ? "Hifadhi matumizi ya zamani" : cars ? "Omba na ukubali" : "Tuma ombi"}
+        {pending
+          ? "Inatuma…"
+          : failed?.duplicate
+            ? "Ndiyo, ni jipya: tuma"
+            : past
+              ? "Hifadhi matumizi ya zamani"
+              : cars
+                ? "Omba na ukubali"
+                : "Tuma ombi"}
       </button>
       {state?.ok && (
         <p role="status" className="rounded-md bg-ok-soft px-3 py-2 text-sm text-ok">

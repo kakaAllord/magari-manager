@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createIncome } from "@/app/actions/incomes";
+import { DuplicateWarning } from "@/components/duplicate-warning";
 import { EntryDate } from "@/components/entry-date";
 import { formatMoney } from "@/lib/format";
 import type { CarOption } from "@/lib/reports";
@@ -180,9 +181,14 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
         />
         {failed?.errors.description && <p className="mt-1 text-sm text-danger">{failed.errors.description}</p>}
       </label>
+      {failed?.duplicate && (
+        <div className="sm:col-span-2">
+          <DuplicateWarning match={failed.duplicate} what="Mapato" />
+        </div>
+      )}
       <div className="grid gap-2 sm:col-span-2 sm:flex sm:items-center">
         <button type="submit" disabled={pending} className="btn btn-primary">
-          {pending ? "Inahifadhi…" : past ? "Hifadhi mapato ya zamani" : "Hifadhi mapato"}
+          {pending ? "Inahifadhi…" : failed?.duplicate ? "Ndiyo, ni mapya: hifadhi" : past ? "Hifadhi mapato ya zamani" : "Hifadhi mapato"}
         </button>
         {state?.ok && (
           <p role="status" className="text-sm text-ok">

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
+import { parseDuplicateOk, type DuplicateMatch } from "@/lib/duplicate-rules";
+import { findIncomeDuplicate } from "@/lib/duplicates";
 import { DELETE_WINDOW_HOURS } from "@/lib/incomes";
 import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { todayInTanzania } from "@/lib/reports";
@@ -14,7 +16,7 @@ type IncomeValues = IncomeInput & { kind: string; rate: string; tonnes: string; 
 
 export type IncomeFormState =
   | { ok: true; message: string }
-  | { ok: false; errors: IncomeErrors & CargoErrors & { date?: string }; values: IncomeValues }
+  | { ok: false; errors: IncomeErrors & CargoErrors & { date?: string }; values: IncomeValues; duplicate?: DuplicateMatch }
   | undefined;
 
 export async function createIncome(_prev: IncomeFormState, formData: FormData): Promise<IncomeFormState> {
@@ -49,18 +51,25 @@ export async function createIncome(_prev: IncomeFormState, formData: FormData): 
   }
   const load = cargo && "amount" in cargo ? cargo : null;
 
+  // Income like one already there for this car warns first. Sent again with that match's id, it is
+  // saved and marked, so it still shows as a possible repeat.
+  const duplicate = await findIncomeDuplicate({ carId: parsed.carId, amount: Number(parsed.amount), date: date.date });
+  if (duplicate && duplicate.id !== parseDuplicateOk(formData.get("duplicateOk"))) {
+    return { ok: false, errors: {}, values, duplicate };
+  }
+
   // `source` keeps the plate as it is now, so lists and the feed read the same as older entries.
   // A past date is history: it's dated midday that day, and backfilled_at says when it was typed in.
   const inserted = await query<{ source: string }>(
     `INSERT INTO incomes (car_id, source, amount, description, recorded_by, created_at, backfilled_at,
-                          rate_per_tonne, tonnes, destination)
+                          rate_per_tonne, tonnes, destination, duplicate_of)
      SELECT id, plate, $2, $3, $4,
             CASE WHEN $5::date IS NULL THEN now() ELSE ($5::date + time '12:00') AT TIME ZONE $6 END,
             CASE WHEN $5::date IS NULL THEN NULL ELSE now() END,
-            $7, $8, $9
+            $7, $8, $9, $10
        FROM cars WHERE id = $1
      RETURNING source`,
-    [parsed.carId, parsed.amount, parsed.description, manager.id, date.date, TIME_ZONE, load?.rate ?? null, load?.tonnes ?? null, load?.destination ?? null],
+    [parsed.carId, parsed.amount, parsed.description, manager.id, date.date, TIME_ZONE, load?.rate ?? null, load?.tonnes ?? null, load?.destination ?? null, duplicate?.id ?? null],
   );
   if (inserted.length === 0) {
     return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." }, values };
