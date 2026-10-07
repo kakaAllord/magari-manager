@@ -6,11 +6,13 @@ import { DuplicateWarning } from "@/components/duplicate-warning";
 import { EntryDate } from "@/components/entry-date";
 import { formatMoney } from "@/lib/format";
 import type { CarOption } from "@/lib/reports";
-import { MAX_DESCRIPTION_LENGTH, MAX_DESTINATION_LENGTH } from "@/lib/validation";
+import { MAX_CUSTOMER_LENGTH, MAX_DESCRIPTION_LENGTH, MAX_DESTINATION_LENGTH } from "@/lib/validation";
 
 // Cargo ("Mzigo") is typed as a rate per tonne and the tonnes carried; the amount is their product,
 // worked out again on the server. Anything else ("Mengineyo") is a plain amount.
 // `today` is Tanzania's date; picking an earlier one types in past income as history.
+// By default the client paid it all. "Amelipa sehemu" takes the client's name and what they paid now
+// (0 when they paid nothing), and the rest is their debt.
 export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }) {
   const [state, action, pending] = useActionState(createIncome, undefined);
   const failed = state && !state.ok ? state : undefined;
@@ -18,15 +20,30 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
   const [kind, setKind] = useState(failed?.values.kind ?? "cargo");
   // Rate and tonnes as typed, to show the total. Kept when the form comes back with an error,
   // cleared once an entry is saved.
-  const [typed, setTyped] = useState({ rate: failed?.values.rate ?? "", tonnes: failed?.values.tonnes ?? "" });
+  const blank = { rate: "", tonnes: "", amount: "", paid: "" };
+  const [typed, setTyped] = useState(failed ? pick(failed.values) : blank);
+  const [payment, setPayment] = useState(failed?.values.payment ?? "full");
+  const [saves, setSaves] = useState(0);
   const [seen, setSeen] = useState(state);
   if (state !== seen) {
     setSeen(state);
-    setTyped(state && !state.ok ? { rate: state.values.rate, tonnes: state.values.tonnes } : { rate: "", tonnes: "" });
+    setTyped(state && !state.ok ? pick(state.values) : blank);
+    if (state?.ok) {
+      setPayment("full");
+      setSaves((n) => n + 1);
+    }
   }
-  const rate = Number(typed.rate.replace(/[,\s]/g, ""));
+  const type = (field: keyof typeof blank) => (e: React.FormEvent<HTMLInputElement>) => {
+    const value = e.currentTarget.value;
+    setTyped((t) => ({ ...t, [field]: value }));
+  };
+  const rate = shillings(typed.rate);
   const tonnes = Number(/^\s*\d+,\d{1,2}\s*$/.test(typed.tonnes) ? typed.tonnes.replace(",", ".") : typed.tonnes.replace(/[,\s]/g, ""));
   const total = rate >= 100 && tonnes > 0 ? Math.round(rate * tonnes) : null;
+  // The job's total, cargo or not, and what stays owed after what was paid now.
+  const jobTotal = kind === "cargo" ? total : shillings(typed.amount) > 0 ? shillings(typed.amount) : null;
+  const paidNow = typed.paid.trim() === "" ? null : shillings(typed.paid);
+  const owed = jobTotal !== null && paidNow !== null && !Number.isNaN(paidNow) ? jobTotal - paidNow : null;
 
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2">
@@ -105,6 +122,7 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
               required
               placeholder="350,000"
               defaultValue={failed?.values.amount}
+              onInput={type("amount")}
               className="input pl-12 font-semibold tabular-nums"
             />
           </div>
@@ -124,10 +142,7 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
                   required
                   placeholder="45,000"
                   defaultValue={failed?.values.rate}
-                  onInput={(e) => {
-                    const value = e.currentTarget.value;
-                    setTyped((t) => ({ ...t, rate: value }));
-                  }}
+                  onInput={type("rate")}
                   className="input pl-12 tabular-nums"
                 />
               </div>
@@ -142,10 +157,7 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
                   required
                   placeholder="30"
                   defaultValue={failed?.values.tonnes}
-                  onInput={(e) => {
-                    const value = e.currentTarget.value;
-                    setTyped((t) => ({ ...t, tonnes: value }));
-                  }}
+                  onInput={type("tonnes")}
                   className="input pr-10 tabular-nums"
                 />
                 <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted">t</span>
@@ -160,6 +172,79 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
           {failed?.errors.amount && <p className="text-sm text-danger">{failed.errors.amount}</p>}
         </div>
       )}
+      <fieldset className="grid gap-3 sm:col-span-2">
+        <legend className="label">Malipo</legend>
+        <div className="grid grid-cols-2 gap-1 rounded-lg border border-line p-1">
+          {(
+            [
+              ["full", "Amelipa yote"],
+              ["part", "Amelipa sehemu / deni"],
+            ] as const
+          ).map(([value, label]) => (
+            <label
+              key={value}
+              className="flex min-h-10 cursor-pointer items-center justify-center rounded-md px-2 text-center text-sm text-muted has-checked:bg-accent-soft has-checked:font-medium has-checked:text-accent"
+            >
+              <input
+                type="radio"
+                name="payment"
+                value={value}
+                // Uncontrolled like the kind, so the form's reset keeps "Amelipa sehemu" after an error.
+                // After a save they're remade on "Amelipa yote"; the ones the reset touched would miss the
+                // next tap on "Amelipa sehemu".
+                key={`${value}-${saves}`}
+                defaultChecked={payment === value}
+                onChange={() => setPayment(value)}
+                className="sr-only"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        {payment === "part" && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="label">Jina la mteja</span>
+              <input
+                name="customer"
+                required
+                maxLength={MAX_CUSTOMER_LENGTH}
+                autoComplete="off"
+                placeholder="Mfano: Kilimanjaro Traders"
+                defaultValue={failed?.values.customer}
+                className="input"
+              />
+              {failed?.errors.customer && <p className="mt-1 text-sm text-danger">{failed.errors.customer}</p>}
+            </label>
+            <label className="block">
+              <span className="label">Amelipa sasa</span>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
+                <input
+                  name="paid"
+                  inputMode="numeric"
+                  required
+                  placeholder="0"
+                  defaultValue={failed?.values.paid}
+                  onInput={type("paid")}
+                  className="input pl-12 tabular-nums"
+                />
+              </div>
+              {failed?.errors.paid ? (
+                <p className="mt-1 text-sm text-danger">{failed.errors.paid}</p>
+              ) : (
+                <p className="mt-1 text-xs text-muted">Andika 0 kama hajalipa chochote: yote yatakuwa deni.</p>
+              )}
+            </label>
+            <div className="flex items-baseline justify-between gap-3 rounded-lg bg-warn-soft px-3 py-2.5 sm:col-span-2" aria-live="polite">
+              <span className="text-sm text-muted">Deni litakalobaki</span>
+              <span className="text-lg font-semibold text-warn tabular-nums">
+                {owed === null || owed < 0 ? "–" : formatMoney(owed)}
+              </span>
+            </div>
+          </div>
+        )}
+      </fieldset>
       <EntryDate
         today={today}
         defaultValue={failed?.values.date}
@@ -188,7 +273,15 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
       )}
       <div className="grid gap-2 sm:col-span-2 sm:flex sm:items-center">
         <button type="submit" disabled={pending} className="btn btn-primary">
-          {pending ? "Inahifadhi…" : failed?.duplicate ? "Ndiyo, ni mapya: hifadhi" : past ? "Hifadhi mapato ya zamani" : "Hifadhi mapato"}
+          {pending
+            ? "Inahifadhi…"
+            : failed?.duplicate
+              ? "Ndiyo, ni mapya: hifadhi"
+              : past
+                ? "Hifadhi mapato ya zamani"
+                : payment === "part"
+                  ? "Hifadhi mapato na deni"
+                  : "Hifadhi mapato"}
         </button>
         {state?.ok && (
           <p role="status" className="text-sm text-ok">
@@ -199,3 +292,13 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
     </form>
   );
 }
+
+// Shillings as typed, "350,000" or "350000"; NaN when it isn't a number.
+const shillings = (typed: string) => Number(typed.replace(/[,\s]/g, ""));
+
+const pick = (v: { rate: string; tonnes: string; amount: string; paid: string }) => ({
+  rate: v.rate,
+  tonnes: v.tonnes,
+  amount: v.amount,
+  paid: v.paid,
+});
