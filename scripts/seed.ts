@@ -352,7 +352,20 @@ try {
       }
     }
   }
-  console.log("seeded demo users, cars, requests, income, cargo, possible repeats, maoni, invoices, fuel, receipts and typed-in history");
+  // Payment vouchers: every demo payment made in the app gets its number in the order it was paid,
+  // as migration 020 numbered real ones. Typed-in history gets none.
+  await client.query(
+    `INSERT INTO payment_vouchers (request_id, year, seq, number)
+     SELECT id, year, seq, 'HM-' || year || '-' || lpad(seq::text, greatest(3, length(seq::text)), '0')
+       FROM (SELECT r.id, y.year,
+                    coalesce((SELECT max(seq) FROM payment_vouchers pv WHERE pv.year = y.year), 0)
+                      + row_number() OVER (PARTITION BY y.year ORDER BY r.issued_at, r.id)::int AS seq
+               FROM money_requests r
+               CROSS JOIN LATERAL (SELECT extract(year FROM r.issued_at AT TIME ZONE 'Africa/Dar_es_Salaam')::int AS year) y
+              WHERE r.issued_at IS NOT NULL AND r.backfilled_at IS NULL
+                AND NOT EXISTS (SELECT 1 FROM payment_vouchers pv WHERE pv.request_id = r.id)) numbered`,
+  );
+  console.log("seeded demo users, cars, requests, income, cargo, possible repeats, maoni, invoices, fuel, receipts, vouchers and typed-in history");
 } finally {
   await client.end();
 }
