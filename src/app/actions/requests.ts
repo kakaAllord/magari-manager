@@ -305,19 +305,32 @@ export async function authoriseRequest(formData: FormData) {
 
 // The mhasibu pays out an authorised request, with an optional note such as an M-Pesa reference.
 // Only unpaid authorised requests match, so a double tap or a second mhasibu is a no-op.
-// The payment then waits for its receipt.
+// The payment then waits for its receipt, and gets its payment voucher (hati ya malipo) numbered
+// for the year: a lock held until the end of the transaction keeps two payments from one number.
 export async function issueRequest(formData: FormData) {
   const accountant = await requireUser("accountant");
   const id = Number(formData.get("id"));
   const note = String(formData.get("note") ?? "").trim().slice(0, MAX_ISSUE_NOTE_LENGTH) || null;
   if (!Number.isInteger(id)) return;
 
-  const issued = await query<{ requester_id: number }>(
-    `UPDATE money_requests SET issued_at = now(), issued_by = $2, issue_note = $3, receipt_due = true
-      WHERE id = $1 AND status = 'approved' AND factory_reviewed_at IS NOT NULL AND issued_at IS NULL
-      RETURNING requester_id`,
-    [id, accountant.id, note],
-  );
+  const issued = await transaction(async (client) => {
+    const paid = await client.query<{ requester_id: number }>(
+      `UPDATE money_requests SET issued_at = now(), issued_by = $2, issue_note = $3, receipt_due = true
+        WHERE id = $1 AND status = 'approved' AND factory_reviewed_at IS NOT NULL AND issued_at IS NULL
+        RETURNING requester_id`,
+      [id, accountant.id, note],
+    );
+    if (paid.rows.length === 0) return [];
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('payment_vouchers'))");
+    await client.query(
+      `WITH next AS (SELECT y AS year, coalesce((SELECT max(seq) FROM payment_vouchers WHERE year = y), 0) + 1 AS seq
+                       FROM (SELECT extract(year FROM now() AT TIME ZONE $2)::int AS y) t)
+       INSERT INTO payment_vouchers (request_id, year, seq, number)
+       SELECT $1, year, seq, 'HM-' || year || '-' || lpad(seq::text, greatest(3, length(seq::text)), '0') FROM next`,
+      [id, TIME_ZONE],
+    );
+    return paid.rows;
+  });
   revalidatePath("/accountant", "layout");
   revalidatePath("/manager", "layout");
   revalidatePath("/factory", "layout");
