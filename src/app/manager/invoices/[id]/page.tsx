@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { COMPANY } from "@/lib/company";
+import { COMPANY, COMPANY_DETAILS } from "@/lib/company";
 import { formatDateTime, formatMoney, formatTonnes, formatWallDate } from "@/lib/format";
 import { getInvoice } from "@/lib/invoices";
 import { requireUser } from "@/lib/session";
@@ -39,7 +39,11 @@ export default async function InvoicePage({ params, searchParams }: PageProps<"/
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-lg font-semibold text-accent">{COMPANY}</p>
-            <p className="text-sm text-muted">Usafirishaji wa mizigo</p>
+            {COMPANY_DETAILS.map((line) => (
+              <p key={line} className="text-sm text-muted">
+                {line}
+              </p>
+            ))}
           </div>
           <div className="text-right">
             <p className="text-xl font-semibold tracking-wide">ANKARA</p>

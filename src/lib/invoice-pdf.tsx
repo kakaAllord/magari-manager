@@ -1,6 +1,6 @@
 import "server-only";
 import { Document, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
-import { COMPANY } from "@/lib/company";
+import { COMPANY, COMPANY_DETAILS } from "@/lib/company";
 import { formatDate, formatMoney, formatTonnes, formatWallDate } from "@/lib/format";
 import type { InvoiceDetail } from "@/lib/invoices";
 
@@ -46,7 +46,11 @@ function InvoicePdf({ invoice: inv }: { invoice: InvoiceDetail }) {
         <View style={s.head}>
           <View>
             <Text style={s.company}>{COMPANY}</Text>
-            <Text style={{ color: C.muted, marginTop: 2 }}>Usafirishaji wa mizigo</Text>
+            {COMPANY_DETAILS.map((line) => (
+              <Text key={line} style={{ color: C.muted, marginTop: 2 }}>
+                {line}
+              </Text>
+            ))}
           </View>
           <View>
             <Text style={s.title}>ANKARA</Text>
