@@ -33,6 +33,12 @@ export default async function DirectorDashboard() {
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Muhtasari wa mwezi huu">
         <StatTile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok">
           Mwezi uliopita {formatMoney(income.last_month)}
+          {income.debts > 0 && (
+            <>
+              <br />
+              Wateja wanadaiwa {formatMoney(income.owed)}
+            </>
+          )}
         </StatTile>
         <StatTile label="Matumizi mwezi huu" value={formatMoney(o.this_month)}>
           Mwezi uliopita {formatMoney(o.last_month)}

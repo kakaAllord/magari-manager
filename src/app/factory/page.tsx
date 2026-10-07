@@ -48,6 +48,12 @@ export default async function FactoryDashboard() {
         </StatTile>
         <StatTile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok">
           Mwezi uliopita {formatMoney(income.last_month)}
+          {income.debts > 0 && (
+            <>
+              <br />
+              Wateja wanadaiwa {formatMoney(income.owed)}
+            </>
+          )}
         </StatTile>
         <StatTile label="Matumizi mwezi huu" value={formatMoney(o.this_month)}>
           Wiki hii {formatMoney(o.this_week)}

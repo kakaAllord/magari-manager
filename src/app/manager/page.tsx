@@ -31,6 +31,12 @@ export default async function DashboardPage() {
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-3" aria-label="Muhtasari">
           <Tile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok" href="/manager/income">
             Mwezi uliopita {formatMoney(income.last_month)}
+            {income.debts > 0 && (
+              <>
+                <br />
+                Wateja wanadaiwa {formatMoney(income.owed)}
+              </>
+            )}
           </Tile>
           <Tile label="Matumizi mwezi huu" value={formatMoney(o.this_month)}>
             Wiki hii {formatMoney(o.this_week)}
