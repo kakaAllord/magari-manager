@@ -7,6 +7,8 @@ import {
   MAX_KM_BETWEEN_READINGS,
   MAX_RECEIPT_BYTES,
   parseCargo,
+  parseDebtPayment,
+  parsePartPayment,
   parseCarChoice,
   parseEntryDate,
   parseFeedback,
@@ -160,6 +162,25 @@ test("cargo income is rate per tonne times tonnes, in whole shillings", () => {
   assert.ok("errors" in parseCargo("45,000", "10001", ""));
   assert.ok("errors" in parseCargo("99,000,000", "30", ""));
   assert.ok("errors" in parseCargo("45,000", "30", "x".repeat(121)));
+});
+
+test("reads a part payment: who owes, and from 0 up to under the total", () => {
+  assert.deepEqual(parsePartPayment("200,000", " Kilimanjaro  Traders ", 1350000), { paid: 200000, customer: "Kilimanjaro Traders" });
+  assert.deepEqual(parsePartPayment("0", "Juma", 500000), { paid: 0, customer: "Juma" });
+  assert.deepEqual(parsePartPayment("", "", 500000), {
+    errors: { customer: "Andika jina la mteja anayedaiwa.", paid: "Andika kiasi alicholipa sasa, au 0 kama hajalipa chochote." },
+  });
+  assert.ok("errors" in parsePartPayment("500,000", "Juma", 500000));
+  assert.ok("errors" in parsePartPayment("600000", "Juma", 500000));
+  assert.ok("errors" in parsePartPayment("abc", "Juma", 500000));
+  assert.ok("errors" in parsePartPayment("1000", "J", 500000));
+});
+
+test("takes a payment on a debt up to what is still owed", () => {
+  assert.deepEqual(parseDebtPayment("150,000", 300000), { amount: 150000 });
+  assert.deepEqual(parseDebtPayment("300000", 300000), { amount: 300000 });
+  assert.ok("error" in parseDebtPayment("300001", 300000));
+  assert.ok("error" in parseDebtPayment("0", 300000));
 });
 
 test("knows a receipt photo by its first bytes", () => {

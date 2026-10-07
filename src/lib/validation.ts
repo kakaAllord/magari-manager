@@ -34,6 +34,38 @@ export function parseMoneyRequest(input: RequestInput):
   return { ok: true, amount: amount.amount, reason };
 }
 
+export const MAX_CUSTOMER_LENGTH = 120;
+
+// Income the client paid only part of: who the client is and how much they paid now, from 0 (all of
+// it is owed) up to less than the job's total. Paying the whole total is "Amelipa yote" instead.
+export function parsePartPayment(
+  paidInput: string,
+  customerInput: string,
+  total: number,
+): { paid: number; customer: string } | { errors: { paid?: string; customer?: string } } {
+  const errors: { paid?: string; customer?: string } = {};
+  const customer = customerInput.trim().replace(/\s+/g, " ");
+  if (customer.length < 2) errors.customer = "Andika jina la mteja anayedaiwa.";
+  else if (customer.length > MAX_CUSTOMER_LENGTH) errors.customer = `Jina lisizidi herufi ${MAX_CUSTOMER_LENGTH}.`;
+
+  const typed = paidInput.trim();
+  const paid = /^0+$/.test(typed) ? { amount: "0" } : parseAmount(typed);
+  if (!typed) errors.paid = "Andika kiasi alicholipa sasa, au 0 kama hajalipa chochote.";
+  else if ("error" in paid) errors.paid = paid.error;
+  else if (Number(paid.amount) >= total) errors.paid = "Amelipa jumla yote: chagua “Amelipa yote”.";
+
+  if (errors.paid || errors.customer || "error" in paid) return { errors };
+  return { paid: Number(paid.amount), customer };
+}
+
+// A payment towards a debt: more than nothing and no more than what is still owed.
+export function parseDebtPayment(input: string, owed: number): { amount: number } | { error: string } {
+  const amount = parseAmount(input);
+  if ("error" in amount) return amount;
+  if (Number(amount.amount) > owed) return { error: `Ni zaidi ya deni lililobaki, TSh ${owed.toLocaleString("en")}.` };
+  return { amount: Number(amount.amount) };
+}
+
 // A manager's own request names the car it's for, or "none" for costs that aren't a car's.
 export function parseCarChoice(input: string): { carId: number | null } | { error: string } {
   if (input === "none") return { carId: null };
