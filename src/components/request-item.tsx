@@ -72,6 +72,14 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
           {r.issued_at &&
             (r.issuer_name ? ` · Imelipwa na ${r.issuer_name} ${formatDateTime(r.issued_at)}` : " · Imelipwa")}
           {r.issue_note && ` · ${r.issue_note}`}
+          {r.voucher_number && (
+            <>
+              {" · "}
+              <a href={`/vouchers/${r.id}`} target="_blank" className="font-medium text-accent underline">
+                Hati ya malipo {r.voucher_number}
+              </a>
+            </>
+          )}
           {r.receipt === "due" && (mine ? " · Peleka risiti kwa mhasibu" : " · Inasubiri risiti")}
           {r.receipt === "added" && (
             <>
