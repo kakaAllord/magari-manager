@@ -29,6 +29,15 @@ tani, and payment details, downloaded as a PDF. Numbers run per year (ANK-2026-0
 reused; a mistaken invoice is cancelled ("Imefutwa"), not edited. Invoices are documents only
 (`invoices`, `invoice_lines`, migration 019): marking one paid does not touch Mapato, where the
 income is still recorded.
+Every payment the mhasibu makes gets a payment voucher (hati ya malipo), numbered per year of
+payment (HM-2026-001) when Lipa is pressed and never reused (`payment_vouchers`, migration 020,
+which numbered earlier payments in the order they were paid; typed-in history gets none). "Hati ya
+malipo" beside the payment opens it as a one-page PDF to print, sign and file: the payee and car,
+the reason, the amount in figures and Swahili words (`src/lib/amount-words.ts`), who asked,
+approved, authorised and paid it, and signature lines, the last for whoever received the money.
+Staff open every voucher; a driver only their own. The company's name and the lines printed
+under it on invoices and vouchers live in `src/lib/company.ts` (`COMPANY_DETAILS`); for now that
+is "Usafirishaji wa mizigo", and the address, phone and TIN go there once the company gives them.
 Drivers have a Maoni tab, a suggestion box. The meneja, meneja wa kiwanda and mkurugenzi read the
 notes on their own Maoni tab, anonymously: they see the text and the day, never the driver or the
 car (`feedback.author_id` is kept only so drivers see their own notes). Each reader marks a note
