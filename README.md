@@ -29,6 +29,14 @@ tani, and payment details, downloaded as a PDF. Numbers run per year (ANK-2026-0
 reused; a mistaken invoice is cancelled ("Imefutwa"), not edited. Invoices are documents only
 (`invoices`, `invoice_lines`, migration 019): marking one paid does not touch Mapato, where the
 income is still recorded.
+Income is paid in full by default. When a client pays only part of a job, or nothing yet, the
+meneja picks "Amelipa sehemu / deni", names the client and types what they paid now (0 means it is
+all owed). Mapato still counts the job's full value on its date, so totals, reports and each car's
+faida read as before; what clients still owe is shown beside it ("Wateja wanadaiwa") on every
+dashboard. The Mapato page's Madeni tab lists open debts, oldest first, and "Pokea malipo" records
+each later payment (with an optional reference) until the debt is cleared (`incomes.amount_paid`,
+`customer_name` and `income_payments`, migration 021; earlier income counts as paid in full). Ripoti,
+its PDF and Excel show each entry's client and what is still owed.
 Every payment the mhasibu makes gets a payment voucher (hati ya malipo), numbered per year of
 payment (HM-2026-001) when Lipa is pressed and never reused (`payment_vouchers`, migration 020,
 which numbered earlier payments in the order they were paid; typed-in history gets none). "Hati ya
