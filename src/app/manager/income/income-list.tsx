@@ -2,7 +2,16 @@ import { cargoLine, formatDate, formatDateTime, formatMoney } from "@/lib/format
 import type { Income } from "@/lib/incomes";
 import { DeleteIncome } from "./delete-income";
 
-export function IncomeList({ incomes, empty }: { incomes: Income[]; empty: string }) {
+// `action` takes the place of Futa, such as the button to record a payment on a debt.
+export function IncomeList({
+  incomes,
+  empty,
+  action,
+}: {
+  incomes: Income[];
+  empty: string;
+  action?: (income: Income) => React.ReactNode;
+}) {
   if (incomes.length === 0) return <p className="py-6 text-center text-sm text-muted">{empty}</p>;
   return (
     <ul className="divide-y divide-line">
@@ -16,6 +25,7 @@ export function IncomeList({ incomes, empty }: { incomes: Income[]; empty: strin
               </p>
               {cargoLine(i) && <p className="text-sm break-words">{cargoLine(i)}</p>}
               {i.description && <p className="text-sm break-words">{i.description}</p>}
+              <DebtLines income={i} />
               {i.duplicate_amount !== null && i.duplicate_at !== null && (
                 <p className="mt-1 text-xs">
                   <span className="rounded bg-warn-soft px-1.5 py-px font-medium text-warn">Huenda ni marudio</span>{" "}
@@ -39,9 +49,35 @@ export function IncomeList({ incomes, empty }: { incomes: Income[]; empty: strin
             </div>
             <p className="shrink-0 font-semibold text-ok tabular-nums">+{formatMoney(i.amount)}</p>
           </div>
-          {i.can_delete && <DeleteIncome incomeId={i.id} source={i.source} />}
+          {action ? action(i) : i.can_delete && <DeleteIncome incomeId={i.id} source={i.source} />}
         </li>
       ))}
     </ul>
+  );
+}
+
+// For income taken on credit: the client, what is still owed (or that it's cleared) and each payment.
+function DebtLines({ income: i }: { income: Income }) {
+  if (i.customer_name === null) return null;
+  const owed = Number(i.amount) - Number(i.amount_paid);
+  return (
+    <div className="mt-1 grid gap-0.5 text-sm">
+      <p className="break-words">
+        {owed > 0 ? (
+          <span className="rounded bg-warn-soft px-1.5 py-px text-xs font-medium text-warn">Deni {formatMoney(owed)}</span>
+        ) : (
+          <span className="rounded bg-ok-soft px-1.5 py-px text-xs font-medium text-ok">Deni limelipwa</span>
+        )}{" "}
+        {i.customer_name}
+        {owed > 0 && <span className="text-muted"> · amelipa {formatMoney(i.amount_paid)}</span>}
+      </p>
+      {i.payments.map((p, n) => (
+        <p key={n} className="text-xs text-muted">
+          {formatDateTime(new Date(p.paid_at))} · {formatMoney(p.amount)}
+          {p.note && ` · ${p.note}`}
+          {p.recorder_name && ` · alipokea ${p.recorder_name}`}
+        </p>
+      ))}
+    </div>
   );
 }
