@@ -278,6 +278,32 @@ try {
       );
     }
   }
+  // Income on credit: one part paid with a payment since, one not paid at all, one paid off.
+  const { rows: existingDebt } = await client.query("SELECT 1 FROM incomes WHERE customer_name IS NOT NULL LIMIT 1");
+  if (existingDebt.length === 0) {
+    const debts: [daysAgo: number, plate: string, rate: number, tonnes: number, destination: string, customer: string, paid: [daysAgo: number, amount: number, note: string | null][]][] = [
+      [18, "T456BCD", 48000, 2, "Dar es Salaam - Tanga", "Mwambao Hardware", [[18, 40000, null], [6, 20000, "M-Pesa QJK81T2"]]],
+      [5, "T789CDE", 40000, 1.25, "Bagamoyo", "Juma Shaban", []],
+      [12, "T103ABE", 45000, 1, "Dar es Salaam - Morogoro", "Kilimanjaro Traders", [[12, 15000, null], [3, 30000, "Benki CRDB"]]],
+    ];
+    for (const [daysAgo, plate, rate, tonnes, destination, customer, paid] of debts) {
+      const { rows } = await client.query<{ id: number }>(
+        `INSERT INTO incomes (car_id, source, amount, rate_per_tonne, tonnes, destination, recorded_by, created_at, amount_paid, customer_name)
+         SELECT c.id, c.plate, round($2::numeric * $3), $2, $3, $4, (SELECT id FROM users WHERE email = $5),
+                now() - make_interval(days => $6), $7, $8
+           FROM cars c WHERE c.plate = $1
+         RETURNING id`,
+        [plate, rate, tonnes, destination, manager.email, daysAgo, paid.reduce((s, [, a]) => s + a, 0), customer],
+      );
+      for (const [ago, amount, note] of paid) {
+        await client.query(
+          `INSERT INTO income_payments (income_id, amount, note, paid_at, recorded_by)
+           VALUES ($1, $2, $3, now() - make_interval(days => $4), (SELECT id FROM users WHERE email = $5))`,
+          [rows[0]?.id, amount, note, ago, manager.email],
+        );
+      }
+    }
+  }
   // A possible repeat waiting for the manager: Neema asked again for nearly what she asked yesterday
   // and sent it anyway after the warning, so it carries the "Huenda ni marudio" flag.
   const { rows: existingRepeat } = await client.query("SELECT 1 FROM money_requests WHERE duplicate_of IS NOT NULL LIMIT 1");
@@ -365,7 +391,7 @@ try {
               WHERE r.issued_at IS NOT NULL AND r.backfilled_at IS NULL
                 AND NOT EXISTS (SELECT 1 FROM payment_vouchers pv WHERE pv.request_id = r.id)) numbered`,
   );
-  console.log("seeded demo users, cars, requests, income, cargo, possible repeats, maoni, invoices, fuel, receipts, vouchers and typed-in history");
+  console.log("seeded demo users, cars, requests, income, cargo, possible repeats, debts, maoni, invoices, fuel, receipts, vouchers and typed-in history");
 } finally {
   await client.end();
 }
