@@ -17,6 +17,8 @@ export type MoneyRequest = {
   factory_reviewer_name: string | null;
   issued_at: Date | null;
   issue_note: string | null;
+  // The payment voucher (hati ya malipo) of a payment made in the app; typed-in history has none.
+  voucher_number: string | null;
   requester_id: number;
   requester_name: string;
   requester_role: "driver" | "manager";
@@ -45,7 +47,7 @@ const SELECT = `
          CASE WHEN r.issued_at IS NOT NULL THEN 'issued'
               WHEN r.status = 'approved' AND r.factory_reviewed_at IS NOT NULL THEN 'authorised'
               ELSE r.status END AS status,
-         r.created_at, r.reviewed_at, r.factory_reviewed_at, f.name AS factory_reviewer_name, r.issued_at, r.issue_note, r.backfilled_at,
+         r.created_at, r.reviewed_at, r.factory_reviewed_at, f.name AS factory_reviewer_name, r.issued_at, r.issue_note, pv.number AS voucher_number, r.backfilled_at,
          r.requester_id, d.name AS requester_name, d.role AS requester_role,
          m.name AS reviewer_name, a.name AS issuer_name,
          CASE WHEN c.id IS NULL THEN NULL ELSE concat_ws(' · ', c.name, c.plate) END AS car,
@@ -62,7 +64,8 @@ const SELECT = `
     LEFT JOIN users a ON a.id = r.issued_by
     LEFT JOIN cars c ON c.id = r.car_id
     LEFT JOIN fuel_readings fr ON fr.request_id = r.id
-    LEFT JOIN money_requests dup ON dup.id = r.duplicate_of`;
+    LEFT JOIN money_requests dup ON dup.id = r.duplicate_of
+    LEFT JOIN payment_vouchers pv ON pv.request_id = r.id`;
 
 export const PAGE_SIZE = 25;
 
@@ -102,6 +105,15 @@ export const listOpenForRequester = (requesterId: number) =>
      ORDER BY r.created_at DESC`,
     [requesterId],
   );
+
+// A payment with its voucher, to print. Given a requester, only one of theirs.
+export async function getVoucherRequest(id: number, requesterId: number | null) {
+  const [row] = await query<MoneyRequest>(
+    `${SELECT} WHERE r.id = $1 AND pv.number IS NOT NULL AND ($2::int IS NULL OR r.requester_id = $2)`,
+    [id, requesterId],
+  );
+  return row ?? null;
+}
 
 export type HistoryFilter = "all" | "approved" | "authorised" | "issued" | "rejected";
 
