@@ -274,6 +274,18 @@ export async function ReportView({
                           </p>
                           {cargoLine(x) && <p className="text-sm break-words">{cargoLine(x)}</p>}
                           {x.description && <p className="text-sm break-words">{x.description}</p>}
+                          {x.customer_name && (
+                            <p className="text-sm break-words">
+                              {Number(x.owed) > 0 ? (
+                                <span className="rounded bg-warn-soft px-1.5 py-px text-xs font-medium text-warn">
+                                  Deni {formatMoney(x.owed)}
+                                </span>
+                              ) : (
+                                <span className="rounded bg-ok-soft px-1.5 py-px text-xs font-medium text-ok">Deni limelipwa</span>
+                              )}{" "}
+                              {x.customer_name}
+                            </p>
+                          )}
                           <p className="mt-1 text-xs text-muted">
                             {x.backfilled ? (
                               <>

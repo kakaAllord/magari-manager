@@ -148,6 +148,8 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     x.rate_per_tonne,
     Number(x.amount),
     x.recorded_by ?? "",
+    x.customer_name ?? "",
+    Number(x.owed),
   ]);
   s.addTable({
     name: "Mapato",
@@ -166,14 +168,17 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
       { name: "Bei kwa tani", filterButton: true },
       { name: "Kiasi", filterButton: true, totalsRowFunction: "sum" },
       { name: "Imerekodiwa na", filterButton: true },
+      { name: "Mteja (deni)", filterButton: true },
+      { name: "Deni bado", filterButton: true, totalsRowFunction: "sum" },
     ],
-    rows: rows.length ? rows : [[null, "", "", "", "", "Hakuna mapato katika kipindi hiki", null, null, 0, ""]],
+    rows: rows.length ? rows : [[null, "", "", "", "", "Hakuna mapato katika kipindi hiki", null, null, 0, "", "", 0]],
   });
-  [18, 14, 12, 24, 20, 40, 10, 14, 16, 20].forEach((w, i) => (s.getColumn(i + 1).width = w));
+  [18, 14, 12, 24, 20, 40, 10, 14, 16, 20, 20, 14].forEach((w, i) => (s.getColumn(i + 1).width = w));
   s.getColumn(1).numFmt = DATE;
   s.getColumn(7).numFmt = "#,##0.##";
   s.getColumn(8).numFmt = MONEY;
   s.getColumn(9).numFmt = MONEY;
+  s.getColumn(12).numFmt = MONEY;
   const n = Math.max(rows.length, 1);
   s.addConditionalFormatting({
     ref: `I2:I${n + 1}`,

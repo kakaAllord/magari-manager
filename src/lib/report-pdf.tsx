@@ -3,6 +3,7 @@ import { Circle, Document, Page, Path, renderToBuffer, StyleSheet, Svg, Text, Vi
 import { COMPANY } from "@/lib/company";
 import { cargoLine, formatKm, formatLitres, formatMoney, formatRate, formatWallTime } from "@/lib/format";
 import { expenseCar, incomeCar, type ReportData } from "@/lib/report-data";
+import type { IncomeRow } from "@/lib/reports";
 
 // The PDF report: headline numbers and charts first, then the tables (flowing on from the charts), then every entry.
 // Built-in Helvetica only covers Western European characters, so the text avoids symbols like ⚠.
@@ -425,7 +426,10 @@ function ReportPdf({ data }: { data: ReportData }) {
                 width: 38,
                 // Helvetica has no arrow, so one typed in a destination prints as a dash.
                 value: (i) =>
-                  [cargoLine(i), i.description ?? (i.car_id !== null ? "" : i.source)].filter(Boolean).join(" · ").replaceAll("→", "-"),
+                  [cargoLine(i), i.description ?? (i.car_id !== null ? "" : i.source), debtNote(i)]
+                    .filter(Boolean)
+                    .join(" · ")
+                    .replaceAll("→", "-"),
               },
               { label: "Na", width: 16, value: (i) => i.recorded_by ?? "" },
               { label: "Kiasi", width: 16, num: true, value: (i) => money(Number(i.amount)), color: () => C.in },
@@ -441,3 +445,11 @@ function ReportPdf({ data }: { data: ReportData }) {
 }
 
 export const buildPdf = (data: ReportData) => renderToBuffer(<ReportPdf data={data} />);
+
+// Income on credit: "Deni TSh 300,000 (Juma)", or that it's paid. Null for everything else.
+const debtNote = (i: IncomeRow) =>
+  i.customer_name === null
+    ? null
+    : Number(i.owed) > 0
+      ? `Deni ${money(Number(i.owed))} (${i.customer_name})`
+      : `Deni limelipwa (${i.customer_name})`;

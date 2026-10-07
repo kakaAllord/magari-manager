@@ -121,6 +121,9 @@ export type IncomeRow = {
   amount: string;
   recorded_by: string | null;
   backfilled: boolean;
+  // Income taken on credit: the client, and what they still owe today (0 once it's paid).
+  customer_name: string | null;
+  owed: string;
 };
 
 // Income recorded (Tanzanian time) within [from, to], deleted entries left out. Picking cars keeps
@@ -132,7 +135,7 @@ export function getIncomes(p: ReportParams) {
             to_char(date_trunc('week', i.created_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
             i.source, i.car_id, c.name AS car, i.description, i.rate_per_tonne, i.tonnes, i.destination,
             i.amount, u.name AS recorded_by,
-            i.backfilled_at IS NOT NULL AS backfilled
+            i.backfilled_at IS NOT NULL AS backfilled, i.customer_name, i.amount - i.amount_paid AS owed
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
       WHERE i.deleted_at IS NULL
         AND (i.created_at AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date
