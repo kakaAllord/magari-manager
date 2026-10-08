@@ -80,13 +80,21 @@ export function listDebts() {
 }
 
 // Income is dated by when it was recorded, in Tanzanian time. It counts each job's full value, paid
-// or not; `owed` is what clients still owe on all of it.
+// or not; `owed` is what clients still owe on all of it, `this_month_owed` the part of this month's.
 export async function getIncomeTotals() {
-  const rows = await query<{ this_month: string; last_month: string; all_time: string; owed: string; debts: number }>(
+  const rows = await query<{
+    this_month: string;
+    this_month_owed: string;
+    last_month: string;
+    all_time: string;
+    owed: string;
+    debts: number;
+  }>(
     `WITH local AS (SELECT date_trunc('month', now() AT TIME ZONE $1) AS month),
-     income AS (SELECT amount, created_at AT TIME ZONE $1 AS at FROM incomes WHERE deleted_at IS NULL)
+     income AS (SELECT amount, amount_paid, created_at AT TIME ZONE $1 AS at FROM incomes WHERE deleted_at IS NULL)
      SELECT
        (SELECT coalesce(sum(amount), 0) FROM income, local WHERE at >= month) AS this_month,
+       (SELECT coalesce(sum(amount - amount_paid), 0) FROM income, local WHERE at >= month) AS this_month_owed,
        (SELECT coalesce(sum(amount), 0) FROM income, local
          WHERE at >= month - interval '1 month' AND at < month) AS last_month,
        (SELECT coalesce(sum(amount), 0) FROM income) AS all_time,
@@ -95,4 +103,21 @@ export async function getIncomeTotals() {
     [TIME_ZONE],
   );
   return rows[0];
+}
+
+export type Debtor = { customer: string; plates: string | null; jobs: number; amount: string; owed: string; days: number };
+
+// What each client still owes, all their unpaid jobs together (names matched ignoring case and
+// spaces), largest first. `days` is how long since their oldest unpaid job.
+export function listDebtors() {
+  return query<Debtor>(
+    `SELECT min(i.customer_name) AS customer, string_agg(DISTINCT c.plate, ', ') AS plates, count(*)::int AS jobs,
+            sum(i.amount) AS amount, sum(i.amount - i.amount_paid) AS owed,
+            ((now() AT TIME ZONE $1)::date - min(i.created_at AT TIME ZONE $1)::date) AS days
+       FROM incomes i LEFT JOIN cars c ON c.id = i.car_id
+      WHERE i.deleted_at IS NULL AND i.amount_paid < i.amount
+      GROUP BY lower(trim(i.customer_name))
+      ORDER BY owed DESC, days DESC`,
+    [TIME_ZONE],
+  );
 }
