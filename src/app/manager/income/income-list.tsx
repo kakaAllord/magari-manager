@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cargoLine, formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { Income } from "@/lib/incomes";
 import { DeleteIncome } from "./delete-income";
@@ -24,7 +25,15 @@ export function IncomeList({
                 {i.car && <span className="font-normal text-muted"> · {i.car}</span>}
               </p>
               {cargoLine(i) && <p className="text-sm break-words">{cargoLine(i)}</p>}
-              {i.description && <p className="text-sm break-words">{i.description}</p>}
+              {i.invoice_id !== null ? (
+                <p className="text-sm">
+                  <Link href={`/manager/invoices/${i.invoice_id}`} className="font-medium text-accent underline">
+                    Ankara {i.invoice_number}
+                  </Link>
+                </p>
+              ) : (
+                i.description && <p className="text-sm break-words">{i.description}</p>
+              )}
               <DebtLines income={i} />
               {i.duplicate_amount !== null && i.duplicate_at !== null && (
                 <p className="mt-1 text-xs">
