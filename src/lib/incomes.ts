@@ -30,6 +30,9 @@ export type Income = {
   customer_name: string | null;
   // Money that came in for a part-paid entry, oldest first. Empty for entries paid in full at once.
   payments: IncomePayment[];
+  // A trip on an invoice: the invoice, which is paid or cancelled as a whole.
+  invoice_id: number | null;
+  invoice_number: string | null;
 };
 
 // `paid_at` arrives as an ISO string, since it comes through json_agg.
@@ -53,11 +56,11 @@ export async function listIncomes(
   const rows = await query<Income & { total_count: number }>(
     `SELECT i.id, i.source, i.amount, i.description, i.rate_per_tonne, i.tonnes, i.destination, i.car_id, c.name AS car, i.created_at,
             i.backfilled_at, u.name AS recorder_name, dup.amount AS duplicate_amount, dup.created_at AS duplicate_at,
-            i.amount_paid, i.customer_name, ${PAYMENTS} AS payments,
-            (i.recorded_by = $1 AND coalesce(i.backfilled_at, i.created_at) > now() - make_interval(hours => $3)) AS can_delete,
+            i.amount_paid, i.customer_name, ${PAYMENTS} AS payments, i.invoice_id, inv.number AS invoice_number,
+            (i.recorded_by = $1 AND i.invoice_id IS NULL AND coalesce(i.backfilled_at, i.created_at) > now() - make_interval(hours => $3)) AS can_delete,
             count(*) OVER ()::int AS total_count
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
-            LEFT JOIN incomes dup ON dup.id = i.duplicate_of
+            LEFT JOIN incomes dup ON dup.id = i.duplicate_of LEFT JOIN invoices inv ON inv.id = i.invoice_id
       WHERE i.deleted_at IS NULL AND ($5::int IS NULL OR i.car_id = $5)
       ORDER BY CASE WHEN $6 THEN coalesce(i.backfilled_at, i.created_at) END DESC, i.created_at DESC
       LIMIT $2 OFFSET $4`,
@@ -72,8 +75,10 @@ export function listDebts() {
   return query<Income>(
     `SELECT i.id, i.source, i.amount, i.description, i.rate_per_tonne, i.tonnes, i.destination, i.car_id, c.name AS car, i.created_at,
             i.backfilled_at, u.name AS recorder_name, NULL AS duplicate_amount, NULL AS duplicate_at,
-            i.amount_paid, i.customer_name, ${PAYMENTS} AS payments, false AS can_delete
+            i.amount_paid, i.customer_name, ${PAYMENTS} AS payments, i.invoice_id, inv.number AS invoice_number,
+            false AS can_delete
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
+            LEFT JOIN invoices inv ON inv.id = i.invoice_id
       WHERE i.deleted_at IS NULL AND i.amount_paid < i.amount
       ORDER BY i.created_at, i.id`,
   );

@@ -147,8 +147,8 @@ export async function recordDebtPayment(_prev: DebtPaymentState, formData: FormD
   const note = String(formData.get("note") ?? "").trim().slice(0, MAX_ISSUE_NOTE_LENGTH) || null;
 
   const result = await transaction(async (client) => {
-    const { rows } = await client.query<{ owed: string; customer_name: string | null }>(
-      "SELECT amount - amount_paid AS owed, customer_name FROM incomes WHERE id = $1 AND deleted_at IS NULL FOR UPDATE",
+    const { rows } = await client.query<{ owed: string; customer_name: string | null; invoice_id: number | null }>(
+      "SELECT amount - amount_paid AS owed, customer_name, invoice_id FROM incomes WHERE id = $1 AND deleted_at IS NULL FOR UPDATE",
       [incomeId],
     );
     const owed = Number(rows[0]?.owed ?? 0);
@@ -162,13 +162,22 @@ export async function recordDebtPayment(_prev: DebtPaymentState, formData: FormD
       note,
       manager.id,
     ]);
+    // The last trip of an invoice paid off marks the invoice paid too.
+    const invoice = await client.query<{ number: string }>(
+      `UPDATE invoices SET paid_at = now(), paid_by = $2
+        WHERE id = $1 AND paid_at IS NULL AND cancelled_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM incomes WHERE invoice_id = $1 AND deleted_at IS NULL AND amount_paid < amount)
+        RETURNING number`,
+      [rows[0].invoice_id, manager.id],
+    );
     const left = owed - amount.amount;
     const who = rows[0].customer_name ?? "Mteja";
+    const settled = invoice.rows[0] ? ` Ankara ${invoice.rows[0].number} imelipwa yote.` : "";
     return {
       ok: true as const,
       message:
         left === 0
-          ? `${who} amemaliza deni lake.`
+          ? `${who} amemaliza deni lake.${settled}`
           : `Malipo ya ${formatMoney(amount.amount)} yamehifadhiwa. ${who} bado anadaiwa ${formatMoney(left)}.`,
     };
   });
@@ -185,6 +194,7 @@ export type DeleteIncomeState = { ok: false; message: string } | undefined;
 
 // Only the manager who recorded an entry may delete it, and only within the window after it was
 // typed in (for history, after it was entered, not its date). The row is kept and marked deleted.
+// Trips from an invoice go only by cancelling the invoice, so the two never disagree.
 export async function deleteIncome(_prev: DeleteIncomeState, formData: FormData): Promise<DeleteIncomeState> {
   const manager = await requireUser("manager");
   const incomeId = Number(formData.get("incomeId"));
@@ -192,7 +202,7 @@ export async function deleteIncome(_prev: DeleteIncomeState, formData: FormData)
 
   const deleted = await query(
     `UPDATE incomes SET deleted_at = now(), deleted_by = $2
-      WHERE id = $1 AND recorded_by = $2 AND deleted_at IS NULL
+      WHERE id = $1 AND recorded_by = $2 AND deleted_at IS NULL AND invoice_id IS NULL
         AND coalesce(backfilled_at, created_at) > now() - make_interval(hours => $3)
       RETURNING id`,
     [incomeId, manager.id, DELETE_WINDOW_HOURS],
