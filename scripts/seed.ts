@@ -375,6 +375,23 @@ try {
            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [inserted.rows[0].id, i + 1, description, plate, tonnes, rate, Math.round(tonnes * rate)],
         );
+        // Each trip is in Mapato as the client's debt from the invoice's day, paid off when it was paid.
+        const income = await client.query<{ id: number }>(
+          `INSERT INTO incomes (car_id, source, amount, description, recorded_by, created_at, rate_per_tonne, tonnes,
+                                destination, amount_paid, customer_name, invoice_id)
+           SELECT c.id, $1, $2::numeric, 'Ankara ' || v.number, v.created_by, v.created_at, $3, $4, $5,
+                  CASE WHEN $6 THEN $2::numeric ELSE 0 END, v.customer_name, v.id
+             FROM invoices v LEFT JOIN cars c ON c.plate = $1 WHERE v.id = $7
+           RETURNING id`,
+          [plate ?? "Bila gari", Math.round(tonnes * rate), rate, tonnes, description, paid, inserted.rows[0].id],
+        );
+        if (paid) {
+          await client.query(
+            `INSERT INTO income_payments (income_id, amount, note, paid_at, recorded_by)
+             SELECT $1, $2, 'Ankara ' || number, paid_at, paid_by FROM invoices WHERE id = $3`,
+            [income.rows[0].id, Math.round(tonnes * rate), inserted.rows[0].id],
+          );
+        }
       }
     }
   }
