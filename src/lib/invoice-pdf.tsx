@@ -1,7 +1,7 @@
 import "server-only";
 import { Document, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { COMPANY, COMPANY_DETAILS } from "@/lib/company";
-import { formatDate, formatMoney, formatTonnes, formatWallDate } from "@/lib/format";
+import { formatDate, formatMoney, formatQuantity, formatUnitPrice, formatWallDate } from "@/lib/format";
 import type { InvoiceDetail } from "@/lib/invoices";
 
 // The invoice (ankara) as a one-page PDF for the customer. Built-in Helvetica only covers Western
@@ -30,16 +30,25 @@ const s = StyleSheet.create({
 
 const pdfText = (t: string) => t.replaceAll("→", "-");
 
-const columns = [
-  { label: "Na.", width: 6, num: false },
-  { label: "Safari", width: 38, num: false },
-  { label: "Gari", width: 12, num: false },
-  { label: "Tani", width: 10, num: true },
-  { label: "Bei kwa tani", width: 16, num: true },
-  { label: "Kiasi", width: 18, num: true },
-] as const;
+// Trips all priced the same way are headed "Tani" / "Bei kwa tani" (or kilo); an invoice mixing
+// the two heads them "Uzito" / "Bei" and says the unit on each line.
+function tableColumns(lines: InvoiceDetail["lines"]) {
+  const units = new Set(lines.map((l) => l.unit));
+  const only = units.size === 1 ? [...units][0] : null;
+  const name = only === "kg" ? "kilo" : "tani";
+  const columns = [
+    { label: "Na.", width: 6, num: false },
+    { label: "Safari", width: 36, num: false },
+    { label: "Gari", width: 12, num: false },
+    { label: only ? name[0].toUpperCase() + name.slice(1) : "Uzito", width: 12, num: true },
+    { label: only ? `Bei kwa ${name}` : "Bei", width: 16, num: true },
+    { label: "Kiasi", width: 18, num: true },
+  ];
+  return { columns, mixed: !only };
+}
 
 function InvoicePdf({ invoice: inv }: { invoice: InvoiceDetail }) {
+  const { columns, mixed } = tableColumns(inv.lines);
   return (
     <Document title={`${inv.number} ${COMPANY}`} author={COMPANY}>
       <Page size="A4" style={s.page}>
@@ -80,8 +89,8 @@ function InvoicePdf({ invoice: inv }: { invoice: InvoiceDetail }) {
                 String(l.position),
                 pdfText(l.description),
                 l.plate ?? "",
-                formatTonnes(l.tonnes),
-                formatMoney(l.rate_per_tonne),
+                mixed ? `${formatQuantity(l)} ${l.unit === "kg" ? "kg" : "t"}` : formatQuantity(l),
+                mixed ? `${formatUnitPrice(l)}/${l.unit === "kg" ? "kg" : "t"}` : formatUnitPrice(l),
                 formatMoney(l.amount),
               ].map((value, i) => (
                 <Text key={i} style={[columns[i].num ? s.num : s.cell, { width: `${columns[i].width}%` }]}>

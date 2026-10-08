@@ -39,11 +39,21 @@ export const formatKm = (km: number) => whole.format(km);
 export const formatLitres = (litres: number) => oneDecimal.format(litres);
 export const formatRate = (rate: number | null) => (rate === null ? "–" : oneDecimal.format(rate));
 
-// Cargo income: "Tani 28.5 × TSh 45,000 · Mwanza". Tonnes keep up to two decimals, no trailing zeros.
-const tonnesFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
-export const formatTonnes = (tonnes: string | number) => tonnesFormat.format(Number(tonnes));
+// Cargo is kept in tonnes; `unit` is how the meneja typed it, so it's shown back that way:
+// "Tani 28.5 × TSh 45,000" or "Kilo 1,250.5 × TSh 52.25". Quantities and prices keep up to two
+// decimals, no trailing zeros.
+const twoDecimals = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
+const price = new Intl.NumberFormat("sw-TZ", { style: "currency", currency: "TZS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+export type Cargo = { tonnes: string | number; rate_per_tonne: string | number; unit: string };
+const inKilos = (c: Cargo) => c.unit === "kg";
+// "28.5" or "1,250.5", in the unit it was typed in.
+export const formatQuantity = (c: Cargo) => twoDecimals.format(Number(c.tonnes) * (inKilos(c) ? 1000 : 1));
+// The price for one tonne or one kilo: "TSh 45,000", "TSh 52.25".
+export const formatUnitPrice = (c: Cargo) => price.format(Number(c.rate_per_tonne) / (inKilos(c) ? 1000 : 1));
+export const unitName = (c: Cargo) => (inKilos(c) ? "Kilo" : "Tani");
+export const cargoSum = (c: Cargo) => `${unitName(c)} ${formatQuantity(c)} × ${formatUnitPrice(c)}`;
 // Null for income that isn't cargo.
-export const cargoLine = (c: { tonnes: string | null; rate_per_tonne: number | null; destination: string | null }) =>
+export const cargoLine = (c: { tonnes: string | null; rate_per_tonne: string | null; unit: string; destination: string | null }) =>
   c.tonnes === null || c.rate_per_tonne === null
     ? null
-    : `Tani ${formatTonnes(c.tonnes)} × ${formatMoney(c.rate_per_tonne)}${c.destination ? ` · ${c.destination}` : ""}`;
+    : `${cargoSum({ tonnes: c.tonnes, rate_per_tonne: c.rate_per_tonne, unit: c.unit })}${c.destination ? ` · ${c.destination}` : ""}`;

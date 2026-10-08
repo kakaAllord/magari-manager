@@ -144,8 +144,9 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     x.car_id !== null ? (x.car ?? "") : x.source,
     x.destination ?? "",
     x.description ?? "",
+    // Kilos are kept as tonnes too, so the Tani column adds up whichever way each was typed.
     x.tonnes === null ? null : Number(x.tonnes),
-    x.rate_per_tonne,
+    x.rate_per_tonne === null ? null : Number(x.rate_per_tonne),
     Number(x.amount),
     x.recorded_by ?? "",
     x.customer_name ?? "",
@@ -175,7 +176,7 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
   });
   [18, 14, 12, 24, 20, 40, 10, 14, 16, 20, 20, 14].forEach((w, i) => (s.getColumn(i + 1).width = w));
   s.getColumn(1).numFmt = DATE;
-  s.getColumn(7).numFmt = "#,##0.##";
+  s.getColumn(7).numFmt = "#,##0.#####";
   s.getColumn(8).numFmt = MONEY;
   s.getColumn(9).numFmt = MONEY;
   s.getColumn(12).numFmt = MONEY;

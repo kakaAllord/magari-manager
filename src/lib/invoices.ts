@@ -26,7 +26,8 @@ export type InvoiceDetail = InvoiceSummary & {
   in_income: boolean;
   // What the client has paid on its trips so far, on Madeni or by marking it paid.
   amount_paid: string;
-  lines: { position: number; description: string; plate: string | null; tonnes: string; rate_per_tonne: number; amount: string }[];
+  // Each trip is kept in tonnes; `unit` says whether it was priced by the tonne or the kilo.
+  lines: { position: number; description: string; plate: string | null; unit: string; tonnes: string; rate_per_tonne: string; amount: string }[];
 };
 
 const STATUS = `CASE WHEN i.cancelled_at IS NOT NULL THEN 'cancelled' WHEN i.paid_at IS NOT NULL THEN 'paid' ELSE 'open' END`;
@@ -63,7 +64,7 @@ export async function getInvoice(id: number): Promise<InvoiceDetail | null> {
   );
   if (!invoice) return null;
   const lines = await query<InvoiceDetail["lines"][number]>(
-    `SELECT position, description, plate, tonnes, rate_per_tonne, amount
+    `SELECT position, description, plate, unit, tonnes, rate_per_tonne, amount
        FROM invoice_lines WHERE invoice_id = $1 ORDER BY position`,
     [id],
   );

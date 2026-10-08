@@ -11,8 +11,10 @@ export type Income = {
   amount: string;
   description: string | null;
   // Cargo income: the rate per tonne and tonnes behind the amount, and where it went. Null otherwise.
-  rate_per_tonne: number | null;
+  // `unit` is how it was typed, by the tonne or the kilo ('tonne' on income that isn't cargo).
+  rate_per_tonne: string | null;
   tonnes: string | null;
+  unit: string;
   destination: string | null;
   car_id: number | null;
   car: string | null;
@@ -54,7 +56,7 @@ export async function listIncomes(
 ) {
   const limit = opts.limit ?? INCOME_PAGE_SIZE;
   const rows = await query<Income & { total_count: number }>(
-    `SELECT i.id, i.source, i.amount, i.description, i.rate_per_tonne, i.tonnes, i.destination, i.car_id, c.name AS car, i.created_at,
+    `SELECT i.id, i.source, i.amount, i.description, i.rate_per_tonne, i.tonnes, i.unit, i.destination, i.car_id, c.name AS car, i.created_at,
             i.backfilled_at, u.name AS recorder_name, dup.amount AS duplicate_amount, dup.created_at AS duplicate_at,
             i.amount_paid, i.customer_name, ${PAYMENTS} AS payments, i.invoice_id, inv.number AS invoice_number,
             (i.recorded_by = $1 AND i.invoice_id IS NULL AND coalesce(i.backfilled_at, i.created_at) > now() - make_interval(hours => $3)) AS can_delete,
@@ -73,7 +75,7 @@ export async function listIncomes(
 // Any manager may record a payment on them.
 export function listDebts() {
   return query<Income>(
-    `SELECT i.id, i.source, i.amount, i.description, i.rate_per_tonne, i.tonnes, i.destination, i.car_id, c.name AS car, i.created_at,
+    `SELECT i.id, i.source, i.amount, i.description, i.rate_per_tonne, i.tonnes, i.unit, i.destination, i.car_id, c.name AS car, i.created_at,
             i.backfilled_at, u.name AS recorder_name, NULL AS duplicate_amount, NULL AS duplicate_at,
             i.amount_paid, i.customer_name, ${PAYMENTS} AS payments, i.invoice_id, inv.number AS invoice_number,
             false AS can_delete

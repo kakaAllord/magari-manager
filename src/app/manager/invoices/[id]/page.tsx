@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { COMPANY, COMPANY_DETAILS } from "@/lib/company";
-import { formatDateTime, formatMoney, formatTonnes, formatWallDate } from "@/lib/format";
+import { cargoSum, formatDateTime, formatMoney, formatWallDate } from "@/lib/format";
 import { getInvoice } from "@/lib/invoices";
 import { requireUser } from "@/lib/session";
 import { InvoiceStatusBadge } from "../invoice-status";
@@ -98,9 +98,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps<"/
                   {l.position}. {l.description}
                   {l.plate && <span className="plate ml-2">{l.plate}</span>}
                 </p>
-                <p className="text-sm text-muted tabular-nums">
-                  Tani {formatTonnes(l.tonnes)} × {formatMoney(l.rate_per_tonne)}
-                </p>
+                <p className="text-sm text-muted tabular-nums">{cargoSum(l)}</p>
               </div>
               <p className="shrink-0 font-semibold tabular-nums">{formatMoney(l.amount)}</p>
             </li>
