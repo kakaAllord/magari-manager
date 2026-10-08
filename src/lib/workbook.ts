@@ -1,6 +1,7 @@
 import "server-only";
 import ExcelJS from "exceljs";
 import { COMPANY } from "@/lib/company";
+import { cargoSum } from "@/lib/format";
 import type { ReportParams } from "@/lib/report-params";
 import { expenseCar, incomeCar, periodOfRow, type ReportData } from "@/lib/report-data";
 import { addCharts, type ChartSpec } from "@/lib/xlsx-charts";
@@ -144,7 +145,9 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     x.car_id !== null ? (x.car ?? "") : x.source,
     x.destination ?? "",
     x.description ?? "",
-    // Kilos are kept as tonnes too, so the Tani column adds up whichever way each was typed.
+    // Kipimo is the cargo as it was typed, by the tonne or the kilo. Kilos are kept as tonnes too,
+    // so the Tani column adds up whichever way each was typed.
+    x.tonnes === null || x.rate_per_tonne === null ? "" : cargoSum({ tonnes: x.tonnes, rate_per_tonne: x.rate_per_tonne, unit: x.unit }),
     x.tonnes === null ? null : Number(x.tonnes),
     x.rate_per_tonne === null ? null : Number(x.rate_per_tonne),
     Number(x.amount),
@@ -165,6 +168,7 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
       { name: "Gari au chanzo", filterButton: true },
       { name: "Kwenda", filterButton: true },
       { name: "Maelezo", filterButton: true },
+      { name: "Kipimo", filterButton: true },
       { name: "Tani", filterButton: true, totalsRowFunction: "sum" },
       { name: "Bei kwa tani", filterButton: true },
       { name: "Kiasi", filterButton: true, totalsRowFunction: "sum" },
@@ -172,21 +176,21 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
       { name: "Mteja (deni)", filterButton: true },
       { name: "Deni bado", filterButton: true, totalsRowFunction: "sum" },
     ],
-    rows: rows.length ? rows : [[null, "", "", "", "", "Hakuna mapato katika kipindi hiki", null, null, 0, "", "", 0]],
+    rows: rows.length ? rows : [[null, "", "", "", "", "Hakuna mapato katika kipindi hiki", "", null, null, 0, "", "", 0]],
   });
-  [18, 14, 12, 24, 20, 40, 10, 14, 16, 20, 20, 14].forEach((w, i) => (s.getColumn(i + 1).width = w));
+  [18, 14, 12, 24, 20, 40, 28, 10, 14, 16, 20, 20, 14].forEach((w, i) => (s.getColumn(i + 1).width = w));
   s.getColumn(1).numFmt = DATE;
-  s.getColumn(7).numFmt = "#,##0.#####";
-  s.getColumn(8).numFmt = MONEY;
+  s.getColumn(8).numFmt = "#,##0.#####";
   s.getColumn(9).numFmt = MONEY;
-  s.getColumn(12).numFmt = MONEY;
+  s.getColumn(10).numFmt = MONEY;
+  s.getColumn(13).numFmt = MONEY;
   const n = Math.max(rows.length, 1);
   s.addConditionalFormatting({
-    ref: `I2:I${n + 1}`,
+    ref: `J2:J${n + 1}`,
     rules: [{ type: "dataBar", priority: 1, minLength: 0, maxLength: 100, cfvo: [{ type: "min" }, { type: "max" }], color: { argb: "FF8FD1A5" } } as ExcelJS.DataBarRuleType],
   });
   setupPrint(s);
-  return { sheet: "Mapato", rows: n, amountCol: "I", carCol: "C", periodCol: "B" };
+  return { sheet: "Mapato", rows: n, amountCol: "J", carCol: "C", periodCol: "B" };
 }
 
 function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRange, income: DataRange): ChartSpec[] {
