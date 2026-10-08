@@ -258,23 +258,25 @@ try {
       }
     }
   }
-  // Cargo income, priced per tonne: amount is the rate times the tonnes. Guarded on its own so a copy
-  // seeded before cargo existed gets it too.
+  // Cargo income, priced per tonne or per kilo: amount is the rate times the tonnes, both kept in
+  // tonnes either way. Guarded on its own so a copy seeded before cargo existed gets it too.
   const { rows: existingCargo } = await client.query("SELECT 1 FROM incomes WHERE tonnes IS NOT NULL LIMIT 1");
   if (existingCargo.length === 0) {
-    const cargo: [daysAgo: number, plate: string, rate: number, tonnes: number, destination: string | null, text: string | null][] = [
-      [40, "T456BCD", 45000, 3, "Dar es Salaam - Morogoro", "Saruji, mteja Kilimanjaro Traders"],
-      [21, "T789CDE", 38000, 1.5, "Kibaha", null],
-      [9, "T456BCD", 52000, 2.75, "Dar es Salaam - Dodoma", "Mbolea"],
-      [2, "T103ABE", 45000, 1, "Dar es Salaam - Morogoro", null],
+    const cargo: [daysAgo: number, plate: string, rate: number, tonnes: number, unit: string, destination: string | null, text: string | null][] = [
+      [40, "T456BCD", 45000, 3, "tonne", "Dar es Salaam - Morogoro", "Saruji, mteja Kilimanjaro Traders"],
+      [21, "T789CDE", 38000, 1.5, "tonne", "Kibaha", null],
+      [9, "T456BCD", 52000, 2.75, "tonne", "Dar es Salaam - Dodoma", "Mbolea"],
+      // 850.5 kg at TSh 55.50 a kilo.
+      [6, "T789CDE", 55500, 0.8505, "kg", "Bagamoyo", "Mchele, kwa kilo"],
+      [2, "T103ABE", 45000, 1, "tonne", "Dar es Salaam - Morogoro", null],
     ];
-    for (const [daysAgo, plate, rate, tonnes, destination, text] of cargo) {
+    for (const [daysAgo, plate, rate, tonnes, unit, destination, text] of cargo) {
       await client.query(
-        `INSERT INTO incomes (car_id, source, amount, rate_per_tonne, tonnes, destination, description, recorded_by, created_at)
-         SELECT c.id, c.plate, round($2::numeric * $3), $2, $3, $4, $5, (SELECT id FROM users WHERE email = $6),
+        `INSERT INTO incomes (car_id, source, amount, rate_per_tonne, tonnes, unit, destination, description, recorded_by, created_at)
+         SELECT c.id, c.plate, round($2::numeric * $3), $2, $3, $8, $4, $5, (SELECT id FROM users WHERE email = $6),
                 now() - make_interval(days => $7)
            FROM cars c WHERE c.plate = $1`,
-        [plate, rate, tonnes, destination, text, manager.email, daysAgo],
+        [plate, rate, tonnes, destination, text, manager.email, daysAgo, unit],
       );
     }
   }
@@ -347,11 +349,13 @@ try {
   // Two invoices: one paid last month, one still open with two trips.
   const { rows: existingInvoices } = await client.query("SELECT 1 FROM invoices LIMIT 1");
   if (existingInvoices.length === 0) {
-    const invoices: [daysAgo: number, customer: string, contact: string | null, paid: boolean, lines: [string, string | null, number, number][]][] = [
+    const invoices: [daysAgo: number, customer: string, contact: string | null, paid: boolean, lines: [string, string | null, number, number, unit?: string][]][] = [
       [30, "Kilimanjaro Traders Ltd", "0754 123 456\nTIN 123-456-789", true, [["Dar es Salaam - Morogoro", "T456BCD", 3, 45000]]],
       [3, "Mbeya Cement Distributors", "0713 987 654", false, [
         ["Dar es Salaam - Dodoma", "T456BCD", 2.75, 52000],
         ["Dar es Salaam - Kibaha", "T789CDE", 1.5, 38000],
+        // 600 kg at TSh 60 a kilo.
+        ["Dar es Salaam - Bagamoyo", null, 0.6, 60000, "kg"],
       ]],
     ];
     for (const [daysAgo, customer, contact, paid, lines] of invoices) {
@@ -369,21 +373,21 @@ try {
          RETURNING id`,
         [daysAgo, customer, contact, total, paid, manager.email],
       );
-      for (const [i, [description, plate, tonnes, rate]] of lines.entries()) {
+      for (const [i, [description, plate, tonnes, rate, unit = "tonne"]] of lines.entries()) {
         await client.query(
-          `INSERT INTO invoice_lines (invoice_id, position, description, plate, tonnes, rate_per_tonne, amount)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [inserted.rows[0].id, i + 1, description, plate, tonnes, rate, Math.round(tonnes * rate)],
+          `INSERT INTO invoice_lines (invoice_id, position, description, plate, unit, tonnes, rate_per_tonne, amount)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [inserted.rows[0].id, i + 1, description, plate, unit, tonnes, rate, Math.round(tonnes * rate)],
         );
         // Each trip is in Mapato as the client's debt from the invoice's day, paid off when it was paid.
         const income = await client.query<{ id: number }>(
-          `INSERT INTO incomes (car_id, source, amount, description, recorded_by, created_at, rate_per_tonne, tonnes,
+          `INSERT INTO incomes (car_id, source, amount, description, recorded_by, created_at, rate_per_tonne, tonnes, unit,
                                 destination, amount_paid, customer_name, invoice_id)
-           SELECT c.id, $1, $2::numeric, 'Ankara ' || v.number, v.created_by, v.created_at, $3, $4, $5,
+           SELECT c.id, $1, $2::numeric, 'Ankara ' || v.number, v.created_by, v.created_at, $3, $4, $8, $5,
                   CASE WHEN $6 THEN $2::numeric ELSE 0 END, v.customer_name, v.id
              FROM invoices v LEFT JOIN cars c ON c.plate = $1 WHERE v.id = $7
            RETURNING id`,
-          [plate ?? "Bila gari", Math.round(tonnes * rate), rate, tonnes, description, paid, inserted.rows[0].id],
+          [plate ?? "Bila gari", Math.round(tonnes * rate), rate, tonnes, description, paid, inserted.rows[0].id, unit],
         );
         if (paid) {
           await client.query(
