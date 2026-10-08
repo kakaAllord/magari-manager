@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { LiveUpdates } from "@/components/live-updates";
+import { IncomeBreakdown } from "@/components/income-breakdown";
+import { NoDebtLine } from "@/components/overview-cards";
 import { PageHeader } from "@/components/page-header";
 import { formatMoney, keepMinus } from "@/lib/format";
-import { getIncomeTotals } from "@/lib/incomes";
+import { getIncomeTotals, listDebtors } from "@/lib/incomes";
 import { AwaitingIssue } from "@/components/awaiting-issue";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
@@ -14,9 +16,10 @@ const today = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "full", timeZone: TI
 
 export default async function DashboardPage() {
   await requireUser("manager");
-  const [o, income, monthly, byCar] = await Promise.all([
+  const [o, income, debtors, monthly, byCar] = await Promise.all([
     getOverview(),
     getIncomeTotals(),
+    listDebtors(),
     getMonthlyIncomeAndSpend(6),
     getSpendByCarThisMonth(),
   ]);
@@ -31,10 +34,10 @@ export default async function DashboardPage() {
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-3" aria-label="Muhtasari">
           <Tile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok" href="/manager/income">
             Mwezi uliopita {formatMoney(income.last_month)}
-            {income.debts > 0 && (
+            {Number(income.this_month_owed) > 0 && (
               <>
                 <br />
-                Wateja wanadaiwa {formatMoney(income.owed)}
+                Ndani yake deni {formatMoney(income.this_month_owed)}
               </>
             )}
           </Tile>
@@ -45,6 +48,7 @@ export default async function DashboardPage() {
           </Tile>
           <Tile label="Salio mwezi huu" value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
             Mapato toa matumizi
+            <NoDebtLine balance={balance} owed={income.this_month_owed} />
           </Tile>
           <Tile
             label="Yanasubiri idhini"
@@ -65,6 +69,14 @@ export default async function DashboardPage() {
             {o.drivers_without_car === 0 ? "Wote wana magari" : `${o.drivers_without_car} hawana gari`}
           </Tile>
         </section>
+
+        <IncomeBreakdown
+          thisMonth={income.this_month}
+          thisMonthOwed={income.this_month_owed}
+          owed={income.owed}
+          debtors={debtors}
+          madeniHref="/manager/income?tab=madeni"
+        />
 
         <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
           <section className="card">

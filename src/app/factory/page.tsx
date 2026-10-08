@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { LiveUpdates } from "@/components/live-updates";
-import { CarMoneyCard, FuelCard, StatTile } from "@/components/overview-cards";
+import { IncomeBreakdown } from "@/components/income-breakdown";
+import { CarMoneyCard, FuelCard, NoDebtLine, StatTile } from "@/components/overview-cards";
 import { PageHeader } from "@/components/page-header";
 import { getFuelOverview, periodRange } from "@/lib/fuel";
 import { formatMoney } from "@/lib/format";
-import { getIncomeTotals } from "@/lib/incomes";
+import { getIncomeTotals, listDebtors } from "@/lib/incomes";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
 import { getCarMoneyThisMonth, getOverview } from "@/lib/stats";
@@ -16,9 +17,10 @@ const today = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "full", timeZone: TI
 // money, driver and fuel.
 export default async function FactoryDashboard() {
   await requireUser("factory_manager");
-  const [o, income, cars, fuel] = await Promise.all([
+  const [o, income, debtors, cars, fuel] = await Promise.all([
     getOverview(),
     getIncomeTotals(),
+    listDebtors(),
     getCarMoneyThisMonth(),
     getFuelOverview(periodRange("30")),
   ]);
@@ -48,10 +50,10 @@ export default async function FactoryDashboard() {
         </StatTile>
         <StatTile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok">
           Mwezi uliopita {formatMoney(income.last_month)}
-          {income.debts > 0 && (
+          {Number(income.this_month_owed) > 0 && (
             <>
               <br />
-              Wateja wanadaiwa {formatMoney(income.owed)}
+              Ndani yake deni {formatMoney(income.this_month_owed)}
             </>
           )}
         </StatTile>
@@ -60,8 +62,16 @@ export default async function FactoryDashboard() {
         </StatTile>
         <StatTile label="Salio mwezi huu" value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
           Mapato toa matumizi
+          <NoDebtLine balance={balance} owed={income.this_month_owed} />
         </StatTile>
       </section>
+
+      <IncomeBreakdown
+        thisMonth={income.this_month}
+        thisMonthOwed={income.this_month_owed}
+        owed={income.owed}
+        debtors={debtors}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr] lg:items-start">
         <CarMoneyCard cars={cars} reportHref="/factory/reports" />

@@ -1,9 +1,10 @@
 import { LiveUpdates } from "@/components/live-updates";
-import { CarMoneyCard, FuelCard, StatTile } from "@/components/overview-cards";
+import { IncomeBreakdown } from "@/components/income-breakdown";
+import { CarMoneyCard, FuelCard, NoDebtLine, StatTile } from "@/components/overview-cards";
 import { PageHeader } from "@/components/page-header";
 import { getFuelOverview, periodRange } from "@/lib/fuel";
 import { formatMoney, keepMinus } from "@/lib/format";
-import { getIncomeTotals } from "@/lib/incomes";
+import { getIncomeTotals, listDebtors } from "@/lib/incomes";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
 import { getCarMoneyThisMonth, getOverview } from "@/lib/stats";
@@ -15,9 +16,10 @@ const today = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "full", timeZone: TI
 // Who asked, approved or paid what lives in the reports, not here.
 export default async function DirectorDashboard() {
   await requireUser("director");
-  const [o, income, cars, fuel] = await Promise.all([
+  const [o, income, debtors, cars, fuel] = await Promise.all([
     getOverview(),
     getIncomeTotals(),
+    listDebtors(),
     getCarMoneyThisMonth(),
     getFuelOverview(periodRange("30")),
   ]);
@@ -33,10 +35,10 @@ export default async function DirectorDashboard() {
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Muhtasari wa mwezi huu">
         <StatTile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok">
           Mwezi uliopita {formatMoney(income.last_month)}
-          {income.debts > 0 && (
+          {Number(income.this_month_owed) > 0 && (
             <>
               <br />
-              Wateja wanadaiwa {formatMoney(income.owed)}
+              Ndani yake deni {formatMoney(income.this_month_owed)}
             </>
           )}
         </StatTile>
@@ -45,11 +47,20 @@ export default async function DirectorDashboard() {
         </StatTile>
         <StatTile label="Salio mwezi huu" value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
           Mwezi uliopita {keepMinus(formatMoney(lastBalance))}
+          <NoDebtLine balance={balance} owed={income.this_month_owed} />
         </StatTile>
         <StatTile label="Salio tangu mwanzo" value={formatMoney(allTime)} tone={allTime < 0 ? "danger" : "ok"}>
           Mapato {formatMoney(income.all_time)}
+          <NoDebtLine balance={allTime} owed={income.owed} />
         </StatTile>
       </section>
+
+      <IncomeBreakdown
+        thisMonth={income.this_month}
+        thisMonthOwed={income.this_month_owed}
+        owed={income.owed}
+        debtors={debtors}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr] lg:items-start">
         <CarMoneyCard cars={cars} reportHref="/director/reports" />

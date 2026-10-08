@@ -37,6 +37,17 @@ export function StatTile({
   );
 }
 
+// A salio tile's line for when part of the month's income is still owed: the salio without it.
+export function NoDebtLine({ balance, owed }: { balance: number; owed: string }) {
+  if (Number(owed) <= 0) return null;
+  return (
+    <>
+      <br />
+      Bila deni {keepMinus(formatMoney(balance - Number(owed)))}
+    </>
+  );
+}
+
 // This month's faida or hasara for every car, with its driver, from its income and spending.
 export function CarMoneyCard({ cars, reportHref }: { cars: CarMoney[]; reportHref: string }) {
   return (
