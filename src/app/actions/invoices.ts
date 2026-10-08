@@ -7,7 +7,7 @@ import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { todayInTanzania, WITHOUT_CAR } from "@/lib/reports";
 import { requireUser } from "@/lib/session";
 import { TIME_ZONE } from "@/lib/time";
-import { parseInvoice, type InvoiceErrors, type InvoiceInput } from "@/lib/validation";
+import { cargoUnit, parseInvoice, type InvoiceErrors, type InvoiceInput } from "@/lib/validation";
 
 export type InvoiceFormState = { ok: false; errors: InvoiceErrors; values: InvoiceInput } | undefined;
 
@@ -22,7 +22,9 @@ export async function createInvoice(_prev: InvoiceFormState, formData: FormData)
   const column = (name: string) => formData.getAll(name).map(String);
   const descriptions = column("description");
   const plates = column("plate");
-  const tonnes = column("tonnes");
+  // A page opened before kilos were offered sends tonnes under their old name and no units.
+  const quantities = formData.has("quantity") ? column("quantity") : column("tonnes");
+  const units = column("unit");
   const rates = column("rate");
   const values: InvoiceInput = {
     customer: text(formData, "customer"),
@@ -30,7 +32,13 @@ export async function createInvoice(_prev: InvoiceFormState, formData: FormData)
     issuedOn: text(formData, "issuedOn"),
     dueOn: text(formData, "dueOn"),
     payment: text(formData, "payment"),
-    lines: descriptions.map((description, i) => ({ description, plate: plates[i] ?? "", tonnes: tonnes[i] ?? "", rate: rates[i] ?? "" })),
+    lines: descriptions.map((description, i) => ({
+      description,
+      plate: plates[i] ?? "",
+      quantity: quantities[i] ?? "",
+      unit: cargoUnit(units[i] ?? ""),
+      rate: rates[i] ?? "",
+    })),
   };
   const parsed = parseInvoice(values, todayInTanzania());
   if (!parsed.ok) return { ok: false, errors: parsed.errors, values };
@@ -50,21 +58,21 @@ export async function createInvoice(_prev: InvoiceFormState, formData: FormData)
     const invoiceId = inserted.rows[0].id;
     for (const [i, l] of inv.lines.entries()) {
       await client.query(
-        `INSERT INTO invoice_lines (invoice_id, position, description, plate, tonnes, rate_per_tonne, amount)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [invoiceId, i + 1, l.description, l.plate, l.tonnes, l.rate, l.amount],
+        `INSERT INTO invoice_lines (invoice_id, position, description, plate, unit, tonnes, rate_per_tonne, amount)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [invoiceId, i + 1, l.description, l.plate, l.unit, l.tonnes, l.ratePerTonne, l.amount],
       );
       await client.query(
         `INSERT INTO incomes (car_id, source, amount, description, recorded_by, created_at, backfilled_at,
-                              rate_per_tonne, tonnes, destination, amount_paid, customer_name, invoice_id)
+                              rate_per_tonne, tonnes, unit, destination, amount_paid, customer_name, invoice_id)
          SELECT c.id, coalesce(c.plate, $1, $2), $3, $4, $5,
                 CASE WHEN $6 THEN now() ELSE ($7::date + time '12:00') AT TIME ZONE $8 END,
                 CASE WHEN $6 THEN NULL ELSE now() END,
-                $9, $10, $11, 0, $12, $13
+                $9, $10, $14, $11, 0, $12, $13
            FROM (SELECT 1) one LEFT JOIN cars c ON c.plate = $1`,
         [
           l.plate, WITHOUT_CAR, l.amount, `Ankara ${number}`, manager.id, inv.issuedOn === todayInTanzania(), inv.issuedOn,
-          TIME_ZONE, l.rate, l.tonnes, l.description, inv.customer, invoiceId,
+          TIME_ZONE, l.ratePerTonne, l.tonnes, l.description, inv.customer, invoiceId, l.unit,
         ],
       );
     }

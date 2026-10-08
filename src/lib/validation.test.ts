@@ -6,6 +6,7 @@ import {
   checkOdometer,
   MAX_KM_BETWEEN_READINGS,
   MAX_RECEIPT_BYTES,
+  cargoUnit,
   parseCargo,
   parseDebtPayment,
   parsePartPayment,
@@ -151,17 +152,47 @@ test("a fuel request's amount is price times litres, in whole shillings", () => 
 });
 
 test("cargo income is rate per tonne times tonnes, in whole shillings", () => {
-  assert.deepEqual(parseCargo("45,000", "30", " Mwanza "), { rate: 45000, tonnes: 30, amount: 1350000, destination: "Mwanza" });
-  assert.deepEqual(parseCargo("42500", "28,5", ""), { rate: 42500, tonnes: 28.5, amount: 1211250, destination: null });
-  assert.deepEqual(parseCargo("", "abc", ""), {
-    errors: { rate: "Andika bei kwa tani moja.", tonnes: "Andika tani kwa namba, mfano 30 au 28.5." },
+  assert.deepEqual(parseCargo("45,000", "30", "tonne", " Mwanza "), {
+    unit: "tonne",
+    tonnes: 30,
+    ratePerTonne: 45000,
+    amount: 1350000,
+    destination: "Mwanza",
   });
-  assert.ok("errors" in parseCargo("45", "30", ""));
-  assert.ok("errors" in parseCargo("45,000", "0", ""));
-  assert.ok("errors" in parseCargo("45,000", "", ""));
-  assert.ok("errors" in parseCargo("45,000", "10001", ""));
-  assert.ok("errors" in parseCargo("99,000,000", "30", ""));
-  assert.ok("errors" in parseCargo("45,000", "30", "x".repeat(121)));
+  assert.deepEqual(parseCargo("42500", "28,5", "tonne", ""), { unit: "tonne", tonnes: 28.5, ratePerTonne: 42500, amount: 1211250, destination: null });
+  assert.deepEqual(parseCargo("", "abc", "tonne", ""), {
+    errors: { rate: "Andika bei kwa tani moja.", quantity: "Andika tani kwa namba, mfano 30 au 28.5." },
+  });
+  assert.ok("errors" in parseCargo("45", "30", "tonne", ""));
+  assert.ok("errors" in parseCargo("45,000", "0", "tonne", ""));
+  assert.ok("errors" in parseCargo("45,000", "", "tonne", ""));
+  assert.ok("errors" in parseCargo("45,000", "10001", "tonne", ""));
+  assert.ok("errors" in parseCargo("99,000,000", "30", "tonne", ""));
+  assert.ok("errors" in parseCargo("45,000", "30", "tonne", "x".repeat(121)));
+});
+
+test("cargo can be priced by the kilo, with decimals, and is kept in tonnes", () => {
+  // 1,250.5 kg at TSh 52.25 a kilo: TSh 65,338.625, so 65,339.
+  assert.deepEqual(parseCargo("52.25", "1,250.5", "kg", ""), {
+    unit: "kg",
+    tonnes: 1.2505,
+    ratePerTonne: 52250,
+    amount: 65339,
+    destination: null,
+  });
+  assert.deepEqual(parseCargo("45,000.50", "2", "tonne", ""), { unit: "tonne", tonnes: 2, ratePerTonne: 45000.5, amount: 90001, destination: null });
+  // A half shilling rounds up, even where floating point makes 6.25 × 2.32 come out as 14.4999….
+  assert.deepEqual(parseCargo("6.25", "2.32", "kg", ""), { unit: "kg", tonnes: 0.00232, ratePerTonne: 6250, amount: 15, destination: null });
+  assert.deepEqual(parseCargo("", "abc", "kg", ""), {
+    errors: { rate: "Andika bei kwa kilo moja.", quantity: "Andika kilo kwa namba, mfano 1,250 au 1,250.5." },
+  });
+  assert.ok("errors" in parseCargo("0.5", "1000", "kg", ""));
+  assert.ok("errors" in parseCargo("100,001", "10", "kg", ""));
+  assert.ok("errors" in parseCargo("52", "10,000,001", "kg", ""));
+  assert.ok("errors" in parseCargo("52.255", "100", "kg", ""));
+  assert.ok("errors" in parseCargo("52", "100.125", "kg", ""));
+  assert.equal(cargoUnit("kg"), "kg");
+  assert.equal(cargoUnit(""), "tonne");
 });
 
 test("reads a part payment: who owes, and from 0 up to under the total", () => {
@@ -231,14 +262,15 @@ test("maoni are trimmed and need a few words, at most 1000 characters", () => {
 test("an invoice adds up its trips, skips empty lines and checks each one", () => {
   const today = "2026-10-06";
   const base = { customer: " Kilimanjaro Traders ", contact: "", issuedOn: today, dueOn: "", payment: " CRDB 0150-123 " };
-  const empty = { description: "", plate: "", tonnes: "", rate: "" };
+  const empty = { description: "", plate: "", quantity: "", unit: "tonne" as const, rate: "" };
   const ok = parseInvoice(
     {
       ...base,
       lines: [
-        { description: "Dar es Salaam - Mwanza", plate: "t 456 bcd", tonnes: "30", rate: "45,000" },
+        { description: "Dar es Salaam - Mwanza", plate: "t 456 bcd", quantity: "30", unit: "tonne", rate: "45,000" },
         empty,
-        { description: "Dar es Salaam - Dodoma", plate: "", tonnes: "12.5", rate: "38000" },
+        { description: "Dar es Salaam - Dodoma", plate: "", quantity: "12.5", unit: "tonne", rate: "38000" },
+        { description: "Kibaha", plate: "", quantity: "800", unit: "kg", rate: "45.5" },
       ],
     },
     today,
@@ -252,10 +284,11 @@ test("an invoice adds up its trips, skips empty lines and checks each one", () =
       dueOn: null,
       payment: "CRDB 0150-123",
       lines: [
-        { description: "Dar es Salaam - Mwanza", plate: "T456BCD", tonnes: 30, rate: 45000, amount: 1350000 },
-        { description: "Dar es Salaam - Dodoma", plate: null, tonnes: 12.5, rate: 38000, amount: 475000 },
+        { description: "Dar es Salaam - Mwanza", plate: "T456BCD", unit: "tonne", tonnes: 30, ratePerTonne: 45000, amount: 1350000 },
+        { description: "Dar es Salaam - Dodoma", plate: null, unit: "tonne", tonnes: 12.5, ratePerTonne: 38000, amount: 475000 },
+        { description: "Kibaha", plate: null, unit: "kg", tonnes: 0.8, ratePerTonne: 45500, amount: 36400 },
       ],
-      total: 1825000,
+      total: 1861400,
     },
   });
 
@@ -263,15 +296,15 @@ test("an invoice adds up its trips, skips empty lines and checks each one", () =
   assert.deepEqual(none, { ok: false, errors: { lines: "Ongeza angalau safari moja." } });
 
   const bad = parseInvoice(
-    { ...base, customer: "", issuedOn: "2026-10-07", dueOn: "2026-10-01", lines: [empty, { description: "x", plate: "", tonnes: "0", rate: "45,000" }] },
+    { ...base, customer: "", issuedOn: "2026-10-07", dueOn: "2026-10-01", lines: [empty, { description: "x", plate: "", quantity: "0", unit: "tonne", rate: "45,000" }] },
     today,
   );
   assert.ok(!bad.ok);
   if (!bad.ok) {
     assert.ok(bad.errors.customer && bad.errors.issuedOn);
     assert.deepEqual(Object.keys(bad.errors.line ?? {}), ["1"]);
-    assert.ok(bad.errors.line?.[1].description && bad.errors.line?.[1].tonnes && !bad.errors.line?.[1].rate);
+    assert.ok(bad.errors.line?.[1].description && bad.errors.line?.[1].quantity && !bad.errors.line?.[1].rate);
   }
-  const early = parseInvoice({ ...base, dueOn: "2026-10-01", lines: [{ description: "Kibaha", plate: "", tonnes: "1", rate: "40000" }] }, today);
+  const early = parseInvoice({ ...base, dueOn: "2026-10-01", lines: [{ description: "Kibaha", plate: "", quantity: "1", unit: "tonne", rate: "40000" }] }, today);
   assert.ok(!early.ok && early.errors.dueOn);
 });

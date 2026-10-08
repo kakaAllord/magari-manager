@@ -195,33 +195,60 @@ export function parseLitres(input: string): { litres: number } | { error: string
 
 export const MAX_DESTINATION_LENGTH = 120;
 
-// Cargo income: the rate per tonne and the tonnes carried, with an optional destination. The amount
-// is their product in whole shillings. Under TSh 100 a tonne is almost certainly a slip.
+// Cargo is priced by the tonne or by the kilo; the meneja picks which and types the price and the
+// quantity in it, either with up to two decimals. The amount is their product in whole shillings.
+// What's kept is always in tonnes, `unit` saying how it was typed: 250 kg at TSh 52.25 a kilo is
+// 0.25 t at TSh 52,250. Under TSh 100 a tonne or TSh 1 a kilo is almost certainly a slip.
+export type CargoUnit = "tonne" | "kg";
+export const cargoUnit = (input: string): CargoUnit => (input === "kg" ? "kg" : "tonne");
+
+const CARGO_WORDS = {
+  tonne: { name: "tani", min: 100, maxRate: MAX_AMOUNT, maxQuantity: 10_000, rate: "45,000", quantity: "30 au 28.5" },
+  kg: { name: "kilo", min: 1, maxRate: 100_000, maxQuantity: 10_000_000, rate: "52 au 52.5", quantity: "1,250 au 1,250.5" },
+};
+
+// Price × quantity in whole shillings, worked out in hundredths so floating point can't tip a half
+// shilling the wrong way. Both have at most two decimals.
+const cargoAmount = (price: number, quantity: number) => Math.round((Math.round(price * 100) * Math.round(quantity * 100)) / 10_000);
+
 export function parseCargo(
   rateInput: string,
-  tonnesInput: string,
+  quantityInput: string,
+  unit: CargoUnit,
   destinationInput: string,
 ):
-  | { rate: number; tonnes: number; amount: number; destination: string | null }
-  | { errors: { rate?: string; tonnes?: string; destination?: string } } {
-  const errors: { rate?: string; tonnes?: string; destination?: string } = {};
-  const rate = rateInput.trim() ? parseAmount(rateInput) : { error: "Andika bei kwa tani moja." };
-  if ("error" in rate) errors.rate = rate.error.startsWith("Andika kiasi") ? "Andika bei kwa namba, mfano 45,000." : rate.error;
-  else if (Number(rate.amount) < 100) errors.rate = "Bei kwa tani ni ndogo mno. Andika kwa shilingi, mfano 45,000.";
+  | { unit: CargoUnit; tonnes: number; ratePerTonne: number; amount: number; destination: string | null }
+  | { errors: { rate?: string; quantity?: string; destination?: string } } {
+  const errors: { rate?: string; quantity?: string; destination?: string } = {};
+  const w = CARGO_WORDS[unit];
+  const Name = w.name[0].toUpperCase() + w.name.slice(1);
+  const rate = parseDecimal(rateInput);
+  if (!rateInput.trim()) errors.rate = `Andika bei kwa ${w.name} moja.`;
+  else if (rate === null) errors.rate = `Andika bei kwa namba, mfano ${w.rate}.`;
+  else if (rate < w.min) errors.rate = `Bei kwa ${w.name} ni ndogo mno. Andika kwa shilingi, mfano ${w.rate}.`;
+  else if (rate > w.maxRate) errors.rate = `Bei kwa ${w.name} ni kubwa mno.`;
 
-  const tonnes = parseDecimal(tonnesInput);
-  if (!tonnesInput.trim()) errors.tonnes = "Andika tani ngapi zimebebwa.";
-  else if (tonnes === null) errors.tonnes = "Andika tani kwa namba, mfano 30 au 28.5.";
-  else if (tonnes <= 0) errors.tonnes = "Tani lazima ziwe zaidi ya sifuri.";
-  else if (tonnes > 10_000) errors.tonnes = "Tani ni nyingi mno kwa rekodi moja.";
+  const quantity = parseDecimal(quantityInput);
+  if (!quantityInput.trim()) errors.quantity = `Andika ${w.name} ngapi zimebebwa.`;
+  else if (quantity === null) errors.quantity = `Andika ${w.name} kwa namba, mfano ${w.quantity}.`;
+  else if (quantity <= 0) errors.quantity = `${Name} lazima ziwe zaidi ya sifuri.`;
+  else if (quantity > w.maxQuantity) errors.quantity = `${Name} ni nyingi mno kwa rekodi moja.`;
 
   const destination = destinationInput.trim();
   if (destination.length > MAX_DESTINATION_LENGTH) errors.destination = `Isizidi herufi ${MAX_DESTINATION_LENGTH}.`;
 
-  if (errors.rate || errors.tonnes || errors.destination || "error" in rate || tonnes === null) return { errors };
-  const amount = Math.round(Number(rate.amount) * tonnes);
-  if (amount > MAX_AMOUNT) return { errors: { tonnes: "Jumla ni kubwa mno. Gawa kwenye rekodi mbili." } };
-  return { rate: Number(rate.amount), tonnes, amount, destination: destination || null };
+  if (errors.rate || errors.quantity || errors.destination || rate === null || quantity === null) return { errors };
+  const amount = cargoAmount(rate, quantity);
+  if (amount > MAX_AMOUNT) return { errors: { quantity: "Jumla ni kubwa mno. Gawa kwenye rekodi mbili." } };
+  if (amount <= 0) return { errors: { quantity: "Jumla ni chini ya shilingi moja." } };
+  const kg = unit === "kg";
+  return {
+    unit,
+    tonnes: kg ? Number((quantity / 1000).toFixed(5)) : quantity,
+    ratePerTonne: kg ? Number((rate * 1000).toFixed(2)) : rate,
+    amount,
+    destination: destination || null,
+  };
 }
 
 // A fuel request gives the price per litre and the litres; the amount is their product, in whole
@@ -302,11 +329,11 @@ export function parseFeedback(input: string): { body: string } | { error: string
 }
 
 // An invoice (ankara): the customer, its dates, how to pay, and up to 20 trips, each priced per
-// tonne. Lines left completely empty are skipped. Errors on a line are keyed by its index as sent.
+// tonne or per kilo. Lines left completely empty are skipped. Errors on a line are keyed by its index as sent.
 export const MAX_INVOICE_LINES = 20;
 export const MAX_INVOICE_TEXT = 500;
 
-export type InvoiceLineInput = { description: string; plate: string; tonnes: string; rate: string };
+export type InvoiceLineInput = { description: string; plate: string; quantity: string; unit: CargoUnit; rate: string };
 export type InvoiceInput = {
   customer: string;
   contact: string;
@@ -315,7 +342,7 @@ export type InvoiceInput = {
   payment: string;
   lines: InvoiceLineInput[];
 };
-export type InvoiceLineErrors = { description?: string; tonnes?: string; rate?: string };
+export type InvoiceLineErrors = { description?: string; quantity?: string; rate?: string };
 export type InvoiceErrors = {
   customer?: string;
   contact?: string;
@@ -325,7 +352,14 @@ export type InvoiceErrors = {
   lines?: string;
   line?: Record<number, InvoiceLineErrors>;
 };
-export type InvoiceLine = { description: string; plate: string | null; tonnes: number; rate: number; amount: number };
+export type InvoiceLine = {
+  description: string;
+  plate: string | null;
+  unit: CargoUnit;
+  tonnes: number;
+  ratePerTonne: number;
+  amount: number;
+};
 export type Invoice = {
   customer: string;
   contact: string | null;
@@ -357,16 +391,17 @@ export function parseInvoice(input: InvoiceInput, today: string): { ok: true; in
   const lines: InvoiceLine[] = [];
   const lineErrors: Record<number, InvoiceLineErrors> = {};
   input.lines.forEach((l, i) => {
-    if (![l.description, l.plate, l.tonnes, l.rate].some((v) => v.trim())) return;
+    if (![l.description, l.plate, l.quantity, l.rate].some((v) => v.trim())) return;
     const e: InvoiceLineErrors = {};
     const description = l.description.trim();
     if (description.length < 2) e.description = "Andika safari, mfano Dar es Salaam - Mwanza.";
     else if (description.length > 160) e.description = "Isizidi herufi 160.";
-    const cargo = parseCargo(l.rate, l.tonnes, "");
-    if ("errors" in cargo) Object.assign(e, { rate: cargo.errors.rate, tonnes: cargo.errors.tonnes });
-    if (e.description || e.rate || e.tonnes) lineErrors[i] = e;
+    const cargo = parseCargo(l.rate, l.quantity, l.unit, "");
+    if ("errors" in cargo) Object.assign(e, { rate: cargo.errors.rate, quantity: cargo.errors.quantity });
+    if (e.description || e.rate || e.quantity) lineErrors[i] = e;
     else if ("amount" in cargo) {
-      lines.push({ description, plate: normalizePlate(l.plate) || null, tonnes: cargo.tonnes, rate: cargo.rate, amount: cargo.amount });
+      const { unit, tonnes, ratePerTonne, amount } = cargo;
+      lines.push({ description, plate: normalizePlate(l.plate) || null, unit, tonnes, ratePerTonne, amount });
     }
   });
   if (Object.keys(lineErrors).length) errors.line = lineErrors;

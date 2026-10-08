@@ -6,10 +6,10 @@ import { DuplicateWarning } from "@/components/duplicate-warning";
 import { EntryDate } from "@/components/entry-date";
 import { formatMoney } from "@/lib/format";
 import type { CarOption } from "@/lib/reports";
-import { MAX_CUSTOMER_LENGTH, MAX_DESCRIPTION_LENGTH, MAX_DESTINATION_LENGTH } from "@/lib/validation";
+import { cargoUnit, MAX_CUSTOMER_LENGTH, MAX_DESCRIPTION_LENGTH, MAX_DESTINATION_LENGTH, parseCargo } from "@/lib/validation";
 
-// Cargo ("Mzigo") is typed as a rate per tonne and the tonnes carried; the amount is their product,
-// worked out again on the server. Anything else ("Mengineyo") is a plain amount.
+// Cargo ("Mzigo") is typed by the tonne or by the kilo, as the meneja picks: the price for one and
+// how many were carried, either with decimals. The amount is their product, worked out again on the server. Anything else ("Mengineyo") is a plain amount.
 // `today` is Tanzania's date; picking an earlier one types in past income as history.
 // By default the client paid it all. "Amelipa sehemu" takes the client's name and what they paid now
 // (0 when they paid nothing), and the rest is their debt.
@@ -18,9 +18,10 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
   const failed = state && !state.ok ? state : undefined;
   const [past, setPast] = useState(false);
   const [kind, setKind] = useState(failed?.values.kind ?? "cargo");
-  // Rate and tonnes as typed, to show the total. Kept when the form comes back with an error,
+  const [unit, setUnit] = useState(cargoUnit(failed?.values.unit ?? ""));
+  // Rate and quantity as typed, to show the total. Kept when the form comes back with an error,
   // cleared once an entry is saved.
-  const blank = { rate: "", tonnes: "", amount: "", paid: "" };
+  const blank = { rate: "", quantity: "", amount: "", paid: "" };
   const [typed, setTyped] = useState(failed ? pick(failed.values) : blank);
   const [payment, setPayment] = useState(failed?.values.payment ?? "full");
   const [saves, setSaves] = useState(0);
@@ -37,9 +38,9 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
     const value = e.currentTarget.value;
     setTyped((t) => ({ ...t, [field]: value }));
   };
-  const rate = shillings(typed.rate);
-  const tonnes = Number(/^\s*\d+,\d{1,2}\s*$/.test(typed.tonnes) ? typed.tonnes.replace(",", ".") : typed.tonnes.replace(/[,\s]/g, ""));
-  const total = rate >= 100 && tonnes > 0 ? Math.round(rate * tonnes) : null;
+  const cargo = parseCargo(typed.rate, typed.quantity, unit, "");
+  const total = "amount" in cargo ? cargo.amount : null;
+  const per = unit === "kg" ? "kilo" : "tani";
   // The job's total, cargo or not, and what stays owed after what was paid now.
   const jobTotal = kind === "cargo" ? total : shillings(typed.amount) > 0 ? shillings(typed.amount) : null;
   const paidNow = typed.paid.trim() === "" ? null : shillings(typed.paid);
@@ -52,7 +53,7 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
         <div className="grid grid-cols-2 gap-1 rounded-lg border border-line p-1">
           {(
             [
-              ["cargo", "Mzigo (kwa tani)"],
+              ["cargo", "Mzigo (tani au kilo)"],
               ["other", "Mengineyo"],
             ] as const
           ).map(([value, label]) => (
@@ -131,16 +132,43 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
       )}
       {kind === "cargo" && (
         <div className="grid gap-2 sm:col-span-2">
+          <fieldset>
+            <legend className="label">Bei kwa</legend>
+            <div className="grid grid-cols-2 gap-1 rounded-lg border border-line p-1">
+              {(
+                [
+                  ["tonne", "Tani"],
+                  ["kg", "Kilo (kg)"],
+                ] as const
+              ).map(([value, label]) => (
+                <label
+                  key={value}
+                  className="flex min-h-10 cursor-pointer items-center justify-center rounded-md text-sm text-muted has-checked:bg-accent-soft has-checked:font-medium has-checked:text-accent"
+                >
+                  <input
+                    type="radio"
+                    name="unit"
+                    value={value}
+                    // Uncontrolled like the kind, so the form's reset keeps the unit that was sent.
+                    defaultChecked={unit === value}
+                    onChange={() => setUnit(value)}
+                    className="sr-only"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="label">Bei kwa tani</span>
+              <span className="label">Bei kwa {per}</span>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
                 <input
                   name="rate"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   required
-                  placeholder="45,000"
+                  placeholder={unit === "kg" ? "52.5" : "45,000"}
                   defaultValue={failed?.values.rate}
                   onInput={type("rate")}
                   className="input pl-12 tabular-nums"
@@ -149,20 +177,22 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
               {failed?.errors.rate && <p className="mt-1 text-sm text-danger">{failed.errors.rate}</p>}
             </label>
             <label className="block">
-              <span className="label">Tani</span>
+              <span className="label">{unit === "kg" ? "Kilo" : "Tani"}</span>
               <div className="relative">
                 <input
-                  name="tonnes"
+                  name="quantity"
                   inputMode="decimal"
                   required
-                  placeholder="30"
-                  defaultValue={failed?.values.tonnes}
-                  onInput={type("tonnes")}
+                  placeholder={unit === "kg" ? "1,250" : "30"}
+                  defaultValue={failed?.values.quantity}
+                  onInput={type("quantity")}
                   className="input pr-10 tabular-nums"
                 />
-                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted">t</span>
+                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted">
+                  {unit === "kg" ? "kg" : "t"}
+                </span>
               </div>
-              {failed?.errors.tonnes && <p className="mt-1 text-sm text-danger">{failed.errors.tonnes}</p>}
+              {failed?.errors.quantity && <p className="mt-1 text-sm text-danger">{failed.errors.quantity}</p>}
             </label>
           </div>
           <div className="flex items-baseline justify-between gap-3 rounded-lg bg-background px-3 py-2.5" aria-live="polite">
@@ -296,9 +326,9 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
 // Shillings as typed, "350,000" or "350000"; NaN when it isn't a number.
 const shillings = (typed: string) => Number(typed.replace(/[,\s]/g, ""));
 
-const pick = (v: { rate: string; tonnes: string; amount: string; paid: string }) => ({
+const pick = (v: { rate: string; quantity: string; amount: string; paid: string }) => ({
   rate: v.rate,
-  tonnes: v.tonnes,
+  quantity: v.quantity,
   amount: v.amount,
   paid: v.paid,
 });

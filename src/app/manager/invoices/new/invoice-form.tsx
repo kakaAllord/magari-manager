@@ -5,17 +5,15 @@ import { createInvoice } from "@/app/actions/invoices";
 import { Icon } from "@/components/icons";
 import { formatMoney } from "@/lib/format";
 import type { CarOption } from "@/lib/reports";
-import { MAX_INVOICE_LINES, MAX_INVOICE_TEXT, type InvoiceLineInput } from "@/lib/validation";
+import { cargoUnit, MAX_INVOICE_LINES, MAX_INVOICE_TEXT, parseCargo, type InvoiceLineInput } from "@/lib/validation";
 
-const blank: InvoiceLineInput = { description: "", plate: "", tonnes: "", rate: "" };
-const toNumber = (v: string) => Number(/^\s*\d+,\d{1,2}\s*$/.test(v) ? v.replace(",", ".") : v.replace(/[,\s]/g, ""));
+const blank: InvoiceLineInput = { description: "", plate: "", quantity: "", unit: "tonne", rate: "" };
 const lineAmount = (l: InvoiceLineInput) => {
-  const rate = toNumber(l.rate);
-  const tonnes = toNumber(l.tonnes);
-  return rate >= 100 && tonnes > 0 ? Math.round(rate * tonnes) : null;
+  const cargo = parseCargo(l.rate, l.quantity, l.unit, "");
+  return "amount" in cargo ? cargo.amount : null;
 };
 
-// The customer, the trips (each tonnes × rate per tonne), and how to pay. Amounts are worked out
+// The customer, the trips (each priced by the tonne or by the kilo), and how to pay. Amounts are worked out
 // again on the server. `payment` starts as the last invoice's payment details.
 export function InvoiceForm({ cars, today, payment }: { cars: CarOption[]; today: string; payment: string }) {
   const [state, action, pending] = useActionState(createInvoice, undefined);
@@ -70,7 +68,7 @@ export function InvoiceForm({ cars, today, payment }: { cars: CarOption[]; today
       <section className="card grid gap-4">
         <div>
           <h2 className="text-lg font-semibold">Safari</h2>
-          <p className="text-sm text-muted">Kila safari: tani × bei kwa tani.</p>
+          <p className="text-sm text-muted">Kila safari: tani × bei kwa tani, au kilo × bei kwa kilo.</p>
         </div>
         {lines.map((l, i) => {
           const le = e?.line?.[i];
@@ -115,26 +113,41 @@ export function InvoiceForm({ cars, today, payment }: { cars: CarOption[]; today
                   ))}
                 </select>
               </label>
+              <div className="sm:col-span-2">
+                <label htmlFor={`quantity-${l.key}`} className="label">
+                  Uzito
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id={`quantity-${l.key}`}
+                    name="quantity"
+                    inputMode="decimal"
+                    placeholder={l.unit === "kg" ? "1,250" : "30"}
+                    value={l.quantity}
+                    onChange={(ev) => set(l.key, "quantity", ev.target.value)}
+                    className="input min-w-0 flex-1 tabular-nums"
+                  />
+                  <select
+                    name="unit"
+                    value={l.unit}
+                    onChange={(ev) => set(l.key, "unit", cargoUnit(ev.target.value))}
+                    aria-label={`Kipimo cha safari ${i + 1}`}
+                    className="input w-auto shrink-0"
+                  >
+                    <option value="tonne">Tani</option>
+                    <option value="kg">Kilo</option>
+                  </select>
+                </div>
+                {le?.quantity && <p className="mt-1 text-sm text-danger">{le.quantity}</p>}
+              </div>
               <label className="block sm:col-span-2">
-                <span className="label">Tani</span>
-                <input
-                  name="tonnes"
-                  inputMode="decimal"
-                  placeholder="30"
-                  value={l.tonnes}
-                  onChange={(ev) => set(l.key, "tonnes", ev.target.value)}
-                  className="input tabular-nums"
-                />
-                {le?.tonnes && <p className="mt-1 text-sm text-danger">{le.tonnes}</p>}
-              </label>
-              <label className="block sm:col-span-2">
-                <span className="label">Bei kwa tani</span>
+                <span className="label">Bei kwa {l.unit === "kg" ? "kilo" : "tani"}</span>
                 <div className="relative">
                   <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
                   <input
                     name="rate"
-                    inputMode="numeric"
-                    placeholder="45,000"
+                    inputMode="decimal"
+                    placeholder={l.unit === "kg" ? "52.5" : "45,000"}
                     value={l.rate}
                     onChange={(ev) => set(l.key, "rate", ev.target.value)}
                     className="input pl-12 tabular-nums"

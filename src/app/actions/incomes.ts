@@ -12,6 +12,7 @@ import { requireUser } from "@/lib/session";
 import { TIME_ZONE } from "@/lib/time";
 import {
   MAX_ISSUE_NOTE_LENGTH,
+  cargoUnit,
   parseCargo,
   parseDebtPayment,
   parseEntryDate,
@@ -21,12 +22,13 @@ import {
   type IncomeInput,
 } from "@/lib/validation";
 
-type CargoErrors = { rate?: string; tonnes?: string; destination?: string };
+type CargoErrors = { rate?: string; quantity?: string; destination?: string };
 type PaymentErrors = { paid?: string; customer?: string };
 type IncomeValues = IncomeInput & {
   kind: string;
+  unit: string;
   rate: string;
-  tonnes: string;
+  quantity: string;
   destination: string;
   date: string;
   payment: string;
@@ -51,8 +53,10 @@ export async function createIncome(_prev: IncomeFormState, formData: FormData): 
     kind: formData.get("kind") === "cargo" ? "cargo" : "other",
     carId: String(formData.get("carId") ?? ""),
     amount: String(formData.get("amount") ?? ""),
+    // A page opened before kilos were offered sends tonnes under their old name and no unit.
+    unit: cargoUnit(String(formData.get("unit") ?? "")),
     rate: String(formData.get("rate") ?? ""),
-    tonnes: String(formData.get("tonnes") ?? ""),
+    quantity: String(formData.get("quantity") ?? formData.get("tonnes") ?? ""),
     destination: String(formData.get("destination") ?? ""),
     description: String(formData.get("description") ?? ""),
     date: String(formData.get("date") ?? ""),
@@ -61,9 +65,9 @@ export async function createIncome(_prev: IncomeFormState, formData: FormData): 
     paid: String(formData.get("paid") ?? ""),
     customer: String(formData.get("customer") ?? ""),
   };
-  // Cargo is typed as a rate per tonne and the tonnes; its amount is worked out here, never taken
-  // from the form. A cargo entry with mistakes reports them itself, so "1" stands in meanwhile.
-  const cargo = values.kind === "cargo" ? parseCargo(values.rate, values.tonnes, values.destination) : null;
+  // Cargo is typed as a price and a quantity, by the tonne or the kilo; its amount is worked out here,
+  // never taken from the form. A cargo entry with mistakes reports them itself, so "1" stands in meanwhile.
+  const cargo = values.kind === "cargo" ? parseCargo(values.rate, values.quantity, cargoUnit(values.unit), values.destination) : null;
   const amount = cargo ? ("amount" in cargo ? String(cargo.amount) : "1") : values.amount;
   const parsed = parseIncome({ ...values, amount });
   const date = parseEntryDate(values.date, todayInTanzania());
@@ -99,16 +103,17 @@ export async function createIncome(_prev: IncomeFormState, formData: FormData): 
   const inserted = await transaction(async (client) => {
     const { rows } = await client.query<{ id: number; source: string; created_at: Date }>(
       `INSERT INTO incomes (car_id, source, amount, description, recorded_by, created_at, backfilled_at,
-                            rate_per_tonne, tonnes, destination, duplicate_of, amount_paid, customer_name)
+                            rate_per_tonne, tonnes, unit, destination, duplicate_of, amount_paid, customer_name)
        SELECT id, plate, $2, $3, $4,
               CASE WHEN $5::date IS NULL THEN now() ELSE ($5::date + time '12:00') AT TIME ZONE $6 END,
               CASE WHEN $5::date IS NULL THEN NULL ELSE now() END,
-              $7, $8, $9, $10, coalesce($11::numeric, $2::numeric), $12
+              $7, $8, $13, $9, $10, coalesce($11::numeric, $2::numeric), $12
          FROM cars WHERE id = $1
        RETURNING id, source, created_at`,
       [
-        parsed.carId, parsed.amount, parsed.description, manager.id, date.date, TIME_ZONE, load?.rate ?? null,
+        parsed.carId, parsed.amount, parsed.description, manager.id, date.date, TIME_ZONE, load?.ratePerTonne ?? null,
         load?.tonnes ?? null, load?.destination ?? null, duplicate?.id ?? null, credit?.paid ?? null, credit?.customer ?? null,
+        load?.unit ?? "tonne",
       ],
     );
     if (rows.length > 0 && credit && credit.paid > 0) {
