@@ -185,6 +185,10 @@ export function InvoiceForm({ cars, today, payment }: { cars: CarOption[]; today
           <p className="mt-1 text-xs text-muted">Yanaanza na ya ankara iliyopita.</p>
           {e?.payment && <p className="mt-1 text-sm text-danger">{e.payment}</p>}
         </label>
+        <p className="text-sm text-muted">
+          Ukihifadhi, kila safari inaingia Mapato kama deni la mteja. Akilipa, bonyeza Imelipwa kwenye ankara au Pokea malipo kwenye
+          Madeni.
+        </p>
         <button type="submit" disabled={pending} className="btn btn-primary w-full sm:w-auto sm:justify-self-start">
           {pending ? "Inahifadhi…" : "Hifadhi ankara"}
         </button>

@@ -7,7 +7,7 @@ import { INVOICE_PAGE_SIZE, listInvoices } from "@/lib/invoices";
 import { requireUser } from "@/lib/session";
 import { InvoiceStatusBadge } from "./invoice-status";
 
-// Invoices for customers. They are documents only: income is still recorded on Mapato.
+// Invoices for customers. Each one's trips go into Mapato as the client's debt until it is paid.
 export default async function InvoicesPage({ searchParams }: PageProps<"/manager/invoices">) {
   await requireUser("manager");
   const page = pageFrom(await searchParams);
@@ -17,7 +17,7 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/manager
     <main className="page">
       <PageHeader
         title="Ankara"
-        description="Ankara za wateja kwa safari za mizigo. Malipo yakiingia, yarekodi kwenye Mapato."
+        description="Ankara za wateja kwa safari za mizigo. Safari zake zinaingia Mapato kama deni la mteja hadi alipe."
         action={
           <Link href="/manager/invoices/new" className="btn btn-primary gap-2">
             <Icon name="plus" className="size-4" />
