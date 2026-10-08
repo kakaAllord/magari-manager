@@ -15,6 +15,8 @@ export default async function InvoicePage({ params, searchParams }: PageProps<"/
   const invoice = Number.isInteger(id) ? await getInvoice(id) : null;
   if (!invoice) notFound();
   const saved = (await searchParams).new === "1";
+  const paid = Number(invoice.amount_paid);
+  const owed = Number(invoice.total) - paid;
 
   return (
     <main className="page">
@@ -33,7 +35,34 @@ export default async function InvoicePage({ params, searchParams }: PageProps<"/
           </Link>
         }
       />
-      <InvoiceActions id={invoice.id} number={invoice.number} open={invoice.status === "open"} saved={saved} />
+      <InvoiceActions
+        id={invoice.id}
+        number={invoice.number}
+        open={invoice.status === "open"}
+        saved={saved}
+        inIncome={invoice.in_income}
+        owed={owed}
+        partPaid={paid > 0}
+      />
+      {invoice.in_income && invoice.status !== "cancelled" && (
+        <p className="text-sm">
+          {owed > 0 ? (
+            <>
+              <span className="rounded bg-warn-soft px-1.5 py-px text-xs font-medium text-warn">Deni {formatMoney(owed)}</span>{" "}
+              {invoice.customer_name} anadaiwa kwenye{" "}
+              <Link href="/manager/income?tab=madeni" className="font-medium text-accent underline">
+                Madeni
+              </Link>
+              {paid > 0 && <span className="text-muted"> · amelipa {formatMoney(paid)}</span>}
+            </>
+          ) : (
+            <>
+              <span className="rounded bg-ok-soft px-1.5 py-px text-xs font-medium text-ok">Deni limelipwa</span>{" "}
+              <span className="text-muted">Imehesabiwa kama pesa iliyoingia kwenye Mapato.</span>
+            </>
+          )}
+        </p>
+      )}
 
       <article className="card grid gap-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
