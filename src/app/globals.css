@@ -86,6 +86,14 @@ body {
       line-height: var(--text-2xl--line-height);
     }
   }
+  /* Money a client still owes: the amber of spending, striped so it reads as not in hand yet. */
+  .owed-stripes {
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--warn) 0 3px,
+      color-mix(in srgb, var(--warn) 45%, var(--surface)) 3px 6px
+    );
+  }
   .plate {
     @apply rounded border border-foreground/60 px-1.5 py-px font-mono text-xs font-medium tracking-wider whitespace-nowrap text-foreground;
   }
