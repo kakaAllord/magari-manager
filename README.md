@@ -5,8 +5,9 @@ with their car's plate number and request money: fuel (with the car's odometer a
 gauge, the price per litre at the station, typed each time since it differs between
 stations, and the litres needed; the amount is worked out from the two) or anything else with a reason. Vehicle managers (meneja) sign in
 with email, approve or reject requests, ask for money themselves (approved as they ask, for a
-car or none), record income (the car it came from, and for cargo the rate per tonne, the tonnes and an
-optional destination, the amount worked out from the two; other income is a plain amount;
+car or none), record income (the car it came from, and for cargo the price and the weight, by the
+tonne or by the kilo and either with decimals, and an optional destination, the amount worked out
+from the two; other income is a plain amount;
 optional description; the recorder can delete an entry within 24 hours), manage cars and
 drivers, watch income and spending on a dashboard, and see reports with separate
 each car's faida or hasara (income against spending, as bars), spend and income on tabs plus
@@ -25,7 +26,7 @@ switched off earlier can be switched back on), reads the same reports and Mafuta
 spending, the balance, each car's faida or hasara and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
 The meneja makes invoices (ankara) on the Ankara tab: a customer, trips priced as tani × bei kwa
-tani, and payment details, downloaded as a PDF. Numbers run per year (ANK-2026-001) and are never
+tani or kilo × bei kwa kilo (picked per trip), and payment details, downloaded as a PDF. Numbers run per year (ANK-2026-001) and are never
 reused; a mistaken invoice is cancelled ("Imefutwa"), not edited (`invoices`, `invoice_lines`,
 migration 019). Saving an invoice puts each trip in Mapato as cargo income on the invoice's date,
 nothing paid yet, so the client owes it on Madeni. Marking the invoice "Imelipwa" pays off those
@@ -226,7 +227,8 @@ existed were marked paid at their approval time. Income is dated by when it was 
 car (`incomes.car_id`; `source` keeps the plate, and entries from before cars were
 picked keep their typed source). Cargo income also stores `rate_per_tonne`, `tonnes` and
 `destination` (migration 016); `amount` holds their product, so every total reads it as before,
-and older income has only its amount. The report's car filter narrows both spend and
+and older income has only its amount. Cargo priced by the kilo is kept in tonnes too, with `unit`
+('tonne' or 'kg') saying how it was typed so it is shown back that way (migration 023). The report's car filter narrows both spend and
 income; income from before cars were picked shows only with all cars. Deleted income and
 staff switched off before that was removed stay in the database (`deleted_at`, `deactivated_at`) so
 history keeps their names. Review is only possible while a request is pending, and payment
