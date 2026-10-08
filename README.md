@@ -26,9 +26,12 @@ spending, the balance, each car's faida or hasara and fuel. Long lists (requests
 payouts, income) live on their own Historia pages, 25 per page.
 The meneja makes invoices (ankara) on the Ankara tab: a customer, trips priced as tani × bei kwa
 tani, and payment details, downloaded as a PDF. Numbers run per year (ANK-2026-001) and are never
-reused; a mistaken invoice is cancelled ("Imefutwa"), not edited. Invoices are documents only
-(`invoices`, `invoice_lines`, migration 019): marking one paid does not touch Mapato, where the
-income is still recorded.
+reused; a mistaken invoice is cancelled ("Imefutwa"), not edited (`invoices`, `invoice_lines`,
+migration 019). Saving an invoice puts each trip in Mapato as cargo income on the invoice's date,
+nothing paid yet, so the client owes it on Madeni. Marking the invoice "Imelipwa" pays off those
+entries; paying them off with "Pokea malipo" marks the invoice paid; cancelling it removes them,
+unless the client has already paid part (`incomes.invoice_id`, migration 022). Invoices made before
+022 stay documents only, and their income is recorded on Mapato by hand.
 Income is paid in full by default. When a client pays only part of a job, or nothing yet, the
 meneja picks "Amelipa sehemu / deni", names the client and types what they paid now (0 means it is
 all owed). Mapato still counts the job's full value on its date, so totals, reports and each car's
