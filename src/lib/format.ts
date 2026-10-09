@@ -7,11 +7,10 @@ const money = new Intl.NumberFormat("sw-TZ", {
   maximumFractionDigits: 0,
 });
 
-const dateTime = new Intl.DateTimeFormat("sw-TZ", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: TIME_ZONE,
-});
+// Dates are always day/month/year ("09/10/2026") and times 24-hour ("14:30"); en-GB gives that order.
+const DAY = { day: "2-digit", month: "2-digit", year: "numeric" } as const;
+const TIME = { hour: "2-digit", minute: "2-digit", hourCycle: "h23" } as const;
+const dateTime = new Intl.DateTimeFormat("en-GB", { ...DAY, ...TIME, timeZone: TIME_ZONE });
 
 // pg returns numeric columns as strings to avoid precision loss.
 export const formatMoney = (amount: string | number) => money.format(Number(amount));
@@ -19,13 +18,19 @@ export const formatMoney = (amount: string | number) => money.format(Number(amou
 export const keepMinus = (s: string) => s.replace(/^-/, "\u2212");
 export const formatDateTime = (d: Date) => dateTime.format(d);
 // History typed in later has a day but no real time of day.
-const dateOnly = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "medium", timeZone: TIME_ZONE });
+const dateOnly = new Intl.DateTimeFormat("en-GB", { ...DAY, timeZone: TIME_ZONE });
 export const formatDate = (d: Date) => dateOnly.format(d);
+// Dashboard heading: "Ijumaa, 09/10/2026".
+const weekday = new Intl.DateTimeFormat("sw-TZ", { weekday: "long", timeZone: TIME_ZONE });
+export const formatToday = () => {
+  const now = new Date();
+  return `${weekday.format(now)}, ${dateOnly.format(now)}`;
+};
 
 // Report rows already carry Tanzanian wall time as "YYYY-MM-DD HH:MI"; read it as UTC so it isn't shifted again.
-const wallTime = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
+const wallTime = new Intl.DateTimeFormat("en-GB", { ...DAY, ...TIME, timeZone: "UTC" });
 export const formatWallTime = (local: string) => wallTime.format(new Date(`${local.replace(" ", "T")}:00Z`));
-const wallDate = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "medium", timeZone: "UTC" });
+const wallDate = new Intl.DateTimeFormat("en-GB", { ...DAY, timeZone: "UTC" });
 export const formatWallDate = (local: string) => wallDate.format(new Date(`${local.slice(0, 10)}T00:00:00Z`));
 
 // Compact axis labels: 1,250,000 -> "1.3M", 40,000 -> "40K".

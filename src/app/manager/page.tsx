@@ -3,16 +3,14 @@ import { LiveUpdates } from "@/components/live-updates";
 import { IncomeBreakdown } from "@/components/income-breakdown";
 import { NoDebtLine } from "@/components/overview-cards";
 import { PageHeader } from "@/components/page-header";
-import { formatMoney, keepMinus } from "@/lib/format";
+import { formatMoney, formatToday, keepMinus } from "@/lib/format";
 import { getIncomeTotals, listDebtors } from "@/lib/incomes";
 import { AwaitingIssue } from "@/components/awaiting-issue";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
 import { getMonthlyIncomeAndSpend, getOverview, getSpendByCarThisMonth } from "@/lib/stats";
-import { TIME_ZONE } from "@/lib/time";
 import { MoneyChart } from "./money-chart";
 
-const today = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "full", timeZone: TIME_ZONE });
 
 export default async function DashboardPage() {
   await requireUser("manager");
@@ -29,7 +27,7 @@ export default async function DashboardPage() {
   return (
       <main className="page">
         <LiveUpdates channel={MANAGERS_CHANNEL} />
-        <PageHeader title="Dashibodi" description={today.format(new Date())} />
+        <PageHeader title="Dashibodi" description={formatToday()} />
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-3" aria-label="Muhtasari">
           <Tile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok" href="/manager/income">

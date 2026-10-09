@@ -3,14 +3,12 @@ import { IncomeBreakdown } from "@/components/income-breakdown";
 import { CarMoneyCard, FuelCard, NoDebtLine, StatTile } from "@/components/overview-cards";
 import { PageHeader } from "@/components/page-header";
 import { getFuelOverview, periodRange } from "@/lib/fuel";
-import { formatMoney, keepMinus } from "@/lib/format";
+import { formatMoney, formatToday, keepMinus } from "@/lib/format";
 import { getIncomeTotals, listDebtors } from "@/lib/incomes";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
 import { getCarMoneyThisMonth, getOverview } from "@/lib/stats";
-import { TIME_ZONE } from "@/lib/time";
 
-const today = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "full", timeZone: TIME_ZONE });
 
 // An overview of what has been done: money in and out, per car, and how the fuel is going.
 // Who asked, approved or paid what lives in the reports, not here.
@@ -30,7 +28,7 @@ export default async function DirectorDashboard() {
   return (
     <main className="page">
       <LiveUpdates channel={MANAGERS_CHANNEL} />
-      <PageHeader title="Dashibodi" description={today.format(new Date())} />
+      <PageHeader title="Dashibodi" description={formatToday()} />
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Muhtasari wa mwezi huu">
         <StatTile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok">

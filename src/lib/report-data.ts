@@ -1,5 +1,6 @@
 import "server-only";
 import { dayRange, getFuelOverview, type FuelOverview } from "@/lib/fuel";
+import { formatDateTime } from "@/lib/format";
 import { formatDay, parseReportParams, periodLabel, periodStarts, type ReportParams } from "@/lib/report-params";
 import {
   getExpenses,
@@ -17,7 +18,6 @@ import {
   type IncomeSummary,
   type Summary,
 } from "@/lib/reports";
-import { TIME_ZONE } from "@/lib/time";
 
 export const NO_CAR = WITHOUT_CAR;
 
@@ -44,7 +44,6 @@ export type ReportData = {
 };
 
 const groupLabels = { car: "kwa gari", month: "kwa mwezi", week: "kwa wiki" } as const;
-const created = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "long", timeStyle: "short", timeZone: TIME_ZONE });
 
 // The label a row goes under in the "per car" tables: the plate, or "Bila gari".
 export const expenseCar = (e: ExpenseRow) => e.plate ?? NO_CAR;
@@ -83,7 +82,7 @@ export async function getReportData(searchParams: Record<string, string | string
     rangeLabel: `${formatDay(params.from)} hadi ${formatDay(params.to)}`,
     carsLabel: params.carIds.length ? chosen.map((c) => c.plate).join(", ") : `Magari yote (${cars.length})`,
     groupLabel: groupLabels[params.group],
-    createdLabel: created.format(new Date()),
+    createdLabel: formatDateTime(new Date()),
     cars: chosen,
     expenses,
     incomes,

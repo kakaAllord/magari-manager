@@ -4,14 +4,12 @@ import { IncomeBreakdown } from "@/components/income-breakdown";
 import { CarMoneyCard, FuelCard, NoDebtLine, StatTile } from "@/components/overview-cards";
 import { PageHeader } from "@/components/page-header";
 import { getFuelOverview, periodRange } from "@/lib/fuel";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatToday } from "@/lib/format";
 import { getIncomeTotals, listDebtors } from "@/lib/incomes";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { requireUser } from "@/lib/session";
 import { getCarMoneyThisMonth, getOverview } from "@/lib/stats";
-import { TIME_ZONE } from "@/lib/time";
 
-const today = new Intl.DateTimeFormat("sw-TZ", { dateStyle: "full", timeZone: TIME_ZONE });
 
 // What waits for the factory manager, the month's money, where every request is now, and each car's
 // money, driver and fuel.
@@ -37,7 +35,7 @@ export default async function FactoryDashboard() {
   return (
     <main className="page">
       <LiveUpdates channel={MANAGERS_CHANNEL} />
-      <PageHeader title="Dashibodi" description={today.format(new Date())} />
+      <PageHeader title="Dashibodi" description={formatToday()} />
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Muhtasari">
         <StatTile
