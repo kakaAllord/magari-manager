@@ -12,7 +12,7 @@ import { addCharts, type ChartSpec } from "@/lib/xlsx-charts";
 const MONEY = '"TSh" #,##0';
 const NUMBER = "#,##0";
 const DECIMAL = "#,##0.0";
-const DATE = "dd mmm yyyy hh:mm";
+const DATE = "dd/mm/yyyy hh:mm";
 
 const COLOR = {
   ink: "FF14201D",
