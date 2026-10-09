@@ -49,8 +49,8 @@ export function periodStarts(from: string, to: string, group: "month" | "week"):
   return out;
 }
 
-const monthName = new Intl.DateTimeFormat("sw-TZ", { month: "short", year: "numeric", timeZone: "UTC" });
-const dayName = new Intl.DateTimeFormat("sw-TZ", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const monthName = new Intl.DateTimeFormat("en-GB", { month: "2-digit", year: "numeric", timeZone: "UTC" });
+const dayName = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
 
 export const periodLabel = (start: string, group: "month" | "week") =>
   group === "month" ? monthName.format(toDate(start)) : `Wiki ya ${dayName.format(toDate(start))}`;

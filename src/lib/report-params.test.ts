@@ -36,8 +36,8 @@ test("week periods start on Monday", () => {
 });
 
 test("labels", () => {
-  assert.equal(periodLabel("2026-09-01", "month"), "Sep 2026");
-  assert.equal(periodLabel("2026-09-28", "week"), "Wiki ya 28 Sep 2026");
+  assert.equal(periodLabel("2026-09-01", "month"), "09/2026");
+  assert.equal(periodLabel("2026-09-28", "week"), "Wiki ya 28/09/2026");
 });
 
 test("presets handle January", () => {
