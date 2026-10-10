@@ -10,8 +10,10 @@ import { InvoiceStatusBadge } from "./invoice-status";
 // Invoices for customers. Each one's trips go into Mapato as the client's debt until it is paid.
 export default async function InvoicesPage({ searchParams }: PageProps<"/manager/invoices">) {
   await requireUser("manager");
-  const page = pageFrom(await searchParams);
-  const { rows, total } = await listInvoices(page);
+  const sp = await searchParams;
+  const page = pageFrom(sp);
+  const q = (typeof sp.q === "string" ? sp.q : "").trim().slice(0, 80);
+  const { rows, total } = await listInvoices(page, q);
 
   return (
     <main className="page">
@@ -26,8 +28,30 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/manager
         }
       />
       <section className="card">
+        <form role="search" className="mb-3 flex gap-2">
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            maxLength={80}
+            autoComplete="off"
+            placeholder="Tafuta namba, mteja au gari"
+            aria-label="Tafuta ankara"
+            className="input min-w-0 flex-1"
+          />
+          <button type="submit" className="btn btn-primary">
+            Tafuta
+          </button>
+          {q && (
+            <Link href="/manager/invoices" className="btn btn-ghost">
+              Futa
+            </Link>
+          )}
+        </form>
         {rows.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted">Bado hakuna ankara. Tengeneza ya kwanza.</p>
+          <p className="py-6 text-center text-sm text-muted">
+            {q ? `Hakuna ankara inayolingana na “${q}”.` : "Bado hakuna ankara. Tengeneza ya kwanza."}
+          </p>
         ) : (
           <ul className="divide-y divide-line">
             {rows.map((i) => (
@@ -51,7 +75,7 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/manager
             ))}
           </ul>
         )}
-        <Pager page={page} total={total} pageSize={INVOICE_PAGE_SIZE} />
+        <Pager page={page} total={total} pageSize={INVOICE_PAGE_SIZE} params={q ? { q } : {}} />
       </section>
     </main>
   );

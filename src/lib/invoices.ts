@@ -34,16 +34,22 @@ const STATUS = `CASE WHEN i.cancelled_at IS NOT NULL THEN 'cancelled' WHEN i.pai
 
 export const INVOICE_PAGE_SIZE = 25;
 
-// Newest first. Dates come back as plain days, as typed.
-export async function listInvoices(page: number) {
+// Newest first. Dates come back as plain days, as typed. `search` matches the number, the customer's
+// name or contact, and the plate or description of any trip on it, ignoring case.
+export async function listInvoices(page: number, search = "") {
+  const term = search.trim().slice(0, 80).replace(/[\\%_]/g, "\\$&");
   const rows = await query<InvoiceSummary & { total_count: number }>(
     `SELECT i.id, i.number, i.customer_name, to_char(i.issued_on, 'YYYY-MM-DD') AS issued_on,
             to_char(i.due_on, 'YYYY-MM-DD') AS due_on, i.total, ${STATUS} AS status,
             count(*) OVER ()::int AS total_count
        FROM invoices i
+      WHERE $3 = '' OR i.number ILIKE '%' || $3 || '%' OR i.customer_name ILIKE '%' || $3 || '%'
+         OR i.customer_contact ILIKE '%' || $3 || '%'
+         OR EXISTS (SELECT 1 FROM invoice_lines l WHERE l.invoice_id = i.id
+                     AND (l.plate ILIKE '%' || $3 || '%' OR l.description ILIKE '%' || $3 || '%'))
       ORDER BY i.year DESC, i.seq DESC
       LIMIT $1 OFFSET $2`,
-    [INVOICE_PAGE_SIZE, (page - 1) * INVOICE_PAGE_SIZE],
+    [INVOICE_PAGE_SIZE, (page - 1) * INVOICE_PAGE_SIZE, term],
   );
   return { rows, total: rows[0]?.total_count ?? 0 };
 }
