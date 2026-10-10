@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BalanceCard } from "@/components/balance-card";
 import { LiveUpdates } from "@/components/live-updates";
 import { IncomeBreakdown } from "@/components/income-breakdown";
 import { CarMoneyCard, FuelCard, NoDebtLine, StatTile } from "@/components/overview-cards";
@@ -63,6 +64,11 @@ export default async function FactoryDashboard() {
           <NoDebtLine balance={balance} owed={income.this_month_owed} />
         </StatTile>
       </section>
+
+      <BalanceCard
+        month={{ income: income.this_month, spend: o.this_month, owed: income.this_month_owed }}
+        allTime={{ income: income.all_time, spend: o.all_time, owed: income.owed }}
+      />
 
       <IncomeBreakdown
         thisMonth={income.this_month}
