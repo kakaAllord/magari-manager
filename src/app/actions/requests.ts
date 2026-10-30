@@ -370,3 +370,90 @@ export async function addReceipt(_prev: ReceiptState, formData: FormData): Promi
   await notify([driverChannel(added[0].requester_id), MANAGERS_CHANNEL]);
   return { ok: true, message: "Risiti imewekwa." };
 }
+
+export type EditRequestState =
+  | { ok: true; message: string }
+  | { ok: false; errors: RequestErrors & { fuelPrice?: string; litres?: string; date?: string; form?: string } }
+  | undefined;
+
+// A meneja corrects a request until the mhasibu pays it: its amount (or, for fuel, price and litres)
+// and reason. Typed-in history, which never goes through the mhasibu, stays correctable, with its day.
+// If the factory manager had already authorised it, a new amount sends it back to them: they
+// authorised a different sum. Rejected and paid requests are left alone.
+export async function updateRequest(_prev: EditRequestState, formData: FormData): Promise<EditRequestState> {
+  const manager = await requireUser("manager");
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id)) return { ok: false, errors: { form: "Ombi hilo halipo." } };
+  const reason = String(formData.get("reason") ?? "");
+  const date = parseEntryDate(String(formData.get("date") ?? ""), todayInTanzania());
+
+  let requesterId: number | null = null;
+  const result = await transaction(async (client): Promise<EditRequestState> => {
+    const found = await client.query<{
+      requester_id: number; kind: string; fuel_price: number | null; amount: string; status: string;
+      issued_at: Date | null; backfilled_at: Date | null; factory_reviewed_at: Date | null;
+    }>(
+      `SELECT requester_id, kind, fuel_price, amount, status, issued_at, backfilled_at, factory_reviewed_at
+         FROM money_requests WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+    const r = found.rows[0];
+    if (!r) return { ok: false, errors: { form: "Ombi hilo halipo." } };
+    requesterId = r.requester_id;
+    const history = r.backfilled_at !== null;
+    if (!history && (r.issued_at !== null || (r.status !== "pending" && r.status !== "approved"))) {
+      return { ok: false, errors: { form: "Ombi hili limeshalipwa au limekataliwa, haliwezi kubadilishwa tena." } };
+    }
+    // Fuel keeps its price per litre; requests saved before that was kept take a plain amount.
+    const order = r.kind === "fuel" && r.fuel_price !== null
+      ? parseFuelOrder(String(formData.get("fuelPrice") ?? ""), String(formData.get("litres") ?? ""))
+      : null;
+    const parsed = parseMoneyRequest({
+      amount: order ? ("amount" in order ? String(order.amount) : "1") : String(formData.get("amount") ?? ""),
+      reason: r.kind === "fuel" ? reasonFor("fuel", reason) : reason,
+    });
+    if (!parsed.ok || (order && "errors" in order) || "error" in date || (history && date.date === null)) {
+      return {
+        ok: false,
+        errors: {
+          ...(parsed.ok ? {} : parsed.errors),
+          ...orderErrors(order),
+          ...("error" in date ? { date: date.error } : history && date.date === null ? { date: "Rekodi ya zamani lazima iwe na tarehe ya zamani." } : {}),
+        },
+      };
+    }
+    // Authorised on another sum: back to the factory manager.
+    const resend = !history && r.factory_reviewed_at !== null && Number(parsed.amount) !== Number(r.amount);
+    await client.query(
+      `UPDATE money_requests
+          SET amount = $2, reason = $3, fuel_price = $4,
+              factory_reviewed_at = CASE WHEN $5 THEN NULL ELSE factory_reviewed_at END,
+              factory_reviewed_by = CASE WHEN $5 THEN NULL ELSE factory_reviewed_by END,
+              edited_at = now(), edited_by = $6
+        WHERE id = $1`,
+      [id, parsed.amount, parsed.reason, order && "price" in order ? order.price : r.fuel_price, resend, manager.id],
+    );
+    // History moves as a whole: every step happened on the same day.
+    if (history && date.date) {
+      await client.query(
+        `WITH at AS (SELECT ($2::date + time '12:00') AT TIME ZONE $3 AS t)
+         UPDATE money_requests SET created_at = at.t, reviewed_at = at.t, factory_reviewed_at = at.t, issued_at = at.t
+           FROM at WHERE id = $1`,
+        [id, date.date, TIME_ZONE],
+      );
+    }
+    return {
+      ok: true,
+      message: resend ? "Ombi limebadilishwa na limerudi kwa meneja wa kiwanda kuidhinishwa tena." : "Ombi limebadilishwa.",
+    };
+  });
+  if (result?.ok && requesterId !== null) {
+    revalidatePath("/manager", "layout");
+    revalidatePath("/factory", "layout");
+    revalidatePath("/accountant", "layout");
+    revalidatePath("/director", "layout");
+    revalidatePath("/driver", "layout");
+    await notify([driverChannel(requesterId), MANAGERS_CHANNEL]);
+  }
+  return result;
+}

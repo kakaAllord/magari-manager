@@ -219,3 +219,81 @@ export async function deleteIncome(_prev: DeleteIncomeState, formData: FormData)
   revalidatePath("/director", "layout");
   await notify([MANAGERS_CHANNEL]);
 }
+
+export type EditIncomeState =
+  | { ok: true; message: string }
+  | { ok: false; errors: IncomeErrors & CargoErrors & { date?: string; form?: string } }
+  | undefined;
+
+// Any manager may correct a mapato entry (car, amount or cargo, note, and the day for history typed in
+// later). Trips from an invoice change only through the invoice. The row is locked while it is checked.
+// Money still owed stays owed: the amount can't go below what the client already paid. An entry paid
+// in full at once stays paid in full at its new amount.
+export async function updateIncome(_prev: EditIncomeState, formData: FormData): Promise<EditIncomeState> {
+  const manager = await requireUser("manager");
+  const incomeId = Number(formData.get("incomeId"));
+  if (!Number.isInteger(incomeId)) return { ok: false, errors: { form: "Mapato hayajulikani." } };
+  const kind = formData.get("kind") === "cargo" ? "cargo" : "other";
+  const unit = cargoUnit(String(formData.get("unit") ?? ""));
+  const cargo =
+    kind === "cargo"
+      ? parseCargo(String(formData.get("rate") ?? ""), String(formData.get("quantity") ?? ""), unit, String(formData.get("destination") ?? ""))
+      : null;
+  const parsed = parseIncome({
+    carId: String(formData.get("carId") ?? ""),
+    amount: cargo ? ("amount" in cargo ? String(cargo.amount) : "1") : String(formData.get("amount") ?? ""),
+    description: String(formData.get("description") ?? ""),
+  });
+  const date = parseEntryDate(String(formData.get("date") ?? ""), todayInTanzania());
+  if (!parsed.ok || (cargo && "errors" in cargo) || "error" in date) {
+    return {
+      ok: false,
+      errors: {
+        ...(parsed.ok ? {} : parsed.errors),
+        ...(cargo && "errors" in cargo ? cargo.errors : {}),
+        ...("error" in date ? { date: date.error } : {}),
+      },
+    };
+  }
+  const load = cargo && "amount" in cargo ? cargo : null;
+
+  const result = await transaction(async (client): Promise<EditIncomeState> => {
+    const { rows } = await client.query<{ amount_paid: string; customer_name: string | null; backfilled_at: Date | null }>(
+      "SELECT amount_paid, customer_name, backfilled_at FROM incomes WHERE id = $1 AND deleted_at IS NULL AND invoice_id IS NULL FOR UPDATE",
+      [incomeId],
+    );
+    const row = rows[0];
+    if (!row) return { ok: false, errors: { form: "Mapato haya hayawezi kubadilishwa: yamefutwa au ni ya ankara." } };
+    if (row.customer_name !== null && Number(parsed.amount) < Number(row.amount_paid)) {
+      return { ok: false, errors: { amount: `Mteja ameshalipa ${formatMoney(row.amount_paid)}. Kiasi hakiwezi kuwa chini ya hicho.` } };
+    }
+    // History keeps its day; recent income keeps the moment it was recorded.
+    if (row.backfilled_at && date.date === null) return { ok: false, errors: { date: "Rekodi ya zamani lazima iwe na tarehe ya zamani." } };
+    const updated = await client.query(
+      `UPDATE incomes i
+          SET car_id = c.id, source = c.plate, amount = $2, description = $3,
+              rate_per_tonne = $4, tonnes = $5, unit = $6, destination = $7,
+              amount_paid = CASE WHEN i.customer_name IS NULL THEN $2::numeric ELSE i.amount_paid END,
+              created_at = CASE WHEN i.backfilled_at IS NOT NULL AND $8::date IS NOT NULL
+                                THEN ($8::date + time '12:00') AT TIME ZONE $9 ELSE i.created_at END,
+              edited_at = now(), edited_by = $10
+         FROM cars c
+        WHERE i.id = $1 AND c.id = $11
+        RETURNING i.id`,
+      [
+        incomeId, parsed.amount, parsed.description, load?.ratePerTonne ?? null, load?.tonnes ?? null, load?.unit ?? "tonne",
+        load?.destination ?? null, date.date, TIME_ZONE, manager.id, parsed.carId,
+      ],
+    );
+    if (updated.rows.length === 0) return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." } };
+    return { ok: true, message: "Mapato yamebadilishwa." };
+  });
+  if (result?.ok) {
+    revalidatePath("/manager", "layout");
+    revalidatePath("/director", "layout");
+    revalidatePath("/factory", "layout");
+    revalidatePath("/accountant", "layout");
+    await notify([MANAGERS_CHANNEL]);
+  }
+  return result;
+}
