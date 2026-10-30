@@ -23,6 +23,11 @@ export type Income = {
   backfilled_at: Date | null;
   recorder_name: string | null;
   can_delete: boolean;
+  // Any manager may correct an entry that isn't a trip on an invoice.
+  can_edit: boolean;
+  // Set when someone corrected it after it was recorded.
+  edited_at: Date | null;
+  editor_name: string | null;
   // Saved although it looked like earlier income for this car: that entry's amount and date.
   duplicate_amount: string | null;
   duplicate_at: Date | null;
@@ -60,8 +65,10 @@ export async function listIncomes(
             i.backfilled_at, u.name AS recorder_name, dup.amount AS duplicate_amount, dup.created_at AS duplicate_at,
             i.amount_paid, i.customer_name, ${PAYMENTS} AS payments, i.invoice_id, inv.number AS invoice_number,
             (i.recorded_by = $1 AND i.invoice_id IS NULL AND coalesce(i.backfilled_at, i.created_at) > now() - make_interval(hours => $3)) AS can_delete,
+            (i.invoice_id IS NULL) AS can_edit, i.edited_at, eu.name AS editor_name,
             count(*) OVER ()::int AS total_count
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
+            LEFT JOIN users eu ON eu.id = i.edited_by
             LEFT JOIN incomes dup ON dup.id = i.duplicate_of LEFT JOIN invoices inv ON inv.id = i.invoice_id
       WHERE i.deleted_at IS NULL AND ($5::int IS NULL OR i.car_id = $5)
       ORDER BY CASE WHEN $6 THEN coalesce(i.backfilled_at, i.created_at) END DESC, i.created_at DESC
@@ -78,8 +85,9 @@ export function listDebts() {
     `SELECT i.id, i.source, i.amount, i.description, i.rate_per_tonne, i.tonnes, i.unit, i.destination, i.car_id, c.name AS car, i.created_at,
             i.backfilled_at, u.name AS recorder_name, NULL AS duplicate_amount, NULL AS duplicate_at,
             i.amount_paid, i.customer_name, ${PAYMENTS} AS payments, i.invoice_id, inv.number AS invoice_number,
-            false AS can_delete
+            false AS can_delete, (i.invoice_id IS NULL) AS can_edit, i.edited_at, eu.name AS editor_name
        FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id
+            LEFT JOIN users eu ON eu.id = i.edited_by
             LEFT JOIN invoices inv ON inv.id = i.invoice_id
       WHERE i.deleted_at IS NULL AND i.amount_paid < i.amount
       ORDER BY i.created_at, i.id`,

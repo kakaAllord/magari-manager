@@ -40,6 +40,11 @@ export type MoneyRequest = {
   duplicate_of: number | null;
   duplicate_amount: string | null;
   duplicate_at: Date | null;
+  // The meneja may correct it until the mhasibu pays; typed-in history stays correctable.
+  can_edit: boolean;
+  // Set when someone corrected it after it was sent.
+  edited_at: Date | null;
+  editor_name: string | null;
 };
 
 const SELECT = `
@@ -56,12 +61,15 @@ const SELECT = `
               WHEN r.receipt_due THEN 'due' END AS receipt,
          (SELECT rc.note FROM receipts rc WHERE rc.request_id = r.id) AS receipt_note,
          r.duplicate_of, dup.amount AS duplicate_amount, dup.created_at AS duplicate_at,
+         (r.status IN ('pending', 'approved') AND r.issued_at IS NULL) OR r.backfilled_at IS NOT NULL AS can_edit,
+         r.edited_at, eu.name AS editor_name,
          count(*) OVER ()::int AS total_count
     FROM money_requests r
     JOIN users d ON d.id = r.requester_id
     LEFT JOIN users m ON m.id = r.reviewed_by
     LEFT JOIN users f ON f.id = r.factory_reviewed_by
     LEFT JOIN users a ON a.id = r.issued_by
+    LEFT JOIN users eu ON eu.id = r.edited_by
     LEFT JOIN cars c ON c.id = r.car_id
     LEFT JOIN fuel_readings fr ON fr.request_id = r.id
     LEFT JOIN money_requests dup ON dup.id = r.duplicate_of
