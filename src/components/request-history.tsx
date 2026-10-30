@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { EditRequest } from "@/components/edit-request";
 import { Pager, pageFrom } from "@/components/pager";
 import { RequestSummary } from "@/components/request-item";
 import { StatusBadge } from "@/components/status-badge";
-import { listCars } from "@/lib/reports";
+import { listCars, todayInTanzania } from "@/lib/reports";
 import { listHistory, PAGE_SIZE, type HistoryFilter } from "@/lib/requests";
 
 const filterLabels: Record<HistoryFilter, string> = {
@@ -23,12 +24,15 @@ export async function RequestHistory({
   requesterId,
   mine = false,
   carFilter = true,
+  editable = false,
 }: {
   searchParams: SearchParams;
   filters: HistoryFilter[];
   requesterId?: number;
   mine?: boolean;
   carFilter?: boolean;
+  // The meneja's pages offer Badilisha on requests not yet paid and on typed-in history.
+  editable?: boolean;
 }) {
   const page = pageFrom(searchParams);
   const asked = String(searchParams.status ?? "") as HistoryFilter;
@@ -87,7 +91,10 @@ export async function RequestHistory({
           {rows.map((r) => (
             <li key={r.id} className="flex items-start gap-4 py-3.5">
               <RequestSummary request={r} mine={mine} />
-              <StatusBadge status={r.status} />
+              <div className="grid justify-items-end gap-2">
+                <StatusBadge status={r.status} />
+                {editable && r.can_edit && <EditRequest request={r} today={todayInTanzania()} />}
+              </div>
             </li>
           ))}
         </ul>

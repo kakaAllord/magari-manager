@@ -10,7 +10,7 @@ export default async function ManagerHistoryPage({ searchParams }: PageProps<"/m
     <main className="page">
       <LiveUpdates channel={MANAGERS_CHANNEL} />
       <PageHeader title="Historia" description="Maombi yote yaliyoamuliwa, ya madereva na ya mameneja, mapya juu." />
-      <RequestHistory searchParams={await searchParams} filters={["all", "approved", "authorised", "issued", "rejected"]} />
+      <RequestHistory editable searchParams={await searchParams} filters={["all", "approved", "authorised", "issued", "rejected"]} />
     </main>
   );
 }

@@ -51,6 +51,12 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
         <p className="mt-1 text-xs text-muted">
           {r.car ?? "Hakuna gari"} · <span className="font-medium text-warn">Rekodi ya zamani</span> ya{" "}
           {formatDate(r.issued_at)} · imeingizwa na {r.reviewer_name ?? "meneja"} {formatDateTime(r.backfilled_at)}
+          {r.edited_at && (
+            <>
+              {" · "}
+              <span className="font-medium text-warn">Imebadilishwa</span> na {r.editor_name ?? "meneja"} {formatDateTime(r.edited_at)}
+            </>
+          )}
         </p>
       ) : (
         <p className="mt-1 text-xs text-muted">
@@ -78,6 +84,12 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
               <a href={`/vouchers/${r.id}`} target="_blank" className="font-medium text-accent underline">
                 Hati ya malipo {r.voucher_number}
               </a>
+            </>
+          )}
+          {r.edited_at && (
+            <>
+              {" · "}
+              <span className="font-medium text-warn">Imebadilishwa</span> na {r.editor_name ?? "meneja"} {formatDateTime(r.edited_at)}
             </>
           )}
           {r.receipt === "due" && (mine ? " · Peleka risiti kwa mhasibu" : " · Inasubiri risiti")}

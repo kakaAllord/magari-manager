@@ -70,9 +70,9 @@ export default async function IncomePage({ searchParams }: PageProps<"/manager/i
         {tab === "karibuni" ? (
           <>
             <p className="text-sm text-muted">
-              Umekosea? Unaweza kufuta mapato uliyorekodi ndani ya saa {DELETE_WINDOW_HOURS}. Mkurugenzi ataona yaliyofutwa.
+              Umekosea? Bonyeza Badilisha kurekebisha mapato, au uyafute ndani ya saa {DELETE_WINDOW_HOURS}. Mkurugenzi ataona yaliyofutwa na yaliyobadilishwa.
             </p>
-            <IncomeList incomes={recent.rows} empty="Bado hakuna mapato. Rekodi ya kwanza hapo juu." />
+            <IncomeList incomes={recent.rows} empty="Bado hakuna mapato. Rekodi ya kwanza hapo juu." edit={{ cars, today: todayInTanzania() }} />
             {recent.total > RECENT && (
               <p className="text-sm">
                 <Link href="/manager/income/history" className="font-medium text-accent underline">

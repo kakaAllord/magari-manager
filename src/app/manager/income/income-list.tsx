@@ -1,17 +1,22 @@
 import Link from "next/link";
 import { cargoLine, formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { Income } from "@/lib/incomes";
+import type { CarOption } from "@/lib/reports";
 import { DeleteIncome } from "./delete-income";
+import { EditIncome } from "./edit-income";
 
 // `action` takes the place of Futa, such as the button to record a payment on a debt.
 export function IncomeList({
   incomes,
   empty,
   action,
+  edit,
 }: {
   incomes: Income[];
   empty: string;
   action?: (income: Income) => React.ReactNode;
+  // With the cars and today's date, each entry offers Badilisha.
+  edit?: { cars: CarOption[]; today: string };
 }) {
   if (incomes.length === 0) return <p className="py-6 text-center text-sm text-muted">{empty}</p>;
   return (
@@ -55,10 +60,24 @@ export function IncomeList({
                   </>
                 )}
               </p>
+              {i.edited_at && (
+                <p className="text-xs text-muted">
+                  <span className="font-medium text-warn">Imebadilishwa</span> na {i.editor_name ?? "meneja"} {formatDateTime(i.edited_at)}
+                </p>
+              )}
             </div>
             <p className="shrink-0 font-semibold text-ok tabular-nums">+{formatMoney(i.amount)}</p>
           </div>
-          {action ? action(i) : i.can_delete && <DeleteIncome incomeId={i.id} source={i.source} />}
+          {action ? (
+            action(i)
+          ) : (
+            (i.can_delete || (edit && i.can_edit)) && (
+              <div className="flex flex-wrap justify-end gap-2">
+                {edit && i.can_edit && <EditIncome income={i} cars={edit.cars} today={edit.today} />}
+                {i.can_delete && <DeleteIncome incomeId={i.id} source={i.source} />}
+              </div>
+            )
+          )}
         </li>
       ))}
     </ul>

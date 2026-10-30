@@ -2,9 +2,11 @@ import Link from "next/link";
 import { reviewRequest } from "@/app/actions/requests";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
+import { EditRequest } from "@/components/edit-request";
 import { RequestSummary } from "@/components/request-item";
 import { formatMoney } from "@/lib/format";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
+import { todayInTanzania } from "@/lib/reports";
 import { listPending } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
 
@@ -12,6 +14,7 @@ import { requireUser } from "@/lib/session";
 export default async function RequestsPage() {
   await requireUser("manager");
   const pending = await listPending();
+  const today = todayInTanzania();
   const pendingTotal = pending.reduce((s, r) => s + Number(r.amount), 0);
 
   return (
@@ -37,7 +40,8 @@ export default async function RequestsPage() {
             {pending.map((r) => (
               <li key={r.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
                 <RequestSummary request={r} />
-                <div className="grid grid-cols-2 gap-2 sm:flex">
+                <div className="grid grid-cols-3 gap-2 sm:flex">
+                  <EditRequest request={r} today={today} />
                   <form action={reviewRequest} className="grid">
                     <input type="hidden" name="id" value={r.id} />
                     <button name="decision" value="approved" className="btn btn-primary">

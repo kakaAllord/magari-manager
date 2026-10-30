@@ -3,6 +3,7 @@ import { createManagerRequest } from "@/app/actions/requests";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
 import { RequestForm } from "@/components/request-form";
+import { EditRequest } from "@/components/edit-request";
 import { RequestSummary } from "@/components/request-item";
 import { StatusBadge } from "@/components/status-badge";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
@@ -45,7 +46,10 @@ export default async function ManagerAskPage() {
               {recent.map((r) => (
                 <li key={r.id} className="flex items-start gap-4 py-3.5">
                   <RequestSummary request={r} mine />
-                  <StatusBadge status={r.status} />
+                  <div className="grid justify-items-end gap-2">
+                    <StatusBadge status={r.status} />
+                    {r.can_edit && <EditRequest request={r} today={todayInTanzania()} />}
+                  </div>
                 </li>
               ))}
             </ul>

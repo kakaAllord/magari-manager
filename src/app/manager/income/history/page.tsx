@@ -4,7 +4,7 @@ import { Pager, pageFrom } from "@/components/pager";
 import { formatMoney } from "@/lib/format";
 import { INCOME_PAGE_SIZE, listIncomes } from "@/lib/incomes";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
-import { listCars } from "@/lib/reports";
+import { listCars, todayInTanzania } from "@/lib/reports";
 import { requireUser } from "@/lib/session";
 import { IncomeList } from "../income-list";
 
@@ -39,7 +39,7 @@ export default async function IncomeHistoryPage({ searchParams }: PageProps<"/ma
           {total === 1 ? "Rekodi 1" : `Rekodi ${total}`}
           {rows.length > 0 && ` · ukurasa huu ${formatMoney(pageTotal)}`}
         </p>
-        <IncomeList incomes={rows} empty="Hakuna mapato hapa." />
+        <IncomeList incomes={rows} empty="Hakuna mapato hapa." edit={{ cars, today: todayInTanzania() }} />
         <Pager page={page} total={total} pageSize={INCOME_PAGE_SIZE} params={carId ? { car: String(carId) } : {}} />
       </section>
     </main>
