@@ -4,22 +4,30 @@ import { PageHeader } from "@/components/page-header";
 import { RequestSummary } from "@/components/request-item";
 import { formatMoney } from "@/lib/format";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
-import { listAwaitingIssue, listAwaitingReceipt } from "@/lib/requests";
+import { getVoucherRequest, listAwaitingIssue, listAwaitingReceipt } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
 import { AddReceipt } from "./add-receipt";
+import { PaidToast } from "./paid-toast";
 import { PayRequest } from "./pay-request";
 
 // Two steps share one card: authorised requests to pay, oldest authorisation first, and paid ones whose
 // receipt is still to come, oldest payment first. The tab lives in the URL so live refreshes keep it.
 export default async function AccountantPage({ searchParams }: PageProps<"/accountant">) {
   await requireUser("accountant");
-  const tab = (await searchParams).tab === "risiti" ? "risiti" : "kulipa";
-  const [waiting, receipts] = await Promise.all([listAwaitingIssue(), listAwaitingReceipt()]);
+  const sp = await searchParams;
+  const tab = sp.tab === "risiti" ? "risiti" : "kulipa";
+  const paidId = Number(sp.paid);
+  const [waiting, receipts, paid] = await Promise.all([
+    listAwaitingIssue(),
+    listAwaitingReceipt(),
+    Number.isInteger(paidId) && paidId > 0 ? getVoucherRequest(paidId, null) : null,
+  ]);
   const total = waiting.reduce((s, r) => s + Number(r.amount), 0);
 
   return (
     <main className="page">
       <LiveUpdates channel={MANAGERS_CHANNEL} />
+      {paid?.voucher_number && <PaidToast key={paid.id} id={paid.id} number={paid.voucher_number} />}
       <PageHeader
         title="Kulipa"
         description={

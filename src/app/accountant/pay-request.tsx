@@ -1,9 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { payRequest, type PayState } from "@/app/actions/requests";
+import { payRequest } from "@/app/actions/requests";
 import { Dialog } from "@/components/dialog";
-import { Toast } from "@/components/toast";
 import { formatMoney } from "@/lib/format";
 import { MAX_ISSUE_NOTE_LENGTH, MAX_SUPPORTING_OTHER } from "@/lib/validation";
 import { PAYMENT_METHODS, SUPPORTING_DOCUMENTS } from "@/lib/voucher-fields";
@@ -14,25 +13,17 @@ const Err = ({ text }: { text?: string }) => (text ? <p className="mt-1 text-sm 
 // unless it's cash) and the documents attached, for the payment voucher. Fuel suggests its receipt.
 export function PayRequest({ id, amount, summary, fuel }: { id: number; amount: string; summary: string; fuel: boolean }) {
   const [open, setOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [method, setMethod] = useState("cash");
   const [other, setOther] = useState(false);
-  const [state, action, pending] = useActionState(async (prev: PayState, formData: FormData) => {
-    const result = await payRequest(prev, formData);
-    if (result?.ok) {
-      setOpen(false);
-      setToast(result.message);
-    }
-    return result;
-  }, undefined);
-  const errors = state && !state.ok ? state.errors : {};
+  // Once paid, the server sends the page back with ?paid= and the row is gone; only errors come back here.
+  const [state, action, pending] = useActionState(payRequest, undefined);
+  const errors = state?.errors ?? {};
 
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="btn btn-primary">
         Lipa {formatMoney(amount)}
       </button>
-      {toast && <Toast key={toast} message={toast} onClose={() => setToast(null)} />}
       <Dialog open={open} onClose={() => setOpen(false)} title={`Lipa ${formatMoney(amount)}`} description={summary}>
         <form action={action} className="grid gap-4">
           <input type="hidden" name="id" value={id} />

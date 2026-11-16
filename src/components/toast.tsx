@@ -28,10 +28,13 @@ function toastRoot() {
 export function Toast({
   message,
   tone = "ok",
+  link,
   onClose,
 }: {
   message: string;
   tone?: keyof typeof tones;
+  // A follow-up to open in a new tab, such as the document just made.
+  link?: { href: string; label: string };
   onClose: () => void;
 }) {
   const close = useEffectEvent(onClose);
@@ -45,7 +48,17 @@ export function Toast({
       role="status"
       className={`pointer-events-auto flex items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg ${tones[tone]}`}
     >
-      <p className="min-w-0 flex-1 break-words">{message}</p>
+      <p className="min-w-0 flex-1 break-words">
+        {message}
+        {link && (
+          <>
+            {" "}
+            <a href={link.href} target="_blank" className="font-medium underline">
+              {link.label}
+            </a>
+          </>
+        )}
+      </p>
       <button type="button" onClick={onClose} aria-label="Funga" className="-m-1 shrink-0 rounded-md p-1 hover:bg-black/5">
         <Icon name="close" className="size-4" />
       </button>

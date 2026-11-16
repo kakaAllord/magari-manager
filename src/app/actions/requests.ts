@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { query, transaction } from "@/lib/db";
 import { parseDuplicateOk, type DuplicateMatch } from "@/lib/duplicate-rules";
 import { findRequestDuplicate } from "@/lib/duplicates";
@@ -402,12 +403,13 @@ export async function authoriseRequest(formData: FormData) {
   if (updated[0]) await notify([driverChannel(updated[0].requester_id), MANAGERS_CHANNEL]);
 }
 
-export type PayState = { ok: true; message: string } | { ok: false; errors: PaymentErrors & { form?: string } } | undefined;
+export type PayState = { ok: false; errors: PaymentErrors & { form?: string } } | undefined;
 
 // The mhasibu pays out an authorised request: how it was paid, the reference (an M-Pesa or bank
 // number; needed for anything but cash) and which supporting documents came with it, all printed on
 // its voucher. Only unpaid authorised requests match, so a double tap or a second mhasibu is a no-op.
-// The payment then waits for its receipt, and gets its payment voucher.
+// The payment then waits for its receipt, and gets its payment voucher. The paid row leaves the
+// list, so the confirmation (with the voucher's link) is shown by the page from ?paid=.
 export async function payRequest(_prev: PayState, formData: FormData): Promise<PayState> {
   const accountant = await requireUser("accountant");
   const id = Number(formData.get("id"));
@@ -421,7 +423,7 @@ export async function payRequest(_prev: PayState, formData: FormData): Promise<P
   if (!payment.ok) return { ok: false, errors: payment.errors };
   const paid = await pay(accountant.id, id, payment);
   if (!paid) return { ok: false, errors: { form: "Ombi hili limeshalipwa, au halijaidhinishwa." } };
-  return { ok: true, message: `Imelipwa. Hati ya malipo ${paid} iko tayari.` };
+  redirect(`/accountant?paid=${id}`);
 }
 
 // The old Lipa button, for a page opened before 026: a free-text note and no method.
