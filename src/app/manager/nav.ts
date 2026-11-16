@@ -5,6 +5,7 @@ export const managerLinks: NavLink[] = [
   { href: "/manager/requests", label: "Maombi", icon: "inbox" },
   { href: "/manager/ask", label: "Omba pesa", icon: "send" },
   { href: "/manager/history", label: "Historia", icon: "history" },
+  { href: "/manager/vouchers", label: "Hati za malipo", icon: "pdf" },
   { href: "/manager/income", label: "Mapato", icon: "money" },
   { href: "/manager/invoices", label: "Invoice", icon: "receipt" },
   { href: "/manager/fuel", label: "Mafuta", icon: "fuel" },

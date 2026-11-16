@@ -168,13 +168,15 @@ export async function listHistory(opts: {
 }
 
 // Vouchers paid between two days (Tanzanian dates, both included), newest first, a page at a time.
-export async function listVouchers(from: string, to: string, page: number): Promise<Page> {
-  const rows = await query<MoneyRequest & { total_count: number }>(
-    `${SELECT} WHERE pv.number IS NOT NULL AND (r.issued_at AT TIME ZONE '${TIME_ZONE}')::date BETWEEN $1 AND $2
-      ORDER BY r.issued_at DESC, pv.year DESC, pv.seq DESC LIMIT $3 OFFSET $4`,
+// `sum` is what they all come to, across every page.
+export async function listVouchers(from: string, to: string, page: number): Promise<Page & { sum: number }> {
+  const rows = await query<MoneyRequest & { total_count: number; total_amount: string }>(
+    `SELECT v.*, sum(v.amount) OVER () AS total_amount FROM (${SELECT}
+      WHERE pv.number IS NOT NULL AND (r.issued_at AT TIME ZONE '${TIME_ZONE}')::date BETWEEN $1 AND $2) v
+      ORDER BY v.issued_at DESC, v.voucher_number DESC LIMIT $3 OFFSET $4`,
     [from, to, PAGE_SIZE, (page - 1) * PAGE_SIZE],
   );
-  return paged(rows);
+  return { ...paged(rows), sum: Number(rows[0]?.total_amount ?? 0) };
 }
 
 // One PDF holds at most this many vouchers; a longer range is asked to be split.
