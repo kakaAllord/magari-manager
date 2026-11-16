@@ -9,21 +9,39 @@ import { driverChannel, MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { todayInTanzania } from "@/lib/reports";
 import { requireUser } from "@/lib/session";
 import { TIME_ZONE } from "@/lib/time";
+import type { PoolClient } from "pg";
 import {
   checkOdometer,
   checkReceiptImage,
   MAX_ISSUE_NOTE_LENGTH,
   parseCarChoice,
+  parseDepartment,
   parseEntryDate,
+  parseExpenseItems,
   parseFuelOrder,
   parseMoneyRequest,
+  parsePayment,
   parseReading,
+  type ExpenseItem,
+  type ExpenseItemErrors,
+  type ExpenseItemInput,
+  type PaymentErrors,
   type ReadingErrors,
   type RequestErrors,
 } from "@/lib/validation";
+import { PAYMENT_METHODS } from "@/lib/voucher-fields";
 
 type FormErrors = RequestErrors &
-  ReadingErrors & { carId?: string; kind?: string; date?: string; fuelPrice?: string; litres?: string };
+  ReadingErrors & {
+    carId?: string;
+    kind?: string;
+    date?: string;
+    fuelPrice?: string;
+    litres?: string;
+    items?: Record<number, ExpenseItemErrors>;
+    itemsMessage?: string;
+    paymentMethod?: string;
+  };
 type FormValues = {
   kind: string;
   amount: string;
@@ -34,6 +52,10 @@ type FormValues = {
   odometer?: string;
   gauge?: string;
   date?: string;
+  department?: string;
+  items?: ExpenseItemInput[];
+  paymentMethod?: string;
+  reference?: string;
 };
 
 export type RequestFormState =
@@ -58,6 +80,47 @@ const readFuelOrder = (kind: string, values: FormValues): FuelOrder | null =>
 const amountFor = (values: FormValues, order: FuelOrder | null) =>
   order ? ("amount" in order ? String(order.amount) : "1") : values.amount;
 const orderErrors = (order: FuelOrder | null) => (order && "errors" in order ? order.errors : {});
+
+// The breakdown lines as sent: one value per line in each column. A page from before 026 sends none.
+const readItems = (formData: FormData): ExpenseItemInput[] => {
+  const descriptions = formData.getAll("itemDescription").map(String);
+  const quantities = formData.getAll("itemQuantity").map(String);
+  const prices = formData.getAll("itemUnitPrice").map(String);
+  return descriptions.map((description, i) => ({ description, quantity: quantities[i] ?? "", unitPrice: prices[i] ?? "" }));
+};
+
+// A breakdown, when given, sets the amount: the sum of its lines. Fuel never has one.
+type Items = ReturnType<typeof parseExpenseItems>;
+const readBreakdown = (kind: string, values: FormValues): Items =>
+  kind === "fuel" ? { ok: true, items: [], total: 0 } : parseExpenseItems(values.items ?? []);
+const breakdownErrors = (items: Items): Partial<FormErrors> =>
+  items.ok ? {} : { ...(Object.keys(items.errors).length ? { items: items.errors } : {}), ...(items.message ? { itemsMessage: items.message } : {}) };
+const amountWithItems = (amount: string, items: Items) => (items.ok && items.items.length ? String(items.total) : amount);
+
+async function saveItems(client: PoolClient, requestId: number, items: ExpenseItem[]) {
+  await client.query("DELETE FROM money_request_items WHERE request_id = $1", [requestId]);
+  for (const [i, item] of items.entries()) {
+    await client.query(
+      `INSERT INTO money_request_items (request_id, position, description, quantity, unit_price, amount)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [requestId, i + 1, item.description, item.quantity, item.unitPrice, item.amount],
+    );
+  }
+}
+
+// The payment's voucher (hati ya malipo), numbered for the year it was paid. A lock held until the
+// end of the transaction keeps two payments from one number; a payment that has one keeps it.
+async function giveVoucher(client: PoolClient, requestId: number) {
+  await client.query("SELECT pg_advisory_xact_lock(hashtext('payment_vouchers'))");
+  await client.query(
+    `WITH y AS (SELECT extract(year FROM issued_at AT TIME ZONE $2)::int AS year FROM money_requests WHERE id = $1 AND issued_at IS NOT NULL),
+          next AS (SELECT year, coalesce((SELECT max(seq) FROM payment_vouchers WHERE payment_vouchers.year = y.year), 0) + 1 AS seq FROM y)
+     INSERT INTO payment_vouchers (request_id, year, seq, number)
+     SELECT $1, year, seq, 'HM-' || year || '-' || lpad(seq::text, greatest(3, length(seq::text)), '0') FROM next
+     ON CONFLICT (request_id) DO NOTHING`,
+    [requestId, TIME_ZONE],
+  );
+}
 
 // A request like one already there (see duplicate-rules.ts) comes back with that match to confirm.
 // Sent again with the match's id, it goes through and keeps pointing at it for the reviewers.
@@ -84,14 +147,21 @@ export async function createRequest(
     reason: String(formData.get("reason") ?? ""),
     odometer: String(formData.get("odometer") ?? ""),
     gauge: String(formData.get("gauge") ?? ""),
+    items: readItems(formData),
   };
   const order = readFuelOrder(kind, values);
-  const parsed = parseMoneyRequest({ amount: amountFor(values, order), reason: reasonFor(kind, values.reason) });
+  const items = readBreakdown(kind, values);
+  const parsed = parseMoneyRequest({ amount: amountWithItems(amountFor(values, order), items), reason: reasonFor(kind, values.reason) });
   const reading = kind === "fuel" ? parseReading({ odometer: values.odometer!, gauge: values.gauge! }) : null;
-  if (!parsed.ok || (reading && !reading.ok) || (order && "errors" in order)) {
+  if (!parsed.ok || (reading && !reading.ok) || (order && "errors" in order) || !items.ok) {
     return {
       ok: false,
-      errors: { ...(parsed.ok ? {} : parsed.errors), ...(reading && !reading.ok ? reading.errors : {}), ...orderErrors(order) },
+      errors: {
+        ...(parsed.ok ? {} : parsed.errors),
+        ...(reading && !reading.ok ? reading.errors : {}),
+        ...orderErrors(order),
+        ...breakdownErrors(items),
+      },
       values,
     };
   }
@@ -107,12 +177,16 @@ export async function createRequest(
   });
   if ("confirm" in check) return { ok: false, errors: {}, values, duplicate: check.confirm };
 
+  // A driver's request is always for Usafirishaji, the department the drivers are in.
   if (!reading || !order) {
-    await query(
-      `INSERT INTO money_requests (requester_id, car_id, amount, reason, duplicate_of)
-       VALUES ($1, (SELECT id FROM cars WHERE driver_id = $1), $2, $3, $4)`,
-      [driver.id, parsed.amount, parsed.reason, check.duplicateOf],
-    );
+    await transaction(async (client) => {
+      const inserted = await client.query<{ id: number }>(
+        `INSERT INTO money_requests (requester_id, car_id, amount, reason, duplicate_of, department)
+         VALUES ($1, (SELECT id FROM cars WHERE driver_id = $1), $2, $3, $4, 'usafirishaji') RETURNING id`,
+        [driver.id, parsed.amount, parsed.reason, check.duplicateOf],
+      );
+      if (items.ok && items.items.length) await saveItems(client, inserted.rows[0].id, items.items);
+    });
   } else {
     // The reading and the request go in together. Locking the car keeps a double tap from making two.
     const error = await transaction(async (client): Promise<FormErrors | null> => {
@@ -179,14 +253,23 @@ export async function createManagerRequest(
     reason: String(formData.get("reason") ?? ""),
     carId: String(formData.get("carId") ?? ""),
     date: String(formData.get("date") ?? ""),
+    department: String(formData.get("department") ?? ""),
+    items: readItems(formData),
+    paymentMethod: String(formData.get("paymentMethod") ?? ""),
+    reference: String(formData.get("reference") ?? ""),
   };
   // Past fuel too: the price paid that day and the litres give its amount.
   const order = readFuelOrder(kind, values);
-  const parsed = parseMoneyRequest({ amount: amountFor(values, order), reason: reasonFor(kind, values.reason) });
+  const items = readBreakdown(kind, values);
+  const parsed = parseMoneyRequest({ amount: amountWithItems(amountFor(values, order), items), reason: reasonFor(kind, values.reason) });
   let car = parseCarChoice(values.carId!);
   if (kind === "fuel" && !("error" in car) && car.carId === null) car = { error: "Mafuta ni ya gari: chagua gari." };
   const date = parseEntryDate(values.date!, todayInTanzania());
-  if (!parsed.ok || "error" in car || "error" in date || (order && "errors" in order)) {
+  // History was paid already: how, for its voucher. A page from before 026 doesn't ask.
+  const method = PAYMENT_METHODS.find((m) => m.key === values.paymentMethod)?.key ?? null;
+  const methodMissing = !("error" in date) && date.date !== null && formData.has("paymentMethod") && !method;
+  const reference = values.reference!.trim().slice(0, MAX_ISSUE_NOTE_LENGTH) || null;
+  if (!parsed.ok || "error" in car || "error" in date || (order && "errors" in order) || !items.ok || methodMissing) {
     return {
       ok: false,
       errors: {
@@ -194,6 +277,8 @@ export async function createManagerRequest(
         ...("error" in car ? { carId: car.error } : {}),
         ...("error" in date ? { date: date.error } : {}),
         ...orderErrors(order),
+        ...breakdownErrors(items),
+        ...(methodMissing ? { paymentMethod: "Chagua jinsi yalivyolipwa." } : {}),
       },
       values,
     };
@@ -221,18 +306,23 @@ export async function createManagerRequest(
   });
   if ("confirm" in check) return { ok: false, errors: {}, values, duplicate: check.confirm };
 
-  // A manager's fuel has no reading: the driver's next one measures it. History is dated midday that day.
-  const inserted = await query(
+  // A manager's fuel has no reading: the driver's next one measures it. History is dated midday that day,
+  // and gets its voucher as it's typed in, since it was paid already.
+  const inserted = await transaction(async (client) => {
+    const row = await client.query<{ id: number }>(
     `WITH at AS (SELECT CASE WHEN $6::date IS NULL THEN now() ELSE ($6::date + time '12:00') AT TIME ZONE $7 END AS t)
      INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at, kind, fuel_price,
-                                 created_at, factory_reviewed_at, issued_at, backfilled_at, duplicate_of)
+                                 created_at, factory_reviewed_at, issued_at, backfilled_at, duplicate_of, department,
+                                 payment_method, issue_note)
      SELECT $1, $2::int, $3, $4, 'approved', $1, at.t, $5,
             CASE WHEN $5 = 'fuel' THEN $8::int END,
             at.t,
             CASE WHEN $6::date IS NULL THEN NULL ELSE at.t END,
             CASE WHEN $6::date IS NULL THEN NULL ELSE at.t END,
             CASE WHEN $6::date IS NULL THEN NULL ELSE now() END,
-            $9::int
+            $9::int, $10,
+            CASE WHEN $6::date IS NULL THEN NULL ELSE $11 END,
+            CASE WHEN $6::date IS NULL THEN NULL ELSE $12 END
        FROM at
       WHERE $2::int IS NULL OR EXISTS (SELECT 1 FROM cars WHERE id = $2::int)
      RETURNING id`,
@@ -246,8 +336,17 @@ export async function createManagerRequest(
       TIME_ZONE,
       order && "price" in order ? order.price : null,
       check.duplicateOf,
+      parseDepartment(values.department!),
+      method,
+      reference,
     ],
-  );
+    );
+    const id = row.rows[0]?.id;
+    if (id === undefined) return [];
+    if (items.ok && items.items.length) await saveItems(client, id, items.items);
+    if (date.date !== null) await giveVoucher(client, id);
+    return [id];
+  });
   if (inserted.length === 0) {
     return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." }, values };
   }
@@ -303,40 +402,63 @@ export async function authoriseRequest(formData: FormData) {
   if (updated[0]) await notify([driverChannel(updated[0].requester_id), MANAGERS_CHANNEL]);
 }
 
-// The mhasibu pays out an authorised request, with an optional note such as an M-Pesa reference.
-// Only unpaid authorised requests match, so a double tap or a second mhasibu is a no-op.
-// The payment then waits for its receipt, and gets its payment voucher (hati ya malipo) numbered
-// for the year: a lock held until the end of the transaction keeps two payments from one number.
+export type PayState = { ok: true; message: string } | { ok: false; errors: PaymentErrors & { form?: string } } | undefined;
+
+// The mhasibu pays out an authorised request: how it was paid, the reference (an M-Pesa or bank
+// number; needed for anything but cash) and which supporting documents came with it, all printed on
+// its voucher. Only unpaid authorised requests match, so a double tap or a second mhasibu is a no-op.
+// The payment then waits for its receipt, and gets its payment voucher.
+export async function payRequest(_prev: PayState, formData: FormData): Promise<PayState> {
+  const accountant = await requireUser("accountant");
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id)) return { ok: false, errors: { form: "Ombi hilo halipo." } };
+  const payment = parsePayment({
+    method: String(formData.get("method") ?? ""),
+    reference: String(formData.get("reference") ?? ""),
+    documents: formData.getAll("documents").map(String),
+    other: String(formData.get("documentsOther") ?? ""),
+  });
+  if (!payment.ok) return { ok: false, errors: payment.errors };
+  const paid = await pay(accountant.id, id, payment);
+  if (!paid) return { ok: false, errors: { form: "Ombi hili limeshalipwa, au halijaidhinishwa." } };
+  return { ok: true, message: `Imelipwa. Hati ya malipo ${paid} iko tayari.` };
+}
+
+// The old Lipa button, for a page opened before 026: a free-text note and no method.
 export async function issueRequest(formData: FormData) {
   const accountant = await requireUser("accountant");
   const id = Number(formData.get("id"));
   const note = String(formData.get("note") ?? "").trim().slice(0, MAX_ISSUE_NOTE_LENGTH) || null;
   if (!Number.isInteger(id)) return;
+  await pay(accountant.id, id, { method: null, reference: note, documents: [], other: null });
+}
 
+// Pays and numbers the voucher in one transaction; returns the voucher number, or null if nothing was paid.
+async function pay(
+  accountantId: number,
+  id: number,
+  p: { method: string | null; reference: string | null; documents: string[]; other: string | null },
+) {
   const issued = await transaction(async (client) => {
     const paid = await client.query<{ requester_id: number }>(
-      `UPDATE money_requests SET issued_at = now(), issued_by = $2, issue_note = $3, receipt_due = true
+      `UPDATE money_requests SET issued_at = now(), issued_by = $2, issue_note = $3, receipt_due = true,
+              payment_method = $4, supporting_documents = $5, supporting_other = $6
         WHERE id = $1 AND status = 'approved' AND factory_reviewed_at IS NOT NULL AND issued_at IS NULL
         RETURNING requester_id`,
-      [id, accountant.id, note],
+      [id, accountantId, p.reference, p.method, p.documents, p.other],
     );
-    if (paid.rows.length === 0) return [];
-    await client.query("SELECT pg_advisory_xact_lock(hashtext('payment_vouchers'))");
-    await client.query(
-      `WITH next AS (SELECT y AS year, coalesce((SELECT max(seq) FROM payment_vouchers WHERE year = y), 0) + 1 AS seq
-                       FROM (SELECT extract(year FROM now() AT TIME ZONE $2)::int AS y) t)
-       INSERT INTO payment_vouchers (request_id, year, seq, number)
-       SELECT $1, year, seq, 'HM-' || year || '-' || lpad(seq::text, greatest(3, length(seq::text)), '0') FROM next`,
-      [id, TIME_ZONE],
-    );
-    return paid.rows;
+    if (paid.rows.length === 0) return null;
+    await giveVoucher(client, id);
+    const voucher = await client.query<{ number: string }>("SELECT number FROM payment_vouchers WHERE request_id = $1", [id]);
+    return { requesterId: paid.rows[0].requester_id, number: voucher.rows[0].number };
   });
   revalidatePath("/accountant", "layout");
   revalidatePath("/manager", "layout");
   revalidatePath("/factory", "layout");
   revalidatePath("/director", "layout");
   revalidatePath("/driver", "layout");
-  if (issued[0]) await notify([driverChannel(issued[0].requester_id), MANAGERS_CHANNEL]);
+  if (issued) await notify([driverChannel(issued.requesterId), MANAGERS_CHANNEL]);
+  return issued?.number ?? null;
 }
 
 export type ReceiptState = { ok: boolean; message: string } | undefined;
@@ -373,7 +495,17 @@ export async function addReceipt(_prev: ReceiptState, formData: FormData): Promi
 
 export type EditRequestState =
   | { ok: true; message: string }
-  | { ok: false; errors: RequestErrors & { fuelPrice?: string; litres?: string; date?: string; form?: string } }
+  | {
+      ok: false;
+      errors: RequestErrors & {
+        fuelPrice?: string;
+        litres?: string;
+        date?: string;
+        form?: string;
+        items?: Record<number, ExpenseItemErrors>;
+        itemsMessage?: string;
+      };
+    }
   | undefined;
 
 // A meneja corrects a request until the mhasibu pays it: its amount (or, for fuel, price and litres)
@@ -408,16 +540,20 @@ export async function updateRequest(_prev: EditRequestState, formData: FormData)
     const order = r.kind === "fuel" && r.fuel_price !== null
       ? parseFuelOrder(String(formData.get("fuelPrice") ?? ""), String(formData.get("litres") ?? ""))
       : null;
+    // The breakdown editor sends its lines (none left means no breakdown); a dialog from before 026 sends none.
+    const editor = r.kind !== "fuel" && formData.has("itemDescription");
+    const items: Items = editor ? parseExpenseItems(readItems(formData)) : { ok: true, items: [], total: 0 };
     const parsed = parseMoneyRequest({
-      amount: order ? ("amount" in order ? String(order.amount) : "1") : String(formData.get("amount") ?? ""),
+      amount: order ? ("amount" in order ? String(order.amount) : "1") : amountWithItems(String(formData.get("amount") ?? ""), items),
       reason: r.kind === "fuel" ? reasonFor("fuel", reason) : reason,
     });
-    if (!parsed.ok || (order && "errors" in order) || "error" in date || (history && date.date === null)) {
+    if (!parsed.ok || (order && "errors" in order) || "error" in date || (history && date.date === null) || !items.ok) {
       return {
         ok: false,
         errors: {
           ...(parsed.ok ? {} : parsed.errors),
           ...orderErrors(order),
+          ...breakdownErrors(items),
           ...("error" in date ? { date: date.error } : history && date.date === null ? { date: "Rekodi ya zamani lazima iwe na tarehe ya zamani." } : {}),
         },
       };
@@ -433,6 +569,9 @@ export async function updateRequest(_prev: EditRequestState, formData: FormData)
         WHERE id = $1`,
       [id, parsed.amount, parsed.reason, order && "price" in order ? order.price : r.fuel_price, resend, manager.id],
     );
+    // A breakdown that no longer adds up to the amount would print wrong on the voucher.
+    if (editor && items.ok) await saveItems(client, id, items.items);
+    else if (Number(parsed.amount) !== Number(r.amount)) await saveItems(client, id, []);
     // History moves as a whole: every step happened on the same day.
     if (history && date.date) {
       await client.query(

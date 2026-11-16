@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { issueRequest } from "@/app/actions/requests";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
 import { RequestSummary } from "@/components/request-item";
@@ -7,8 +6,8 @@ import { formatMoney } from "@/lib/format";
 import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { listAwaitingIssue, listAwaitingReceipt } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
-import { MAX_ISSUE_NOTE_LENGTH } from "@/lib/validation";
 import { AddReceipt } from "./add-receipt";
+import { PayRequest } from "./pay-request";
 
 // Two steps share one card: authorised requests to pay, oldest authorisation first, and paid ones whose
 // receipt is still to come, oldest payment first. The tab lives in the URL so live refreshes keep it.
@@ -57,29 +56,16 @@ export default async function AccountantPage({ searchParams }: PageProps<"/accou
         {tab === "kulipa" ? (
           <>
             <p className="text-sm text-muted">
-              Andika kumbukumbu kama namba ya M-Pesa ukipenda. Ukishalipa, ombi linahamia Risiti hadi uweke risiti yake.
+              Bonyeza Lipa, chagua njia ya malipo na viambatisho. Hati ya malipo inatengenezwa yenyewe, na ombi linahamia Risiti hadi uweke risiti yake.
             </p>
             {waiting.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted">Umelipa yote. 👍</p>
             ) : (
               <ul className="divide-y divide-line">
                 {waiting.map((r) => (
-                  <li key={r.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_minmax(0,20rem)] sm:items-center">
+                  <li key={r.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
                     <RequestSummary request={r} />
-                    <form action={issueRequest} className="grid gap-2">
-                      <input type="hidden" name="id" value={r.id} />
-                      <input
-                        name="note"
-                        maxLength={MAX_ISSUE_NOTE_LENGTH}
-                        autoComplete="off"
-                        placeholder="Kumbukumbu (si lazima)"
-                        aria-label={`Kumbukumbu ya malipo ya ${r.requester_name}, mfano namba ya M-Pesa`}
-                        className="input"
-                      />
-                      <button type="submit" className="btn btn-primary">
-                        Lipa {formatMoney(r.amount)}
-                      </button>
-                    </form>
+                    <PayRequest id={r.id} amount={r.amount} fuel={r.kind === "fuel"} summary={`${r.requester_name} · ${r.reason}`} />
                   </li>
                 ))}
               </ul>

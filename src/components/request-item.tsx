@@ -1,6 +1,7 @@
 import { gaugeLabel } from "@/lib/fuel-calc";
 import { formatDate, formatDateTime, formatKm, formatLitres, formatMoney } from "@/lib/format";
 import type { MoneyRequest } from "@/lib/requests";
+import { department, paymentMethod } from "@/lib/voucher-fields";
 
 // One request as every list shows it: amount, who asked, the reason, then each step with its time.
 // `mine` hides the requester's own name on their pages.
@@ -26,6 +27,15 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
         )}
         {r.reason}
       </p>
+      {r.items.length > 0 && (
+        <ul className="mt-0.5 text-sm text-muted tabular-nums">
+          {r.items.map((i, n) => (
+            <li key={n} className="break-words">
+              {i.description} · {Number(i.quantity).toLocaleString("en")} × {formatMoney(i.unit_price)} = {formatMoney(i.amount)}
+            </li>
+          ))}
+        </ul>
+      )}
       {/* The person who sent it was warned already; everyone after them sees the flag. */}
       {!mine && r.duplicate_of !== null && r.duplicate_amount !== null && r.duplicate_at !== null && (
         <p className="mt-1 text-xs">
@@ -49,8 +59,18 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
       {r.backfilled_at && r.issued_at ? (
         // History typed in later: it was paid on its day, outside the app, so there are no steps to show.
         <p className="mt-1 text-xs text-muted">
-          {r.car ?? "Hakuna gari"} · <span className="font-medium text-warn">Rekodi ya zamani</span> ya{" "}
+          {r.car ?? "Hakuna gari"}
+          {r.department !== "usafirishaji" && ` · ${department(r.department)?.sw ?? r.department}`} · <span className="font-medium text-warn">Rekodi ya zamani</span> ya{" "}
           {formatDate(r.issued_at)} · imeingizwa na {r.reviewer_name ?? "meneja"} {formatDateTime(r.backfilled_at)}
+          {r.payment_method && ` · ${paymentMethod(r.payment_method)?.sw ?? r.payment_method}`}
+          {r.voucher_number && (
+            <>
+              {" · "}
+              <a href={`/vouchers/${r.id}`} target="_blank" className="font-medium text-accent underline">
+                Hati ya malipo {r.voucher_number}
+              </a>
+            </>
+          )}
           {r.edited_at && (
             <>
               {" · "}
@@ -60,7 +80,8 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
         </p>
       ) : (
         <p className="mt-1 text-xs text-muted">
-          {r.car ?? "Hakuna gari"} · Imetumwa {formatDateTime(r.created_at)}
+          {r.car ?? "Hakuna gari"}
+          {r.department !== "usafirishaji" && ` · ${department(r.department)?.sw ?? r.department}`} · Imetumwa {formatDateTime(r.created_at)}
           {r.reviewed_at &&
             (selfApproved
               ? " · Ombi la meneja, limekubaliwa moja kwa moja"
@@ -77,6 +98,7 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
           {/* Requests from before there was a mhasibu were paid on approval and name no issuer. */}
           {r.issued_at &&
             (r.issuer_name ? ` · Imelipwa na ${r.issuer_name} ${formatDateTime(r.issued_at)}` : " · Imelipwa")}
+          {r.issued_at && r.payment_method && ` · ${paymentMethod(r.payment_method)?.sw ?? r.payment_method}`}
           {r.issue_note && ` · ${r.issue_note}`}
           {r.voucher_number && (
             <>

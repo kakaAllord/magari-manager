@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { updateRequest, type EditRequestState } from "@/app/actions/requests";
 import { Dialog } from "@/components/dialog";
 import { EntryDate } from "@/components/entry-date";
+import { ExpenseItems } from "@/components/expense-items";
 import { Toast } from "@/components/toast";
 import { formatMoney } from "@/lib/format";
 import type { MoneyRequest } from "@/lib/requests";
@@ -29,6 +30,12 @@ export function EditRequest({ request: r, today }: { request: MoneyRequest; toda
   const errors = state && !state.ok ? state.errors : {};
   const fuel = r.kind === "fuel" && r.fuel_price !== null;
   const history = r.backfilled_at !== null;
+  const [itemsOpen, setItemsOpen] = useState(r.items.length > 0);
+  const items = r.items.map((i) => ({
+    description: i.description,
+    quantity: String(Number(i.quantity)),
+    unitPrice: Number(i.unit_price).toLocaleString("en"),
+  }));
 
   return (
     <>
@@ -64,7 +71,7 @@ export function EditRequest({ request: r, today }: { request: MoneyRequest; toda
                 <Err text={errors.litres} />
               </label>
             </div>
-          ) : (
+          ) : itemsOpen ? null : (
             <label className="block">
               <span className="label">Kiasi</span>
               <div className="relative">
@@ -73,6 +80,13 @@ export function EditRequest({ request: r, today }: { request: MoneyRequest; toda
               </div>
               <Err text={errors.amount} />
             </label>
+          )}
+          {!fuel && r.kind !== "fuel" && (
+            <>
+              {/* An empty marker field tells the server this dialog has the breakdown editor. */}
+              {!itemsOpen && <input type="hidden" name="itemDescription" value="" />}
+              <ExpenseItems initial={items} errors={errors.items} message={errors.itemsMessage} onChange={setItemsOpen} />
+            </>
           )}
           <label className="block">
             <span className="label">Sababu</span>

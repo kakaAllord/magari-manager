@@ -4,12 +4,14 @@ import { useActionState, useState } from "react";
 import type { RequestFormState } from "@/app/actions/requests";
 import { DuplicateWarning } from "@/components/duplicate-warning";
 import { EntryDate } from "@/components/entry-date";
+import { ExpenseItems } from "@/components/expense-items";
 import { GaugePicker } from "@/components/gauge-picker";
 import { Icon } from "@/components/icons";
 import { gaugeLabel } from "@/lib/fuel-calc";
 import { formatDateTime, formatKm, formatMoney } from "@/lib/format";
 import type { CarOption } from "@/lib/reports";
-import { MAX_REASON_LENGTH } from "@/lib/validation";
+import { MAX_ISSUE_NOTE_LENGTH, MAX_REASON_LENGTH } from "@/lib/validation";
+import { DEPARTMENTS, PAYMENT_METHODS } from "@/lib/voucher-fields";
 
 // One tap fills a common reason; the driver can still type anything. Fuel is its own kind of request.
 const quickReasons = ["Matengenezo", "Maegesho", "Usafi wa gari", "Ushuru wa barabara"];
@@ -54,8 +56,15 @@ export function RequestForm({
   // comes back with an error, cleared once a request goes in. The server works the amount out again.
   const [typed, setTyped] = useState({ price: failed?.values.fuelPrice ?? "", litres: failed?.values.litres ?? "" });
   const [seen, setSeen] = useState(state);
+  // The breakdown starts over after each request that goes in, like the rest of the form.
+  const [sentCount, setSentCount] = useState(0);
+  const [itemsOpen, setItemsOpen] = useState(Boolean(failed?.values.items?.some((l) => l.description || l.quantity || l.unitPrice)));
   if (state !== seen) {
     setSeen(state);
+    if (state?.ok) {
+      setSentCount((n) => n + 1);
+      setItemsOpen(false);
+    }
     setTyped(
       state && !state.ok ? { price: state.values.fuelPrice ?? "", litres: state.values.litres ?? "" } : { price: "", litres: "" },
     );
@@ -142,6 +151,25 @@ export function RequestForm({
         </label>
       )}
 
+      {cars && (
+        <label className="block">
+          <span className="label">Idara</span>
+          <select
+            key={failed ? `dept-${failed.values.department}` : "fresh"}
+            name="department"
+            defaultValue={failed?.values.department || "usafirishaji"}
+            className="input"
+          >
+            {DEPARTMENTS.map((d) => (
+              <option key={d.key} value={d.key}>
+                {d.sw}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-muted">Inaandikwa kwenye hati ya malipo.</p>
+        </label>
+      )}
+
       {today && (
         <EntryDate
           today={today}
@@ -150,6 +178,40 @@ export function RequestForm({
           onPast={setPast}
           pastHint="Tarehe iliyopita: litahifadhiwa kama matumizi ya zamani yaliyokwisha lipwa, bila kupitia kwa meneja wa kiwanda wala mhasibu."
         />
+      )}
+      {today && past && (
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="label">Yalilipwa kwa</span>
+            <select
+              key={failed ? `method-${failed.values.paymentMethod}` : "fresh"}
+              name="paymentMethod"
+              required
+              defaultValue={failed?.values.paymentMethod || "cash"}
+              className="input"
+            >
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.sw}
+                </option>
+              ))}
+            </select>
+            {failed?.errors.paymentMethod && <p className="mt-1 text-sm text-danger">{failed.errors.paymentMethod}</p>}
+          </label>
+          <label className="block">
+            <span className="label">
+              Kumbukumbu <span className="font-normal text-muted">(si lazima)</span>
+            </span>
+            <input
+              name="reference"
+              maxLength={MAX_ISSUE_NOTE_LENGTH}
+              autoComplete="off"
+              placeholder="Namba ya M-Pesa, benki…"
+              defaultValue={failed?.values.reference}
+              className="input"
+            />
+          </label>
+        </div>
       )}
 
       {isDriver && kind === "fuel" && (
@@ -176,7 +238,7 @@ export function RequestForm({
         </>
       )}
 
-      {kind !== "fuel" && (
+      {kind !== "fuel" && !itemsOpen && (
         <label className="block">
           <span className="label">Kiasi</span>
           <div className="relative">
@@ -192,6 +254,15 @@ export function RequestForm({
           </div>
           {failed?.errors.amount && <p className="mt-1 text-sm text-danger">{failed.errors.amount}</p>}
         </label>
+      )}
+      {kind !== "fuel" && (
+        <ExpenseItems
+          key={sentCount}
+          initial={failed?.values.items}
+          errors={failed?.errors.items}
+          message={failed?.errors.itemsMessage}
+          onChange={setItemsOpen}
+        />
       )}
       {kind === "fuel" && (
         <div className="grid gap-2">

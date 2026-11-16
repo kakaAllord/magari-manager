@@ -1,5 +1,6 @@
 import "server-only";
 import { query } from "@/lib/db";
+import { TIME_ZONE } from "@/lib/time";
 
 // Only pending, approved and rejected are stored. "authorised" is an approved request the factory
 // manager has let through to the mhasibu; "issued" is one the mhasibu has paid out.
@@ -34,6 +35,13 @@ export type MoneyRequest = {
   // A paid request's receipt: still awaited, or added by the mhasibu. Older payments have none.
   receipt: "due" | "added" | null;
   receipt_note: string | null;
+  // What the voucher prints (migration 026): the department, the breakdown if one was given, and
+  // how it was paid with the documents attached. Payments before 026 have no method.
+  department: string;
+  items: { description: string; quantity: string; unit_price: string; amount: string }[];
+  payment_method: string | null;
+  supporting_documents: string[];
+  supporting_other: string | null;
   // History typed in later: when it was entered. Its dates are the day it happened.
   backfilled_at: Date | null;
   // Sent although it looked like an earlier request: that one's amount and date, for the flag.
@@ -63,6 +71,10 @@ const SELECT = `
          r.duplicate_of, dup.amount AS duplicate_amount, dup.created_at AS duplicate_at,
          (r.status IN ('pending', 'approved') AND r.issued_at IS NULL) OR r.backfilled_at IS NOT NULL AS can_edit,
          r.edited_at, eu.name AS editor_name,
+         r.department, r.payment_method, r.supporting_documents, r.supporting_other,
+         (SELECT coalesce(json_agg(json_build_object('description', i.description, 'quantity', i.quantity,
+                                                     'unit_price', i.unit_price, 'amount', i.amount) ORDER BY i.position), '[]')
+            FROM money_request_items i WHERE i.request_id = r.id) AS items,
          count(*) OVER ()::int AS total_count
     FROM money_requests r
     JOIN users d ON d.id = r.requester_id
@@ -154,3 +166,25 @@ export async function listHistory(opts: {
   );
   return paged(rows);
 }
+
+// Vouchers paid between two days (Tanzanian dates, both included), newest first, a page at a time.
+export async function listVouchers(from: string, to: string, page: number): Promise<Page> {
+  const rows = await query<MoneyRequest & { total_count: number }>(
+    `${SELECT} WHERE pv.number IS NOT NULL AND (r.issued_at AT TIME ZONE '${TIME_ZONE}')::date BETWEEN $1 AND $2
+      ORDER BY r.issued_at DESC, pv.year DESC, pv.seq DESC LIMIT $3 OFFSET $4`,
+    [from, to, PAGE_SIZE, (page - 1) * PAGE_SIZE],
+  );
+  return paged(rows);
+}
+
+// One PDF holds at most this many vouchers; a longer range is asked to be split.
+export const MAX_VOUCHERS_PER_PDF = 400;
+
+// Every voucher paid between two days, oldest first as they would be filed. One more than the cap
+// is fetched so the caller can tell the range is too long.
+export const vouchersBetween = (from: string, to: string) =>
+  query<MoneyRequest>(
+    `${SELECT} WHERE pv.number IS NOT NULL AND (r.issued_at AT TIME ZONE '${TIME_ZONE}')::date BETWEEN $1 AND $2
+      ORDER BY r.issued_at, pv.year, pv.seq LIMIT ${MAX_VOUCHERS_PER_PDF + 1}`,
+    [from, to],
+  );
