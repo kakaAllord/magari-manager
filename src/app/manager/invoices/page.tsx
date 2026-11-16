@@ -18,12 +18,12 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/manager
   return (
     <main className="page">
       <PageHeader
-        title="Ankara"
-        description="Ankara za wateja kwa safari za mizigo. Safari zake zinaingia Mapato kama deni la mteja hadi alipe."
+        title="Invoice"
+        description="Invoice za wateja kwa safari za mizigo. Safari zake zinaingia Mapato kama deni la mteja hadi alipe."
         action={
           <Link href="/manager/invoices/new" className="btn btn-primary gap-2">
             <Icon name="plus" className="size-4" />
-            Tengeneza ankara
+            Tengeneza invoice
           </Link>
         }
       />
@@ -36,7 +36,7 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/manager
             maxLength={80}
             autoComplete="off"
             placeholder="Tafuta namba, mteja au gari"
-            aria-label="Tafuta ankara"
+            aria-label="Tafuta invoice"
             className="input min-w-0 flex-1"
           />
           <button type="submit" className="btn btn-primary">
@@ -50,7 +50,7 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/manager
         </form>
         {rows.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted">
-            {q ? `Hakuna ankara inayolingana na “${q}”.` : "Bado hakuna ankara. Tengeneza ya kwanza."}
+            {q ? `Hakuna invoice inayolingana na “${q}”.` : "Bado hakuna invoice. Tengeneza ya kwanza."}
           </p>
         ) : (
           <ul className="divide-y divide-line">

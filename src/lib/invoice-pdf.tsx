@@ -5,7 +5,7 @@ import { COMPANY, COMPANY_DETAILS } from "@/lib/company";
 import { formatDate, formatMoney, formatQuantity, formatUnitPrice, formatWallDate } from "@/lib/format";
 import { bankRows, type InvoiceDetail } from "@/lib/invoices";
 
-// The invoice (ankara) as a one-page PDF for the customer. Built-in Helvetica only covers Western
+// The invoice as a one-page PDF for the customer. Built-in Helvetica only covers Western
 // European characters, so an arrow typed in a route prints as a dash.
 
 const C = { ink: "#14201d", muted: "#5f6673", line: "#e1e6e4", accent: "#0f7b6c", accentSoft: "#e2f3ef", ok: "#1f7a45", danger: "#c22f2f" };
@@ -66,7 +66,7 @@ function InvoicePdf({ invoice: inv }: { invoice: InvoiceDetail }) {
             ))}
           </View>
           <View>
-            <Text style={s.title}>ANKARA</Text>
+            <Text style={s.title}>INVOICE</Text>
             <Text style={[s.meta, s.bold, { color: C.ink }]}>{inv.number}</Text>
             <Text style={s.meta}>Tarehe: {formatWallDate(inv.issued_on)}</Text>
             {inv.due_on && <Text style={s.meta}>Mwisho wa kulipa: {formatWallDate(inv.due_on)}</Text>}

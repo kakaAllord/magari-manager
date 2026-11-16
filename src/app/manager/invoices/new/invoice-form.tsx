@@ -70,7 +70,7 @@ export function InvoiceForm({ cars, today, bank }: { cars: CarOption[]; today: s
           {e?.contact && <p className="mt-1 text-sm text-danger">{e.contact}</p>}
         </label>
         <label className="block">
-          <span className="label">Tarehe ya ankara</span>
+          <span className="label">Tarehe ya invoice</span>
           <input type="date" name="issuedOn" required max={today} defaultValue={failed?.values.issuedOn || today} className="input" />
           {e?.issuedOn && <p className="mt-1 text-sm text-danger">{e.issuedOn}</p>}
         </label>
@@ -195,7 +195,7 @@ Mwisho wa kulipa</span>
         )}
         <div className="grid gap-1 rounded-lg bg-background px-3 py-2.5" aria-live="polite">
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-sm text-muted">Jumla ya ankara</span>
+            <span className="text-sm text-muted">Jumla ya invoice</span>
             <span className="text-lg font-semibold tabular-nums">{total > 0 ? formatMoney(total) : "–"}</span>
           </div>
           {total > 0 && <p className="text-sm break-words text-muted">{amountInEnglish(total)}</p>}
@@ -205,7 +205,7 @@ Mwisho wa kulipa</span>
       <section className="card grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <h2 className="text-lg font-semibold">Taarifa za benki</h2>
-          <p className="text-sm text-muted">Zinaanza na za ankara iliyopita.</p>
+          <p className="text-sm text-muted">Zinaanza na za invoice iliyopita.</p>
         </div>
         {BANK_FIELDS.map((f) => (
           <label key={f.key} className={`block ${f.key === "purpose" ? "sm:col-span-2" : ""}`}>
@@ -227,11 +227,11 @@ Mwisho wa kulipa</span>
 
       <section className="card grid gap-3">
         <p className="text-sm text-muted">
-          Ukihifadhi, kila safari inaingia Mapato kama deni la mteja. Akilipa, bonyeza Imelipwa kwenye ankara au Pokea malipo kwenye
+          Ukihifadhi, kila safari inaingia Mapato kama deni la mteja. Akilipa, bonyeza Imelipwa kwenye invoice au Pokea malipo kwenye
           Madeni.
         </p>
         <button type="submit" disabled={pending} className="btn btn-primary w-full sm:w-auto sm:justify-self-start">
-          {pending ? "Inahifadhi…" : "Hifadhi ankara"}
+          {pending ? "Inahifadhi…" : "Hifadhi invoice"}
         </button>
       </section>
     </form>

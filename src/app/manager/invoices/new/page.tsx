@@ -11,8 +11,8 @@ export default async function NewInvoicePage() {
   return (
     <main className="page">
       <PageHeader
-        title="Ankara mpya"
-        description="Namba ya ankara inawekwa yenyewe ukihifadhi."
+        title="Invoice mpya"
+        description="Namba ya invoice inawekwa yenyewe ukihifadhi."
         action={
           <Link href="/manager/invoices" className="btn btn-ghost">
             Rudi

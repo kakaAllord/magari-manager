@@ -7,7 +7,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/manager/
   await requireUser("manager");
   const id = Number((await params).id);
   const invoice = Number.isInteger(id) ? await getInvoice(id) : null;
-  if (!invoice) return new Response("Ankara haipo", { status: 404 });
+  if (!invoice) return new Response("Invoice haipo", { status: 404 });
   const pdf = await buildInvoicePdf(invoice);
   return new Response(new Uint8Array(pdf), {
     headers: {

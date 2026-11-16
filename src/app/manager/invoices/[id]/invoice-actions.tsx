@@ -32,7 +32,7 @@ export function InvoiceActions({
   const router = useRouter();
   const [ask, setAsk] = useState<"paid" | "cancel" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(saved ? `Ankara ${number} imehifadhiwa.` : null);
+  const [toast, setToast] = useState<string | null>(saved ? `Invoice ${number} imehifadhiwa.` : null);
 
   return (
     <>
@@ -48,7 +48,7 @@ export function InvoiceActions({
             </button>
             {!partPaid && (
               <button type="button" onClick={() => setAsk("cancel")} className="btn btn-ghost text-danger">
-                Futa ankara
+                Futa invoice
               </button>
             )}
           </>
@@ -64,11 +64,11 @@ export function InvoiceActions({
         description={
           ask === "paid"
             ? inIncome
-              ? `Ankara itaonyesha Imelipwa, na deni la ${formatMoney(owed)} litaondoka kwenye Madeni na kuhesabiwa kama pesa iliyoingia kwenye Mapato.`
-              : "Ankara itaonyesha Imelipwa. Kumbuka kurekodi malipo kwenye Mapato kwa kila gari."
+              ? `Invoice itaonyesha Imelipwa, na deni la ${formatMoney(owed)} litaondoka kwenye Madeni na kuhesabiwa kama pesa iliyoingia kwenye Mapato.`
+              : "Invoice itaonyesha Imelipwa. Kumbuka kurekodi malipo kwenye Mapato kwa kila gari."
             : inIncome
-              ? "Ankara itabaki na namba yake lakini itaonyesha Imefutwa, na safari zake zitaondoka kwenye Mapato na Madeni. Haiwezi kurudishwa."
-              : "Ankara itabaki na namba yake lakini itaonyesha Imefutwa. Haiwezi kurudishwa."
+              ? "Invoice itabaki na namba yake lakini itaonyesha Imefutwa, na safari zake zitaondoka kwenye Mapato na Madeni. Haiwezi kurudishwa."
+              : "Invoice itabaki na namba yake lakini itaonyesha Imefutwa. Haiwezi kurudishwa."
         }
       >
         {error && <p className="mb-3 text-sm text-danger">{error}</p>}

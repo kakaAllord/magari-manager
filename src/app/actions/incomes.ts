@@ -177,7 +177,7 @@ export async function recordDebtPayment(_prev: DebtPaymentState, formData: FormD
     );
     const left = owed - amount.amount;
     const who = rows[0].customer_name ?? "Mteja";
-    const settled = invoice.rows[0] ? ` Ankara ${invoice.rows[0].number} imelipwa yote.` : "";
+    const settled = invoice.rows[0] ? ` Invoice ${invoice.rows[0].number} imelipwa yote.` : "";
     return {
       ok: true as const,
       message:
@@ -263,7 +263,7 @@ export async function updateIncome(_prev: EditIncomeState, formData: FormData): 
       [incomeId],
     );
     const row = rows[0];
-    if (!row) return { ok: false, errors: { form: "Mapato haya hayawezi kubadilishwa: yamefutwa au ni ya ankara." } };
+    if (!row) return { ok: false, errors: { form: "Mapato haya hayawezi kubadilishwa: yamefutwa au ni ya invoice." } };
     if (row.customer_name !== null && Number(parsed.amount) < Number(row.amount_paid)) {
       return { ok: false, errors: { amount: `Mteja ameshalipa ${formatMoney(row.amount_paid)}. Kiasi hakiwezi kuwa chini ya hicho.` } };
     }

@@ -32,7 +32,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps<"/
         }
         action={
           <Link href="/manager/invoices" className="btn btn-ghost">
-            Ankara zote
+            Invoice zote
           </Link>
         }
       />
@@ -76,7 +76,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps<"/
             ))}
           </div>
           <div className="text-right">
-            <p className="text-xl font-semibold tracking-wide">ANKARA</p>
+            <p className="text-xl font-semibold tracking-wide">INVOICE</p>
             <p className="text-sm text-muted">Tarehe {formatWallDate(invoice.issued_on)}</p>
             {invoice.due_on && <p className="text-sm text-muted">Mwisho wa kulipa {formatWallDate(invoice.due_on)}</p>}
             <div className="mt-1">

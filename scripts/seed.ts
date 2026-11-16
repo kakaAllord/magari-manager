@@ -364,10 +364,11 @@ try {
         `WITH day AS (SELECT (now() AT TIME ZONE 'Africa/Dar_es_Salaam')::date - $1::int AS d),
               next AS (SELECT extract(year FROM d)::int AS year,
                               coalesce((SELECT max(seq) FROM invoices i WHERE i.year = extract(year FROM d)), 0) + 1 AS seq FROM day)
-         INSERT INTO invoices (year, seq, number, customer_name, customer_contact, issued_on, due_on, payment_details, total,
-                               created_by, created_at, paid_at, paid_by)
-         SELECT next.year, next.seq, 'ANK-' || next.year || '-' || lpad(next.seq::text, 3, '0'), $2, $3, day.d, day.d + 14,
-                'Benki CRDB, akaunti 0150-0000000, jina Zuraja Transport and Logistics', $4, m.id, now() - make_interval(days => $1),
+         INSERT INTO invoices (year, seq, number, customer_name, customer_contact, issued_on, due_on, bank_name, bank_account_number,
+                               bank_account_name, bank_swift, payment_purpose, total, created_by, created_at, paid_at, paid_by)
+         SELECT next.year, next.seq, 'INV-' || next.year || '-' || lpad(next.seq::text, 3, '0'), $2, $3, day.d, day.d + 14,
+                'Benki ya Mfano', '0000000000000', 'Zuraja Transport and Logistics', 'MFANOTZX', 'Gharama za usafirishaji',
+                $4, m.id, now() - make_interval(days => $1),
                 CASE WHEN $5 THEN now() - make_interval(days => $1 - 7) END, CASE WHEN $5 THEN m.id END
            FROM day, next, users m WHERE m.email = $6
          RETURNING id`,
@@ -383,7 +384,7 @@ try {
         const income = await client.query<{ id: number }>(
           `INSERT INTO incomes (car_id, source, amount, description, recorded_by, created_at, rate_per_tonne, tonnes, unit,
                                 destination, amount_paid, customer_name, invoice_id)
-           SELECT c.id, $1, $2::numeric, 'Ankara ' || v.number, v.created_by, v.created_at, $3, $4, $8, $5,
+           SELECT c.id, $1, $2::numeric, 'Invoice ' || v.number, v.created_by, v.created_at, $3, $4, $8, $5,
                   CASE WHEN $6 THEN $2::numeric ELSE 0 END, v.customer_name, v.id
              FROM invoices v LEFT JOIN cars c ON c.plate = $1 WHERE v.id = $7
            RETURNING id`,
@@ -392,7 +393,7 @@ try {
         if (paid) {
           await client.query(
             `INSERT INTO income_payments (income_id, amount, note, paid_at, recorded_by)
-             SELECT $1, $2, 'Ankara ' || number, paid_at, paid_by FROM invoices WHERE id = $3`,
+             SELECT $1, $2, 'Invoice ' || number, paid_at, paid_by FROM invoices WHERE id = $3`,
             [income.rows[0].id, Math.round(tonnes * rate), inserted.rows[0].id],
           );
         }

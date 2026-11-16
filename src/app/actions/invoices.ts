@@ -58,7 +58,7 @@ export async function createInvoice(_prev: InvoiceFormState, formData: FormData)
     const year = Number(inv.issuedOn.slice(0, 4));
     const next = await client.query<{ seq: number }>("SELECT coalesce(max(seq), 0) + 1 AS seq FROM invoices WHERE year = $1", [year]);
     const seq = next.rows[0].seq;
-    const number = `ANK-${year}-${String(seq).padStart(3, "0")}`;
+    const number = `INV-${year}-${String(seq).padStart(3, "0")}`;
     const inserted = await client.query<{ id: number }>(
       `INSERT INTO invoices (year, seq, number, customer_name, customer_contact, issued_on, due_on, payment_details, total, created_by,
                              bank_name, bank_account_number, bank_account_name, bank_swift, payment_purpose)
@@ -85,7 +85,7 @@ export async function createInvoice(_prev: InvoiceFormState, formData: FormData)
                 $9, $10, $14, $11, 0, $12, $13
            FROM (SELECT 1) one LEFT JOIN cars c ON c.plate = $1`,
         [
-          l.plate, WITHOUT_CAR, l.amount, `Ankara ${number}`, manager.id, inv.issuedOn === todayInTanzania(), inv.issuedOn,
+          l.plate, WITHOUT_CAR, l.amount, `Invoice ${number}`, manager.id, inv.issuedOn === todayInTanzania(), inv.issuedOn,
           TIME_ZONE, l.ratePerTonne, l.tonnes, l.description, inv.customer, invoiceId, l.unit,
         ],
       );
@@ -127,7 +127,7 @@ export async function markInvoicePaid(formData: FormData) {
       await client.query("INSERT INTO income_payments (income_id, amount, note, recorded_by) VALUES ($1, $2, $3, $4)", [
         income.id,
         income.left,
-        `Ankara ${invoice.rows[0].number}`,
+        `Invoice ${invoice.rows[0].number}`,
         manager.id,
       ]);
       await client.query("UPDATE incomes SET amount_paid = amount WHERE id = $1", [income.id]);
@@ -146,20 +146,20 @@ export type CancelInvoiceResult = { ok: true } | { ok: false; error: string };
 export async function cancelInvoice(formData: FormData): Promise<CancelInvoiceResult> {
   const manager = await requireUser("manager");
   const id = Number(formData.get("id"));
-  if (!Number.isInteger(id)) return { ok: false, error: "Ankara haijulikani." };
+  if (!Number.isInteger(id)) return { ok: false, error: "Invoice haijulikani." };
   const result = await transaction(async (client) => {
     const incomes = await client.query<{ amount_paid: string }>(
       "SELECT amount_paid FROM incomes WHERE invoice_id = $1 AND deleted_at IS NULL ORDER BY id FOR UPDATE",
       [id],
     );
     if (incomes.rows.some((r) => Number(r.amount_paid) > 0)) {
-      return { ok: false as const, error: "Mteja ameshalipa sehemu ya ankara hii kwenye Madeni, kwa hiyo haiwezi kufutwa." };
+      return { ok: false as const, error: "Mteja ameshalipa sehemu ya invoice hii kwenye Madeni, kwa hiyo haiwezi kufutwa." };
     }
     const cancelled = await client.query(
       "UPDATE invoices SET cancelled_at = now(), cancelled_by = $2 WHERE id = $1 AND paid_at IS NULL AND cancelled_at IS NULL",
       [id, manager.id],
     );
-    if (cancelled.rowCount === 0) return { ok: false as const, error: "Ankara hii imeshalipwa au kufutwa." };
+    if (cancelled.rowCount === 0) return { ok: false as const, error: "Invoice hii imeshalipwa au kufutwa." };
     await client.query(
       "UPDATE incomes SET deleted_at = now(), deleted_by = $2 WHERE invoice_id = $1 AND deleted_at IS NULL",
       [id, manager.id],

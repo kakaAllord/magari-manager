@@ -33,7 +33,7 @@ export function IncomeList({
               {i.invoice_id !== null ? (
                 <p className="text-sm">
                   <Link href={`/manager/invoices/${i.invoice_id}`} className="font-medium text-accent underline">
-                    Ankara {i.invoice_number}
+                    Invoice {i.invoice_number}
                   </Link>
                 </p>
               ) : (
