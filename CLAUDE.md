@@ -2,7 +2,7 @@
 
 # The system is live
 
-Zuraja Magari runs this app for real: the Vercel deployment from `main` holds the company's real
+Zuraja Transport and Logistics runs this app for real: the Vercel deployment from `main` holds the company's real
 staff, cars, requests, income, fuel and receipts on Neon. Every change has to respect that.
 
 - **Every push to `main` deploys and runs new migrations on production.** A migration must work on
