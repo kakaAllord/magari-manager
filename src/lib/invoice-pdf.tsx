@@ -1,8 +1,9 @@
 import "server-only";
 import { Document, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { amountInEnglish } from "@/lib/amount-words-en";
 import { COMPANY, COMPANY_DETAILS } from "@/lib/company";
 import { formatDate, formatMoney, formatQuantity, formatUnitPrice, formatWallDate } from "@/lib/format";
-import type { InvoiceDetail } from "@/lib/invoices";
+import { bankRows, type InvoiceDetail } from "@/lib/invoices";
 
 // The invoice (ankara) as a one-page PDF for the customer. Built-in Helvetica only covers Western
 // European characters, so an arrow typed in a route prints as a dash.
@@ -25,6 +26,9 @@ const s = StyleSheet.create({
   num: { paddingHorizontal: 5, textAlign: "right" },
   total: { flexDirection: "row", marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.ink },
   stamp: { marginTop: 16, alignSelf: "flex-start", borderWidth: 1.5, borderRadius: 4, paddingVertical: 4, paddingHorizontal: 10, fontFamily: "Helvetica-Bold", fontSize: 12 },
+  words: { marginTop: 8, color: C.ink },
+  bankRow: { flexDirection: "row", marginTop: 2 },
+  bankKey: { width: 110, color: C.muted },
   footer: { position: "absolute", bottom: 24, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", fontSize: 8, color: C.muted },
 });
 
@@ -104,7 +108,23 @@ function InvoicePdf({ invoice: inv }: { invoice: InvoiceDetail }) {
             <Text style={[s.num, s.bold, { fontSize: 12, width: "82%" }]}>Jumla</Text>
             <Text style={[s.num, s.bold, { fontSize: 12, width: "18%" }]}>{formatMoney(inv.total)}</Text>
           </View>
+          <Text style={s.words}>
+            <Text style={s.label}>KIASI KWA MANENO: </Text>
+            {amountInEnglish(inv.total)}
+          </Text>
         </View>
+
+        {inv.bank_name && (
+          <View style={s.box} wrap={false}>
+            <Text style={s.label}>TAARIFA ZA BENKI</Text>
+            {bankRows(inv).map(([key, value]) => (
+              <View key={key} style={s.bankRow}>
+                <Text style={s.bankKey}>{key}</Text>
+                <Text style={[s.bold, { flex: 1 }]}>{pdfText(value)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {inv.payment_details && (
           <View style={s.box}>

@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { amountInEnglish } from "@/lib/amount-words-en";
 import { COMPANY, COMPANY_DETAILS } from "@/lib/company";
 import { cargoSum, formatDateTime, formatMoney, formatWallDate } from "@/lib/format";
-import { getInvoice } from "@/lib/invoices";
+import { bankRows, getInvoice } from "@/lib/invoices";
 import { requireUser } from "@/lib/session";
 import { InvoiceStatusBadge } from "../invoice-status";
 import { InvoiceActions } from "./invoice-actions";
@@ -110,6 +111,24 @@ export default async function InvoicePage({ params, searchParams }: PageProps<"/
             {formatMoney(invoice.total)}
           </span>
         </div>
+        <p className="-mt-3 text-sm break-words">
+          <span className="text-xs font-medium tracking-wide text-muted uppercase">Kiasi kwa maneno: </span>
+          {amountInEnglish(invoice.total)}
+        </p>
+
+        {invoice.bank_name && (
+          <div className="rounded-lg bg-background p-3">
+            <p className="text-xs font-medium tracking-wide text-muted uppercase">Taarifa za benki</p>
+            <dl className="mt-1 grid gap-x-4 gap-y-0.5 text-sm sm:grid-cols-[auto_1fr]">
+              {bankRows(invoice).map(([key, value]) => (
+                <div key={key} className="contents">
+                  <dt className="text-muted">{key}</dt>
+                  <dd className="font-medium break-words">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
 
         {invoice.payment_details && (
           <div className="rounded-lg bg-background p-3">

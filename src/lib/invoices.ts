@@ -85,6 +85,19 @@ export async function getInvoice(id: number): Promise<InvoiceDetail | null> {
   return { ...invoice, lines };
 }
 
+// The bank block as label and value, in the order the invoice prints it; empty for invoices made before 025.
+export function bankRows(inv: InvoiceDetail): [string, string][] {
+  if (!inv.bank_name) return [];
+  const rows: [string, string | null][] = [
+    ["Benki", inv.bank_name],
+    ["Namba ya akaunti", inv.bank_account_number],
+    ["Jina la akaunti", inv.bank_account_name],
+    ["SWIFT code", inv.bank_swift],
+    ["Malipo ni ya", inv.payment_purpose],
+  ];
+  return rows.filter((r): r is [string, string] => Boolean(r[1]));
+}
+
 // The bank block of the last invoice that had one, to start the next one with; blank before the first.
 export async function lastBankDetails(): Promise<InvoiceBankInput> {
   const [row] = await query<InvoiceBankInput>(
