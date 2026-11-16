@@ -400,8 +400,42 @@ try {
       }
     }
   }
-  // Payment vouchers: every demo payment made in the app gets its number in the order it was paid,
-  // as migration 020 numbered real ones. Typed-in history gets none.
+  // Voucher details (migration 026): how demo payments were paid and what came with them, a breakdown
+  // on a few requests (their amount is the breakdown's total), and office spending under Utawala.
+  // Drivers' requests stay Usafirishaji, as the app books them.
+  const { rows: existingItems } = await client.query("SELECT 1 FROM money_request_items LIMIT 1");
+  if (existingItems.length === 0) {
+    await client.query("UPDATE money_requests SET department = 'utawala' WHERE car_id IS NULL");
+    await client.query(
+      `UPDATE money_requests SET payment_method = CASE WHEN kind = 'fuel' THEN 'mobile' ELSE 'cash' END,
+              issue_note = CASE WHEN kind = 'fuel' THEN coalesce(issue_note, 'QX' || upper(substr(md5(id::text), 1, 8))) ELSE issue_note END,
+              supporting_documents = CASE WHEN kind = 'fuel' THEN '{fuel_receipt}'::text[] ELSE '{quotation}'::text[] END
+        WHERE issued_at IS NOT NULL AND payment_method IS NULL`,
+    );
+    const breakdowns: [reason: string, items: [string, number, number][]][] = [
+      ["Kubadilisha oili na filta", [["Oili ya injini (lita)", 5, 9000], ["Filta ya oili", 1, 15000]]],
+      ["Betri mpya", [["Betri N70", 1, 62000], ["Ufundi wa kufunga", 1, 8000]]],
+      ["Kubadilisha taa ya mbele", [["Taa ya mbele", 1, 75000], ["Ufundi", 1, 10000]]],
+    ];
+    for (const [reason, items] of breakdowns) {
+      const total = items.reduce((sum, [, qty, price]) => sum + qty * price, 0);
+      const { rows } = await client.query<{ id: number }>("UPDATE money_requests SET amount = $2 WHERE reason = $1 RETURNING id", [
+        reason,
+        total,
+      ]);
+      for (const { id } of rows) {
+        for (const [i, [description, qty, price]] of items.entries()) {
+          await client.query(
+            `INSERT INTO money_request_items (request_id, position, description, quantity, unit_price, amount)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [id, i + 1, description, qty, price, qty * price],
+          );
+        }
+      }
+    }
+  }
+  // Payment vouchers: every demo payment gets its number in the order it was paid, typed-in history
+  // included, as migrations 020 and 026 numbered real ones.
   await client.query(
     `INSERT INTO payment_vouchers (request_id, year, seq, number)
      SELECT id, year, seq, 'HM-' || year || '-' || lpad(seq::text, greatest(3, length(seq::text)), '0')
@@ -410,7 +444,7 @@ try {
                       + row_number() OVER (PARTITION BY y.year ORDER BY r.issued_at, r.id)::int AS seq
                FROM money_requests r
                CROSS JOIN LATERAL (SELECT extract(year FROM r.issued_at AT TIME ZONE 'Africa/Dar_es_Salaam')::int AS year) y
-              WHERE r.issued_at IS NOT NULL AND r.backfilled_at IS NULL
+              WHERE r.issued_at IS NOT NULL
                 AND NOT EXISTS (SELECT 1 FROM payment_vouchers pv WHERE pv.request_id = r.id)) numbered`,
   );
   console.log("seeded demo users, cars, requests, income, cargo, possible repeats, debts, maoni, invoices, fuel, receipts, vouchers and typed-in history");
