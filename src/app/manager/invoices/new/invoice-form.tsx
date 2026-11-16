@@ -3,9 +3,18 @@
 import { useActionState, useState } from "react";
 import { createInvoice } from "@/app/actions/invoices";
 import { Icon } from "@/components/icons";
+import { amountInEnglish } from "@/lib/amount-words-en";
 import { formatMoney } from "@/lib/format";
 import type { CarOption } from "@/lib/reports";
-import { cargoUnit, MAX_INVOICE_LINES, MAX_INVOICE_TEXT, parseCargo, type InvoiceLineInput } from "@/lib/validation";
+import {
+  BANK_LIMITS,
+  cargoUnit,
+  MAX_INVOICE_LINES,
+  MAX_INVOICE_TEXT,
+  parseCargo,
+  type InvoiceBankInput,
+  type InvoiceLineInput,
+} from "@/lib/validation";
 
 const blank: InvoiceLineInput = { description: "", plate: "", quantity: "", unit: "tonne", rate: "" };
 const lineAmount = (l: InvoiceLineInput) => {
@@ -13,9 +22,18 @@ const lineAmount = (l: InvoiceLineInput) => {
   return "amount" in cargo ? cargo.amount : null;
 };
 
-// The customer, the trips (each priced by the tonne or by the kilo), and how to pay. Amounts are worked out
-// again on the server. `payment` starts as the last invoice's payment details.
-export function InvoiceForm({ cars, today, payment }: { cars: CarOption[]; today: string; payment: string }) {
+// The bank block, one field per line of the invoice's bank details.
+const BANK_FIELDS: { key: keyof InvoiceBankInput; name: string; label: string; optional?: boolean; placeholder: string }[] = [
+  { key: "name", name: "bankName", label: "Jina la benki", placeholder: "Mfano: CRDB Bank PLC" },
+  { key: "accountNumber", name: "bankAccountNumber", label: "Namba ya akaunti", placeholder: "Mfano: 0150xxxxxxxxx" },
+  { key: "accountName", name: "bankAccountName", label: "Jina la akaunti", placeholder: "Jina lililo kwenye akaunti" },
+  { key: "swift", name: "bankSwift", label: "SWIFT code", optional: true, placeholder: "Mfano: CORUTZTZ" },
+  { key: "purpose", name: "paymentPurpose", label: "Malipo ni ya", optional: true, placeholder: "Mfano: Gharama za kusafirisha kahawa" },
+];
+
+// The customer, the trips (each priced by the tonne or by the kilo), and the bank to pay into. Amounts are
+// worked out again on the server. `bank` starts as the last invoice's bank details.
+export function InvoiceForm({ cars, today, bank }: { cars: CarOption[]; today: string; bank: InvoiceBankInput }) {
   const [state, action, pending] = useActionState(createInvoice, undefined);
   const failed = state;
   // Each line keeps a stable key so removing one doesn't shift what's typed in the others.
@@ -58,9 +76,8 @@ export function InvoiceForm({ cars, today, payment }: { cars: CarOption[]; today
         </label>
         <label className="block">
           <span className="label">
-            Mwisho wa kulipa <span className="font-normal text-muted">(si lazima)</span>
-          </span>
-          <input type="date" name="dueOn" defaultValue={failed?.values.dueOn} className="input" />
+Mwisho wa kulipa</span>
+          <input type="date" name="dueOn" required defaultValue={failed?.values.dueOn} className="input" />
           {e?.dueOn && <p className="mt-1 text-sm text-danger">{e.dueOn}</p>}
         </label>
       </section>
@@ -176,28 +193,39 @@ export function InvoiceForm({ cars, today, payment }: { cars: CarOption[]; today
             Ongeza safari
           </button>
         )}
-        <div className="flex items-baseline justify-between gap-3 rounded-lg bg-background px-3 py-2.5" aria-live="polite">
-          <span className="text-sm text-muted">Jumla ya ankara</span>
-          <span className="text-lg font-semibold tabular-nums">{total > 0 ? formatMoney(total) : "–"}</span>
+        <div className="grid gap-1 rounded-lg bg-background px-3 py-2.5" aria-live="polite">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm text-muted">Jumla ya ankara</span>
+            <span className="text-lg font-semibold tabular-nums">{total > 0 ? formatMoney(total) : "–"}</span>
+          </div>
+          {total > 0 && <p className="text-sm break-words text-muted">{amountInEnglish(total)}</p>}
         </div>
       </section>
 
+      <section className="card grid gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <h2 className="text-lg font-semibold">Taarifa za benki</h2>
+          <p className="text-sm text-muted">Zinaanza na za ankara iliyopita.</p>
+        </div>
+        {BANK_FIELDS.map((f) => (
+          <label key={f.key} className={`block ${f.key === "purpose" ? "sm:col-span-2" : ""}`}>
+            <span className="label">
+              {f.label} {f.optional && <span className="font-normal text-muted">(si lazima)</span>}
+            </span>
+            <input
+              name={f.name}
+              required={!f.optional}
+              maxLength={BANK_LIMITS[f.key]}
+              placeholder={f.placeholder}
+              defaultValue={failed?.values.bank?.[f.key] ?? bank[f.key]}
+              className={`input ${f.key === "swift" ? "uppercase" : ""}`}
+            />
+            {e?.bank?.[f.key] && <p className="mt-1 text-sm text-danger">{e.bank[f.key]}</p>}
+          </label>
+        ))}
+      </section>
+
       <section className="card grid gap-3">
-        <label className="block">
-          <span className="label">
-            Maelezo ya malipo <span className="font-normal text-muted">(si lazima)</span>
-          </span>
-          <textarea
-            name="payment"
-            rows={3}
-            maxLength={MAX_INVOICE_TEXT}
-            placeholder="Mfano: Benki CRDB, akaunti 0150-xxxxxxx, jina Zuraja Transport and Logistics. Au M-Pesa namba …"
-            defaultValue={failed?.values.payment ?? payment}
-            className="input"
-          />
-          <p className="mt-1 text-xs text-muted">Yanaanza na ya ankara iliyopita.</p>
-          {e?.payment && <p className="mt-1 text-sm text-danger">{e.payment}</p>}
-        </label>
         <p className="text-sm text-muted">
           Ukihifadhi, kila safari inaingia Mapato kama deni la mteja. Akilipa, bonyeza Imelipwa kwenye ankara au Pokea malipo kwenye
           Madeni.

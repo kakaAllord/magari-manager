@@ -31,6 +31,15 @@ export async function createInvoice(_prev: InvoiceFormState, formData: FormData)
     contact: text(formData, "contact"),
     issuedOn: text(formData, "issuedOn"),
     dueOn: text(formData, "dueOn"),
+    bank: formData.has("bankName")
+      ? {
+          name: text(formData, "bankName"),
+          accountNumber: text(formData, "bankAccountNumber"),
+          accountName: text(formData, "bankAccountName"),
+          swift: text(formData, "bankSwift"),
+          purpose: text(formData, "paymentPurpose"),
+        }
+      : null,
     payment: text(formData, "payment"),
     lines: descriptions.map((description, i) => ({
       description,
@@ -51,9 +60,14 @@ export async function createInvoice(_prev: InvoiceFormState, formData: FormData)
     const seq = next.rows[0].seq;
     const number = `ANK-${year}-${String(seq).padStart(3, "0")}`;
     const inserted = await client.query<{ id: number }>(
-      `INSERT INTO invoices (year, seq, number, customer_name, customer_contact, issued_on, due_on, payment_details, total, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-      [year, seq, number, inv.customer, inv.contact, inv.issuedOn, inv.dueOn, inv.payment, inv.total, manager.id],
+      `INSERT INTO invoices (year, seq, number, customer_name, customer_contact, issued_on, due_on, payment_details, total, created_by,
+                             bank_name, bank_account_number, bank_account_name, bank_swift, payment_purpose)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
+      [
+        year, seq, number, inv.customer, inv.contact, inv.issuedOn, inv.dueOn, inv.payment, inv.total, manager.id,
+        inv.bank?.name ?? null, inv.bank?.accountNumber ?? null, inv.bank?.accountName ?? null, inv.bank?.swift ?? null,
+        inv.bank?.purpose ?? null,
+      ],
     );
     const invoiceId = inserted.rows[0].id;
     for (const [i, l] of inv.lines.entries()) {

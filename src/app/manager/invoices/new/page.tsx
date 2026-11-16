@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { lastPaymentDetails } from "@/lib/invoices";
+import { lastBankDetails } from "@/lib/invoices";
 import { listCars, todayInTanzania } from "@/lib/reports";
 import { requireUser } from "@/lib/session";
 import { InvoiceForm } from "./invoice-form";
 
 export default async function NewInvoicePage() {
   await requireUser("manager");
-  const [cars, payment] = await Promise.all([listCars(), lastPaymentDetails()]);
+  const [cars, bank] = await Promise.all([listCars(), lastBankDetails()]);
   return (
     <main className="page">
       <PageHeader
@@ -19,7 +19,7 @@ export default async function NewInvoicePage() {
           </Link>
         }
       />
-      <InvoiceForm cars={cars} today={todayInTanzania()} payment={payment} />
+      <InvoiceForm cars={cars} today={todayInTanzania()} bank={bank} />
     </main>
   );
 }

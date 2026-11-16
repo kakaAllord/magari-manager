@@ -1,5 +1,6 @@
 import "server-only";
 import { query } from "@/lib/db";
+import type { InvoiceBankInput } from "@/lib/validation";
 
 export type InvoiceStatus = "open" | "paid" | "cancelled";
 
@@ -15,7 +16,13 @@ export type InvoiceSummary = {
 
 export type InvoiceDetail = InvoiceSummary & {
   customer_contact: string | null;
+  // Free-text payment details: invoices made before 025 have these instead of the bank block.
   payment_details: string | null;
+  bank_name: string | null;
+  bank_account_number: string | null;
+  bank_account_name: string | null;
+  bank_swift: string | null;
+  payment_purpose: string | null;
   created_by: string | null;
   created_at: Date;
   paid_at: Date | null;
@@ -58,6 +65,7 @@ export async function getInvoice(id: number): Promise<InvoiceDetail | null> {
   const [invoice] = await query<Omit<InvoiceDetail, "lines">>(
     `SELECT i.id, i.number, i.customer_name, i.customer_contact, to_char(i.issued_on, 'YYYY-MM-DD') AS issued_on,
             to_char(i.due_on, 'YYYY-MM-DD') AS due_on, i.payment_details, i.total, ${STATUS} AS status,
+            i.bank_name, i.bank_account_number, i.bank_account_name, i.bank_swift, i.payment_purpose,
             c.name AS created_by, i.created_at, i.paid_at, p.name AS paid_by, i.cancelled_at, x.name AS cancelled_by,
             EXISTS (SELECT 1 FROM incomes WHERE invoice_id = i.id) AS in_income,
             (SELECT coalesce(sum(amount_paid), 0) FROM incomes WHERE invoice_id = i.id AND deleted_at IS NULL) AS amount_paid
@@ -77,10 +85,12 @@ export async function getInvoice(id: number): Promise<InvoiceDetail | null> {
   return { ...invoice, lines };
 }
 
-// The payment details of the last invoice, to start the next one with.
-export async function lastPaymentDetails() {
-  const [row] = await query<{ payment_details: string }>(
-    "SELECT payment_details FROM invoices WHERE payment_details IS NOT NULL ORDER BY created_at DESC LIMIT 1",
+// The bank block of the last invoice that had one, to start the next one with; blank before the first.
+export async function lastBankDetails(): Promise<InvoiceBankInput> {
+  const [row] = await query<InvoiceBankInput>(
+    `SELECT bank_name AS name, bank_account_number AS "accountNumber", bank_account_name AS "accountName",
+            coalesce(bank_swift, '') AS swift, coalesce(payment_purpose, '') AS purpose
+       FROM invoices WHERE bank_name IS NOT NULL ORDER BY created_at DESC LIMIT 1`,
   );
-  return row?.payment_details ?? "";
+  return row ?? { name: "", accountNumber: "", accountName: "", swift: "", purpose: "" };
 }
