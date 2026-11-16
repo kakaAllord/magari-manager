@@ -13,7 +13,7 @@ export function appIcon(size: number, rounded = false) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0f7b6c",
+          background: "#1d4ed8",
           borderRadius: rounded ? size * 0.22 : 0,
         }}
       >
@@ -25,8 +25,8 @@ export function appIcon(size: number, rounded = false) {
           </g>
           <circle cx="20" cy="42" r="5" fill="#ffffff" />
           <circle cx="44" cy="42" r="5" fill="#ffffff" />
-          <circle cx="20" cy="42" r="2" fill="#0f7b6c" />
-          <circle cx="44" cy="42" r="2" fill="#0f7b6c" />
+          <circle cx="20" cy="42" r="2" fill="#1d4ed8" />
+          <circle cx="44" cy="42" r="2" fill="#1d4ed8" />
         </svg>
       </div>
     ),

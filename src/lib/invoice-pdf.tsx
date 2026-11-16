@@ -8,7 +8,7 @@ import { bankRows, type InvoiceDetail } from "@/lib/invoices";
 // The invoice as a one-page PDF for the customer. Built-in Helvetica only covers Western
 // European characters, so an arrow typed in a route prints as a dash.
 
-const C = { ink: "#14201d", muted: "#5f6673", line: "#e1e6e4", accent: "#0f7b6c", accentSoft: "#e2f3ef", ok: "#1f7a45", danger: "#c22f2f" };
+const C = { ink: "#14201d", muted: "#5f6673", line: "#e1e6e4", accent: "#1d4ed8", accentSoft: "#e8eefc", ok: "#1f7a45", danger: "#c22f2f" };
 
 const s = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: C.ink },

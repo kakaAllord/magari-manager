@@ -18,8 +18,8 @@ const COLOR = {
   ink: "FF14201D",
   muted: "FF5F6673",
   line: "FFE1E6E4",
-  accent: "FF0F7B6C",
-  accentSoft: "FFE2F3EF",
+  accent: "FF1D4ED8",
+  accentSoft: "FFE8EEFC",
   in: "FF1F7A45",
   inSoft: "FFE3F4E9",
   out: "FFB86E00",
@@ -30,7 +30,7 @@ const COLOR = {
   dangerSoft: "FFFCE8E8",
 };
 // Slice colours for the pies, without the alpha byte.
-const PALETTE = ["0F7B6C", "D08A1A", "2357B5", "C22F2F", "7A4FB5", "1F7A45", "8A6D3B", "4A90A4", "B5487A", "5F6673"];
+const PALETTE = ["1D4ED8", "D08A1A", "0F7B6C", "C22F2F", "7A4FB5", "1F7A45", "8A6D3B", "4A90A4", "B5487A", "5F6673"];
 
 const groupName = { car: "gari", month: "mwezi", week: "wiki" } as const;
 

@@ -12,8 +12,8 @@ const C = {
   ink: "#14201d",
   muted: "#5f6673",
   line: "#e1e6e4",
-  accent: "#0f7b6c",
-  accentSoft: "#e2f3ef",
+  accent: "#1d4ed8",
+  accentSoft: "#e8eefc",
   in: "#1f7a45",
   inSoft: "#e3f4e9",
   out: "#b86e00",
@@ -24,7 +24,7 @@ const C = {
   danger: "#c22f2f",
   dangerSoft: "#fce8e8",
 };
-const PALETTE = ["#0f7b6c", "#d08a1a", "#2357b5", "#c22f2f", "#7a4fb5", "#1f7a45", "#8a6d3b", "#4a90a4", "#b5487a", "#5f6673"];
+const PALETTE = ["#1d4ed8", "#d08a1a", "#0f7b6c", "#c22f2f", "#7a4fb5", "#1f7a45", "#8a6d3b", "#4a90a4", "#b5487a", "#5f6673"];
 
 const s = StyleSheet.create({
   page: { paddingTop: 36, paddingBottom: 48, paddingHorizontal: 36, fontSize: 9, fontFamily: "Helvetica", color: C.ink },

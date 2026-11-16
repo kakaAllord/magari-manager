@@ -11,7 +11,7 @@ import type { MoneyRequest } from "@/lib/requests";
 // one for whoever received the money. Built-in Helvetica only covers Western European characters,
 // so an arrow typed in a reason prints as a dash.
 
-const C = { ink: "#14201d", muted: "#5f6673", line: "#e1e6e4", accent: "#0f7b6c", accentSoft: "#e2f3ef" };
+const C = { ink: "#14201d", muted: "#5f6673", line: "#e1e6e4", accent: "#1d4ed8", accentSoft: "#e8eefc" };
 
 const s = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: C.ink },
