@@ -1,5 +1,14 @@
 // Pure validation, kept free of server imports so it can be unit tested with node --test.
 
+import {
+  DEPARTMENTS,
+  PAYMENT_METHODS,
+  SUPPORTING_DOCUMENTS,
+  type Department,
+  type PaymentMethod,
+  type SupportingDocument,
+} from "./voucher-fields.ts";
+
 export type RequestInput = { amount: string; reason: string };
 export type RequestErrors = { amount?: string; reason?: string };
 
@@ -453,4 +462,73 @@ export function parseInvoice(input: InvoiceInput, today: string): { ok: true; in
       total: lines.reduce((sum, l) => sum + l.amount, 0),
     },
   };
+}
+
+// A request's optional breakdown (mchanganuo), as the voucher's detailed expenditure: up to 10
+// lines of description, quantity (up to two decimals) and unit price (whole shillings, with commas).
+// Lines left completely empty are skipped; none at all means no breakdown. When there is one, the
+// request's amount is the sum of its lines, worked out here. Errors are keyed by the line as sent.
+export const MAX_EXPENSE_ITEMS = 10;
+export const MAX_ITEM_DESCRIPTION = 120;
+
+export type ExpenseItemInput = { description: string; quantity: string; unitPrice: string };
+export type ExpenseItem = { description: string; quantity: number; unitPrice: number; amount: number };
+export type ExpenseItemErrors = { description?: string; quantity?: string; unitPrice?: string };
+
+export function parseExpenseItems(
+  input: ExpenseItemInput[],
+): { ok: true; items: ExpenseItem[]; total: number } | { ok: false; errors: Record<number, ExpenseItemErrors>; message?: string } {
+  const items: ExpenseItem[] = [];
+  const errors: Record<number, ExpenseItemErrors> = {};
+  input.forEach((line, i) => {
+    if (![line.description, line.quantity, line.unitPrice].some((v) => v.trim())) return;
+    const e: ExpenseItemErrors = {};
+    const description = line.description.trim();
+    if (description.length < 2) e.description = "Andika ni nini.";
+    else if (description.length > MAX_ITEM_DESCRIPTION) e.description = `Isizidi herufi ${MAX_ITEM_DESCRIPTION}.`;
+    const quantity = parseDecimal(line.quantity);
+    if (!line.quantity.trim()) e.quantity = "Idadi?";
+    else if (quantity === null || quantity <= 0) e.quantity = "Andika idadi, mfano 2 au 1.5.";
+    else if (quantity > 100_000) e.quantity = "Idadi ni kubwa mno.";
+    const price = parseAmount(line.unitPrice);
+    if (!line.unitPrice.trim()) e.unitPrice = "Bei ya kimoja?";
+    else if ("error" in price) e.unitPrice = price.error;
+    if (e.description || e.quantity || e.unitPrice || quantity === null || "error" in price) {
+      errors[i] = e;
+      return;
+    }
+    const unitPrice = Number(price.amount);
+    items.push({ description, quantity, unitPrice, amount: Math.round((Math.round(quantity * 100) * unitPrice) / 100) });
+  });
+  if (Object.keys(errors).length) return { ok: false, errors };
+  if (items.length > MAX_EXPENSE_ITEMS) return { ok: false, errors: {}, message: `Mchanganuo usizidi mistari ${MAX_EXPENSE_ITEMS}.` };
+  const total = items.reduce((sum, item) => sum + item.amount, 0);
+  if (total > MAX_AMOUNT) return { ok: false, errors: {}, message: "Jumla ya mchanganuo ni kubwa mno." };
+  return { ok: true, items, total };
+}
+
+// The department a request is booked to; anything unknown (an old page, a driver) is Usafirishaji.
+export const parseDepartment = (input: string): Department =>
+  DEPARTMENTS.some((d) => d.key === input) ? (input as Department) : "usafirishaji";
+
+// How the mhasibu paid, for the voucher: the method is needed, and so is a reference number for
+// anything but cash. Supporting documents are optional ticks; "Nyingine" can say what it was.
+export type PaymentInput = { method: string; reference: string; documents: string[]; other: string };
+export type PaymentErrors = { method?: string; reference?: string; other?: string };
+export const MAX_SUPPORTING_OTHER = 80;
+
+export function parsePayment(input: PaymentInput):
+  | { ok: true; method: PaymentMethod; reference: string | null; documents: SupportingDocument[]; other: string | null }
+  | { ok: false; errors: PaymentErrors } {
+  const errors: PaymentErrors = {};
+  const method = PAYMENT_METHODS.find((m) => m.key === input.method)?.key;
+  if (!method) errors.method = "Chagua njia ya malipo.";
+  const reference = input.reference.trim();
+  if (method && method !== "cash" && !reference) errors.reference = "Andika namba ya kumbukumbu ya malipo haya.";
+  else if (reference.length > MAX_ISSUE_NOTE_LENGTH) errors.reference = `Isizidi herufi ${MAX_ISSUE_NOTE_LENGTH}.`;
+  const documents = SUPPORTING_DOCUMENTS.map((d) => d.key).filter((key) => input.documents.includes(key));
+  const other = documents.includes("other") ? input.other.trim() : "";
+  if (other.length > MAX_SUPPORTING_OTHER) errors.other = `Isizidi herufi ${MAX_SUPPORTING_OTHER}.`;
+  if (!method || Object.keys(errors).length) return { ok: false, errors };
+  return { ok: true, method, reference: reference || null, documents, other: other || null };
 }

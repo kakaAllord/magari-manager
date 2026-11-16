@@ -23,6 +23,9 @@ import {
   parseReading,
   parseStartingReading,
   parseTankLitres,
+  parseDepartment,
+  parseExpenseItems,
+  parsePayment,
 } from "./validation.ts";
 
 test("accepts whole shillings and trims the reason", () => {
@@ -326,4 +329,57 @@ test("a new invoice needs a due date and the bank, account number and account na
   // A page opened before the bank fields existed still saves, the old way.
   const old = parseInvoice({ customer: "Zuraja Trading", contact: "", issuedOn: today, dueOn: "", bank: null, payment: " CRDB 0150 ", lines: trip }, today);
   assert.ok(old.ok && old.invoice.bank === null && old.invoice.dueOn === null && old.invoice.payment === "CRDB 0150");
+});
+
+test("a breakdown adds up its lines, skips empty ones and checks each", () => {
+  const blank = { description: "", quantity: "", unitPrice: "" };
+  assert.deepEqual(parseExpenseItems([blank]), { ok: true, items: [], total: 0 });
+  assert.deepEqual(
+    parseExpenseItems([
+      { description: " Oili ya injini ", quantity: "2.5", unitPrice: "18,000" },
+      blank,
+      { description: "Filta", quantity: "1", unitPrice: "12000" },
+    ]),
+    {
+      ok: true,
+      items: [
+        { description: "Oili ya injini", quantity: 2.5, unitPrice: 18000, amount: 45000 },
+        { description: "Filta", quantity: 1, unitPrice: 12000, amount: 12000 },
+      ],
+      total: 57000,
+    },
+  );
+  const bad = parseExpenseItems([blank, { description: "x", quantity: "0", unitPrice: "abc" }]);
+  assert.ok(!bad.ok && bad.errors[1].description && bad.errors[1].quantity && bad.errors[1].unitPrice);
+  const many = parseExpenseItems(Array.from({ length: 11 }, () => ({ description: "Tairi", quantity: "1", unitPrice: "1000" })));
+  assert.ok(!many.ok && many.message);
+  const huge = parseExpenseItems([{ description: "Gari", quantity: "2", unitPrice: "60,000,000" }]);
+  assert.ok(!huge.ok && huge.message);
+});
+
+test("a department is one of the list, anything else is Usafirishaji", () => {
+  assert.equal(parseDepartment("utawala"), "utawala");
+  assert.equal(parseDepartment(""), "usafirishaji");
+  assert.equal(parseDepartment("hacker"), "usafirishaji");
+});
+
+test("paying needs a method, and a reference unless it is cash", () => {
+  assert.deepEqual(parsePayment({ method: "cash", reference: " ", documents: ["quotation", "bogus"], other: "x" }), {
+    ok: true,
+    method: "cash",
+    reference: null,
+    documents: ["quotation"],
+    other: null,
+  });
+  assert.deepEqual(parsePayment({ method: "mobile", reference: " QX12AB ", documents: ["other"], other: " Barua " }), {
+    ok: true,
+    method: "mobile",
+    reference: "QX12AB",
+    documents: ["other"],
+    other: "Barua",
+  });
+  const noMethod = parsePayment({ method: "", reference: "", documents: [], other: "" });
+  assert.ok(!noMethod.ok && noMethod.errors.method);
+  const noRef = parsePayment({ method: "bank", reference: "", documents: [], other: "" });
+  assert.ok(!noRef.ok && noRef.errors.reference);
 });
