@@ -26,7 +26,8 @@ export async function VoucherList({ searchParams }: { searchParams: SearchParams
         title="Hati za malipo"
         description="Kila pesa iliyotoka ina hati yake ya malipo. Pakua moja, au zote za kipindi kwenye PDF moja."
       />
-      <section className="card grid gap-3">
+      {/* One shrinkable column, so a long name or reason truncates instead of widening the card. */}
+      <section className="card grid grid-cols-1 gap-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <VoucherPeriod presets={presets(today)} from={from} to={to} today={today} />
           {total > 0 && !tooMany && (
