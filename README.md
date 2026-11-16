@@ -25,8 +25,12 @@ gives any staff member a new password (nobody can be switched off from the app; 
 switched off earlier can be switched back on), reads the same reports and Mafuta, and sees an overview of income,
 spending, the balance, each car's faida or hasara and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
-The meneja makes invoices (ankara) on the Ankara tab: a customer, trips priced as tani × bei kwa
-tani or kilo × bei kwa kilo (picked per trip), and payment details, downloaded as a PDF. Numbers run per year (ANK-2026-001) and are never
+The meneja makes invoices on the Invoice tab: a customer, a due date, trips priced as tani × bei kwa
+tani or kilo × bei kwa kilo (picked per trip), and the bank to pay into (bank, account number and
+name, SWIFT code, what the payment is for; each starts from the last invoice's, and they live in the
+database, not the code, migration 025), downloaded as a PDF with the total also written out in English words
+(up to trillions). Zuraja's address prints under its name (`src/lib/company.ts`). Numbers run per year
+(INV-2026-001; invoices made before November 2026 kept their ANK- numbers) and are never
 reused; a mistaken invoice is cancelled ("Imefutwa"), not edited (`invoices`, `invoice_lines`,
 migration 019). Saving an invoice puts each trip in Mapato as cargo income on the invoice's date,
 nothing paid yet, so the client owes it on Madeni. Marking the invoice "Imelipwa" pays off those
