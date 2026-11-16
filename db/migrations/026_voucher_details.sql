@@ -29,6 +29,8 @@ CREATE TABLE money_request_items (
   PRIMARY KEY (request_id, position)
 );
 
+-- Voucher numbers start with PV- (payment voucher) from here on, continuing each year's count.
+-- Vouchers already numbered HM- keep their numbers: they may be printed and filed under them.
 -- Every shilling that went out gets a voucher. History typed in later had none (020 left it out);
 -- it now gets numbers after the ones already given in each year, in the order it was paid, and new
 -- history gets one as it is typed in.
@@ -45,4 +47,4 @@ numbered AS (
     FROM history h
 )
 INSERT INTO payment_vouchers (request_id, year, seq, number)
-SELECT id, year, seq, 'HM-' || year || '-' || lpad(seq::text, greatest(3, length(seq::text)), '0') FROM numbered;
+SELECT id, year, seq, 'PV-' || year || '-' || lpad(seq::text, greatest(3, length(seq::text)), '0') FROM numbered;

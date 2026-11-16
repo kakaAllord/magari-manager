@@ -109,7 +109,8 @@ async function saveItems(client: PoolClient, requestId: number, items: ExpenseIt
   }
 }
 
-// The payment's voucher (hati ya malipo), numbered for the year it was paid. A lock held until the
+// The payment's voucher (hati ya malipo), numbered PV-YYYY-NNN for the year it was paid; the count
+// carries on from vouchers numbered HM- before 026. A lock held until the
 // end of the transaction keeps two payments from one number; a payment that has one keeps it.
 async function giveVoucher(client: PoolClient, requestId: number) {
   await client.query("SELECT pg_advisory_xact_lock(hashtext('payment_vouchers'))");
@@ -117,7 +118,7 @@ async function giveVoucher(client: PoolClient, requestId: number) {
     `WITH y AS (SELECT extract(year FROM issued_at AT TIME ZONE $2)::int AS year FROM money_requests WHERE id = $1 AND issued_at IS NOT NULL),
           next AS (SELECT year, coalesce((SELECT max(seq) FROM payment_vouchers WHERE payment_vouchers.year = y.year), 0) + 1 AS seq FROM y)
      INSERT INTO payment_vouchers (request_id, year, seq, number)
-     SELECT $1, year, seq, 'HM-' || year || '-' || lpad(seq::text, greatest(3, length(seq::text)), '0') FROM next
+     SELECT $1, year, seq, 'PV-' || year || '-' || lpad(seq::text, greatest(3, length(seq::text)), '0') FROM next
      ON CONFLICT (request_id) DO NOTHING`,
     [requestId, TIME_ZONE],
   );

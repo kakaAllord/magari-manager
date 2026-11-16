@@ -438,7 +438,7 @@ try {
   // included, as migrations 020 and 026 numbered real ones.
   await client.query(
     `INSERT INTO payment_vouchers (request_id, year, seq, number)
-     SELECT id, year, seq, 'HM-' || year || '-' || lpad(seq::text, greatest(3, length(seq::text)), '0')
+     SELECT id, year, seq, 'PV-' || year || '-' || lpad(seq::text, greatest(3, length(seq::text)), '0')
        FROM (SELECT r.id, y.year,
                     coalesce((SELECT max(seq) FROM payment_vouchers pv WHERE pv.year = y.year), 0)
                       + row_number() OVER (PARTITION BY y.year ORDER BY r.issued_at, r.id)::int AS seq
