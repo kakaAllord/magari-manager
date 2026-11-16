@@ -328,17 +328,23 @@ export function parseFeedback(input: string): { body: string } | { error: string
   return { body };
 }
 
-// An invoice (ankara): the customer, its dates, how to pay, and up to 20 trips, each priced per
+// An invoice: the customer, its dates, the bank to pay into, and up to 20 trips, each priced per
 // tonne or per kilo. Lines left completely empty are skipped. Errors on a line are keyed by its index as sent.
 export const MAX_INVOICE_LINES = 20;
 export const MAX_INVOICE_TEXT = 500;
+export const BANK_LIMITS = { name: 80, accountNumber: 40, accountName: 120, swift: 20, purpose: 160 } as const;
 
+export type InvoiceBankInput = { name: string; accountNumber: string; accountName: string; swift: string; purpose: string };
+export type InvoiceBank = { name: string; accountNumber: string; accountName: string; swift: string | null; purpose: string | null };
 export type InvoiceLineInput = { description: string; plate: string; quantity: string; unit: CargoUnit; rate: string };
 export type InvoiceInput = {
   customer: string;
   contact: string;
   issuedOn: string;
   dueOn: string;
+  // A page opened before the bank fields existed sends free-text payment details and no bank;
+  // it is saved the old way, without a bank or a due date, rather than failing on fields it can't show.
+  bank: InvoiceBankInput | null;
   payment: string;
   lines: InvoiceLineInput[];
 };
@@ -349,6 +355,7 @@ export type InvoiceErrors = {
   issuedOn?: string;
   dueOn?: string;
   payment?: string;
+  bank?: Partial<Record<keyof InvoiceBankInput, string>>;
   lines?: string;
   line?: Record<number, InvoiceLineErrors>;
 };
@@ -365,10 +372,31 @@ export type Invoice = {
   contact: string | null;
   issuedOn: string;
   dueOn: string | null;
+  bank: InvoiceBank | null;
   payment: string | null;
   lines: InvoiceLine[];
   total: number;
 };
+
+// The bank block: the bank, account number and account name are needed, the SWIFT code and purpose are not.
+function parseBank(input: InvoiceBankInput) {
+  const v = {
+    name: input.name.trim(),
+    accountNumber: input.accountNumber.trim(),
+    accountName: input.accountName.trim(),
+    swift: input.swift.trim().toUpperCase(),
+    purpose: input.purpose.trim(),
+  };
+  const errors: NonNullable<InvoiceErrors["bank"]> = {};
+  if (!v.name) errors.name = "Andika jina la benki.";
+  if (!v.accountNumber) errors.accountNumber = "Andika namba ya akaunti.";
+  if (!v.accountName) errors.accountName = "Andika jina la akaunti.";
+  for (const key of Object.keys(BANK_LIMITS) as (keyof InvoiceBankInput)[]) {
+    if (v[key].length > BANK_LIMITS[key]) errors[key] = `Isizidi herufi ${BANK_LIMITS[key]}.`;
+  }
+  const bank: InvoiceBank = { ...v, swift: v.swift || null, purpose: v.purpose || null };
+  return { bank, errors };
+}
 
 export function parseInvoice(input: InvoiceInput, today: string): { ok: true; invoice: Invoice } | { ok: false; errors: InvoiceErrors } {
   const errors: InvoiceErrors = {};
@@ -381,12 +409,15 @@ export function parseInvoice(input: InvoiceInput, today: string): { ok: true; in
   if (payment.length > MAX_INVOICE_TEXT) errors.payment = `Yasizidi herufi ${MAX_INVOICE_TEXT}.`;
 
   const issuedOn = input.issuedOn.trim();
-  if (!isRealDate(issuedOn)) errors.issuedOn = "Chagua tarehe ya ankara.";
-  else if (issuedOn > today) errors.issuedOn = "Tarehe ya ankara haiwezi kuwa ya baadaye.";
+  if (!isRealDate(issuedOn)) errors.issuedOn = "Chagua tarehe ya invoice.";
+  else if (issuedOn > today) errors.issuedOn = "Tarehe ya invoice haiwezi kuwa ya baadaye.";
   else if (issuedOn < EARLIEST_ENTRY_DATE) errors.issuedOn = "Tarehe ni ya zamani mno.";
   const dueOn = input.dueOn.trim();
-  if (dueOn && !isRealDate(dueOn)) errors.dueOn = "Chagua tarehe sahihi.";
-  else if (dueOn && !errors.issuedOn && dueOn < issuedOn) errors.dueOn = "Mwisho wa kulipa hauwezi kuwa kabla ya tarehe ya ankara.";
+  if (!dueOn && input.bank) errors.dueOn = "Chagua mwisho wa kulipa.";
+  else if (dueOn && !isRealDate(dueOn)) errors.dueOn = "Chagua tarehe sahihi.";
+  else if (dueOn && !errors.issuedOn && dueOn < issuedOn) errors.dueOn = "Mwisho wa kulipa hauwezi kuwa kabla ya tarehe ya invoice.";
+  const bank = input.bank && parseBank(input.bank);
+  if (bank && Object.keys(bank.errors).length) errors.bank = bank.errors;
 
   const lines: InvoiceLine[] = [];
   const lineErrors: Record<number, InvoiceLineErrors> = {};
@@ -406,7 +437,7 @@ export function parseInvoice(input: InvoiceInput, today: string): { ok: true; in
   });
   if (Object.keys(lineErrors).length) errors.line = lineErrors;
   else if (lines.length === 0) errors.lines = "Ongeza angalau safari moja.";
-  else if (lines.length > MAX_INVOICE_LINES) errors.lines = `Ankara moja isizidi safari ${MAX_INVOICE_LINES}.`;
+  else if (lines.length > MAX_INVOICE_LINES) errors.lines = `Invoice moja isizidi safari ${MAX_INVOICE_LINES}.`;
 
   if (Object.keys(errors).length) return { ok: false, errors };
   return {
@@ -416,6 +447,7 @@ export function parseInvoice(input: InvoiceInput, today: string): { ok: true; in
       contact: contact || null,
       issuedOn,
       dueOn: dueOn || null,
+      bank: bank?.bank ?? null,
       payment: payment || null,
       lines,
       total: lines.reduce((sum, l) => sum + l.amount, 0),

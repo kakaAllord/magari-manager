@@ -261,7 +261,8 @@ test("maoni are trimmed and need a few words, at most 1000 characters", () => {
 
 test("an invoice adds up its trips, skips empty lines and checks each one", () => {
   const today = "2026-10-06";
-  const base = { customer: " Kilimanjaro Traders ", contact: "", issuedOn: today, dueOn: "", payment: " CRDB 0150-123 " };
+  const bank = { name: " CRDB Bank PLC ", accountNumber: " 0150-123 ", accountName: "Zuraja Transport", swift: " corutztz ", purpose: "" };
+  const base = { customer: " Kilimanjaro Traders ", contact: "", issuedOn: today, dueOn: "2026-10-20", bank, payment: "" };
   const empty = { description: "", plate: "", quantity: "", unit: "tonne" as const, rate: "" };
   const ok = parseInvoice(
     {
@@ -281,8 +282,9 @@ test("an invoice adds up its trips, skips empty lines and checks each one", () =
       customer: "Kilimanjaro Traders",
       contact: null,
       issuedOn: today,
-      dueOn: null,
-      payment: "CRDB 0150-123",
+      dueOn: "2026-10-20",
+      bank: { name: "CRDB Bank PLC", accountNumber: "0150-123", accountName: "Zuraja Transport", swift: "CORUTZTZ", purpose: null },
+      payment: null,
       lines: [
         { description: "Dar es Salaam - Mwanza", plate: "T456BCD", unit: "tonne", tonnes: 30, ratePerTonne: 45000, amount: 1350000 },
         { description: "Dar es Salaam - Dodoma", plate: null, unit: "tonne", tonnes: 12.5, ratePerTonne: 38000, amount: 475000 },
@@ -305,6 +307,23 @@ test("an invoice adds up its trips, skips empty lines and checks each one", () =
     assert.deepEqual(Object.keys(bad.errors.line ?? {}), ["1"]);
     assert.ok(bad.errors.line?.[1].description && bad.errors.line?.[1].quantity && !bad.errors.line?.[1].rate);
   }
-  const early = parseInvoice({ ...base, dueOn: "2026-10-01", lines: [{ description: "Kibaha", plate: "", quantity: "1", unit: "tonne", rate: "40000" }] }, today);
+  const trip = [{ description: "Kibaha", plate: "", quantity: "1", unit: "tonne" as const, rate: "40000" }];
+  const early = parseInvoice({ ...base, dueOn: "2026-10-01", lines: trip }, today);
   assert.ok(!early.ok && early.errors.dueOn);
+});
+
+test("a new invoice needs a due date and the bank, account number and account name", () => {
+  const today = "2026-10-06";
+  const trip = [{ description: "Kibaha", plate: "", quantity: "1", unit: "tonne" as const, rate: "40000" }];
+  const blankBank = { name: " ", accountNumber: "", accountName: "", swift: "", purpose: "x".repeat(161) };
+  const bad = parseInvoice({ customer: "Zuraja Trading", contact: "", issuedOn: today, dueOn: "", bank: blankBank, payment: "", lines: trip }, today);
+  assert.ok(!bad.ok);
+  if (!bad.ok) {
+    assert.ok(bad.errors.dueOn);
+    assert.deepEqual(Object.keys(bad.errors.bank ?? {}).sort(), ["accountName", "accountNumber", "name", "purpose"]);
+  }
+
+  // A page opened before the bank fields existed still saves, the old way.
+  const old = parseInvoice({ customer: "Zuraja Trading", contact: "", issuedOn: today, dueOn: "", bank: null, payment: " CRDB 0150 ", lines: trip }, today);
+  assert.ok(old.ok && old.invoice.bank === null && old.invoice.dueOn === null && old.invoice.payment === "CRDB 0150");
 });
