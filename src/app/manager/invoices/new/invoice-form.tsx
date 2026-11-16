@@ -191,7 +191,7 @@ export function InvoiceForm({ cars, today, payment }: { cars: CarOption[]; today
             name="payment"
             rows={3}
             maxLength={MAX_INVOICE_TEXT}
-            placeholder="Mfano: Benki CRDB, akaunti 0150-xxxxxxx, jina Zuraja Magari. Au M-Pesa namba …"
+            placeholder="Mfano: Benki CRDB, akaunti 0150-xxxxxxx, jina Zuraja Transport and Logistics. Au M-Pesa namba …"
             defaultValue={failed?.values.payment ?? payment}
             className="input"
           />

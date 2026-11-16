@@ -367,7 +367,7 @@ try {
          INSERT INTO invoices (year, seq, number, customer_name, customer_contact, issued_on, due_on, payment_details, total,
                                created_by, created_at, paid_at, paid_by)
          SELECT next.year, next.seq, 'ANK-' || next.year || '-' || lpad(next.seq::text, 3, '0'), $2, $3, day.d, day.d + 14,
-                'Benki CRDB, akaunti 0150-0000000, jina Zuraja Magari', $4, m.id, now() - make_interval(days => $1),
+                'Benki CRDB, akaunti 0150-0000000, jina Zuraja Transport and Logistics', $4, m.id, now() - make_interval(days => $1),
                 CASE WHEN $5 THEN now() - make_interval(days => $1 - 7) END, CASE WHEN $5 THEN m.id END
            FROM day, next, users m WHERE m.email = $6
          RETURNING id`,
