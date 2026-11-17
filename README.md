@@ -49,22 +49,21 @@ Every shilling that goes out gets a payment voucher (hati ya malipo), numbered p
 (PV-2026-034) when Lipa is pressed, or as typed-in history is saved, and never reused
 (`payment_vouchers`, migrations 020 and 026; the first vouchers were numbered HM- and were renamed PV-
 with the same digits in 027, before any had been printed). The voucher follows the company's template, in English: A. details
-(department, vehicle, payment method, reference, who was paid), B. particulars (purpose, amount in
+(vehicle, payment method, reference, who was paid), B. particulars (purpose, amount in
 figures and English words), C. detailed expenditure, D. supporting documents ticked, E. review and
 authorisation filled from the app (requested by, checked by the meneja, approved by the meneja wa
 kiwanda, paid by the mhasibu) with a line for each to sign; there is no recipient section. What it
-needs is asked where it is known: the meneja picks the **Idara** when asking for money (a driver's
-request is always Usafirishaji); anyone asking can add an optional **mchanganuo** (lines of item ×
+needs is asked where it is known: anyone asking for money can add an optional **mchanganuo** (lines of item ×
 quantity × unit price, whose total becomes the amount; fuel prints as litres × price); the mhasibu's
 Lipa dialog asks the **njia ya malipo** (Taslimu, Simu, Benki, Hundi), a reference number (needed
 unless cash) and the **viambatisho** attached; typed-in history asks how it was paid
-(`money_requests.department`, `payment_method`, `supporting_documents`, `money_request_items`,
+(`money_requests.payment_method`, `supporting_documents`, `money_request_items`,
 migration 026; choices in `src/lib/voucher-fields.ts`). "Hati ya malipo" beside a payment opens its
 PDF; the **Hati za malipo** tab (mhasibu, meneja, meneja wa kiwanda, mkurugenzi) lists a period's
 vouchers with a download each and **Pakua zote** for all of them in one PDF (`/vouchers/pdf?from=&to=`,
 up to 400 a file). Staff open every voucher; a driver only their own. The company's name and the lines printed
 under it on invoices and vouchers live in `src/lib/company.ts` (`COMPANY_DETAILS`); for now that
-is "Usafirishaji wa mizigo" and the postal address and email; the phone and TIN go there once the company gives them.
+is the postal address and email; the phone and TIN go there once the company gives them.
 Drivers have a Maoni tab, a suggestion box. The meneja, meneja wa kiwanda and mkurugenzi read the
 notes on their own Maoni tab, anonymously: they see the text and the day, never the driver or the
 car (`feedback.author_id` is kept only so drivers see their own notes). Each reader marks a note
