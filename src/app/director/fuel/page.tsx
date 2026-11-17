@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import { FuelOverview, parseFuelTab } from "@/components/fuel-overview";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
@@ -7,6 +8,7 @@ import { requireUser } from "@/lib/session";
 
 export default async function DirectorFuelPage({ searchParams }: PageProps<"/director/fuel">) {
   await requireUser("director");
+  const t = await getT();
   const sp = await searchParams;
   const period = parseFuelPeriod(sp.kipindi);
   const data = await getFuelOverview(periodRange(period));
@@ -15,8 +17,11 @@ export default async function DirectorFuelPage({ searchParams }: PageProps<"/dir
     <main className="page">
       <LiveUpdates channel={MANAGERS_CHANNEL} />
       <PageHeader
-        title="Mafuta"
-        description="Km zilizotembewa na lita zilizotumika kati ya vipimo vya madereva, kwa kila gari na kila dereva."
+        title={t("Mafuta", "Fuel")}
+        description={t(
+          "Km zilizotembewa na lita zilizotumika kati ya vipimo vya madereva, kwa kila gari na kila dereva.",
+          "Km driven and litres used between drivers' readings, for every car and every driver.",
+        )}
       />
       <FuelOverview data={data} period={period} tab={parseFuelTab(sp.tab)} />
     </main>

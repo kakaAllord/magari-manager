@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import { parseReportParams } from "@/lib/report-params";
 import { todayInTanzania } from "@/lib/reports";
 import { MAX_VOUCHERS_PER_PDF, vouchersBetween } from "@/lib/requests";
@@ -8,13 +9,17 @@ import { buildVouchersPdf } from "@/lib/voucher-pdf";
 // page each and oldest first, to print and file. Staff only: a driver gets their own one by one.
 export async function GET(request: Request) {
   const user = await requireUser();
-  if (user.role === "driver") return new Response("Haipo", { status: 404 });
+  const t = await getT();
+  if (user.role === "driver") return new Response(t("Haipo", "Not found"), { status: 404 });
   const sp = Object.fromEntries(new URL(request.url).searchParams);
   const { from, to } = parseReportParams(sp, todayInTanzania());
   const vouchers = await vouchersBetween(from, to);
-  if (vouchers.length === 0) return new Response("Hakuna payment voucher kati ya tarehe hizo.", { status: 404 });
+  if (vouchers.length === 0) return new Response(t("Hakuna payment voucher kati ya tarehe hizo.", "No payment vouchers between those dates."), { status: 404 });
   if (vouchers.length > MAX_VOUCHERS_PER_PDF) {
-    return new Response(`Ni zaidi ya hati ${MAX_VOUCHERS_PER_PDF}. Chagua kipindi kifupi zaidi.`, { status: 413 });
+    return new Response(
+      t(`Ni zaidi ya voucher ${MAX_VOUCHERS_PER_PDF}. Chagua kipindi kifupi zaidi.`, `More than ${MAX_VOUCHERS_PER_PDF} vouchers. Pick a shorter period.`),
+      { status: 413 },
+    );
   }
   const name = `Hati-za-malipo_${from}_${to}`;
   const pdf = await buildVouchersPdf(vouchers, name);

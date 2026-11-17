@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import { PageHeader } from "@/components/page-header";
 import { AddStaff } from "@/components/staff-forms";
 import { StaffList } from "@/components/staff-list";
@@ -8,14 +9,18 @@ import { staffAddedBy, staffManagedBy } from "@/lib/staff";
 // vehicle managers the factory manager adds.
 export default async function ManagersPage() {
   await requireUser("director");
+  const t = await getT();
   return (
     <main className="page">
       <PageHeader
-        title="Wafanyakazi"
-        description="Mameneja wa kiwanda, mameneja na wahasibu. Mameneja wanaongezwa na meneja wa kiwanda."
+        title={t("Wafanyakazi", "Staff")}
+        description={t(
+          "Mameneja wa kiwanda, mameneja na wahasibu. Mameneja wanaongezwa na meneja wa kiwanda.",
+          "Factory managers, vehicle managers and accountants. Vehicle managers are added by the factory manager.",
+        )}
         action={<AddStaff roles={staffAddedBy.director!} />}
       />
-      <StaffList roles={staffManagedBy.director!} empty="Bado hakuna mfanyakazi. Bonyeza “Ongeza mfanyakazi”." />
+      <StaffList roles={staffManagedBy.director!} empty={t("Bado hakuna mfanyakazi. Bonyeza “Ongeza mfanyakazi”.", "No staff yet. Press “Add staff”.")} />
     </main>
   );
 }

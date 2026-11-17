@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import Link from "next/link";
 import { BalanceCard } from "@/components/balance-card";
 import { LiveUpdates } from "@/components/live-updates";
@@ -16,6 +17,7 @@ import { getCarMoneyThisMonth, getOverview } from "@/lib/stats";
 // money, driver and fuel.
 export default async function FactoryDashboard() {
   await requireUser("factory_manager");
+  const t = await getT();
   const [o, income, debtors, cars, fuel] = await Promise.all([
     getOverview(),
     getIncomeTotals(),
@@ -27,40 +29,40 @@ export default async function FactoryDashboard() {
   const waiting = o.awaiting_authorisation_count;
 
   const stages = [
-    { label: "Kwa meneja", count: o.pending_count, total: o.pending_total },
-    { label: "Kwa idhini yako", count: waiting, total: o.awaiting_authorisation_total, href: "/factory/requests" },
-    { label: "Kwa mhasibu kulipa", count: o.awaiting_issue_count, total: o.awaiting_issue_total },
-    { label: "Yamelipwa, risiti bado", count: o.awaiting_receipt_count },
+    { label: t("Kwa meneja", "With the vehicle manager"), count: o.pending_count, total: o.pending_total },
+    { label: t("Kwa idhini yako", "For your authorisation"), count: waiting, total: o.awaiting_authorisation_total, href: "/factory/requests" },
+    { label: t("Kwa mhasibu kulipa", "With the accountant to pay"), count: o.awaiting_issue_count, total: o.awaiting_issue_total },
+    { label: t("Yamelipwa, risiti bado", "Paid, receipt to come"), count: o.awaiting_receipt_count },
   ];
 
   return (
     <main className="page">
       <LiveUpdates channel={MANAGERS_CHANNEL} />
-      <PageHeader title="Dashibodi" description={formatToday()} />
+      <PageHeader title={t("Dashibodi", "Dashboard")} description={formatToday(t)} />
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Muhtasari">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label={t("Muhtasari", "Summary")}>
         <StatTile
-          label="Yanasubiri idhini yako"
+          label={t("Yanasubiri idhini yako", "Awaiting your authorisation")}
           value={String(waiting)}
           tone={waiting > 0 ? "warn" : undefined}
           href="/factory/requests"
         >
-          {waiting > 0 ? `${formatMoney(o.awaiting_authorisation_total)} · Yashughulikie` : "Hakuna linalosubiri"}
+          {waiting > 0 ? `${formatMoney(o.awaiting_authorisation_total)} · ${t("Yashughulikie", "Deal with them")}` : t("Hakuna linalosubiri", "Nothing waiting")}
         </StatTile>
-        <StatTile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok">
-          Mwezi uliopita {formatMoney(income.last_month)}
+        <StatTile label={t("Mapato mwezi huu", "Income this month")} value={formatMoney(income.this_month)} tone="ok">
+          {t("Mwezi uliopita", "Last month")} {formatMoney(income.last_month)}
           {Number(income.this_month_owed) > 0 && (
             <>
               <br />
-              Ndani yake deni {formatMoney(income.this_month_owed)}
+              {t("Ndani yake deni", "Of which owed")} {formatMoney(income.this_month_owed)}
             </>
           )}
         </StatTile>
-        <StatTile label="Matumizi mwezi huu" value={formatMoney(o.this_month)}>
-          Wiki hii {formatMoney(o.this_week)}
+        <StatTile label={t("Matumizi mwezi huu", "Spending this month")} value={formatMoney(o.this_month)}>
+          {t("Wiki hii", "This week")} {formatMoney(o.this_week)}
         </StatTile>
-        <StatTile label="Salio mwezi huu" value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
-          Mapato toa matumizi
+        <StatTile label={t("Salio mwezi huu", "Balance this month")} value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
+          {t("Mapato toa matumizi", "Income minus spending")}
           <NoDebtLine balance={balance} owed={income.this_month_owed} />
         </StatTile>
       </section>
@@ -82,7 +84,7 @@ export default async function FactoryDashboard() {
 
         <div className="grid gap-6">
           <section className="card">
-            <h2 className="font-semibold">Maombi yalipo sasa</h2>
+            <h2 className="font-semibold">{t("Maombi yalipo sasa", "Where requests are now")}</h2>
             <ul className="mt-2 divide-y divide-line text-sm">
               {stages.map((s) => (
                 <li key={s.label} className="flex items-center justify-between gap-3 py-2.5">
@@ -103,9 +105,10 @@ export default async function FactoryDashboard() {
               ))}
             </ul>
             <p className="mt-2 text-xs text-muted">
-              Magari {o.cars}
-              {o.cars_without_driver > 0 && ` (${o.cars_without_driver} hayana dereva)`} · Madereva {o.drivers}
-              {o.drivers_without_car > 0 && ` (${o.drivers_without_car} hawana gari)`}
+              {t("Magari", "Cars")} {o.cars}
+              {o.cars_without_driver > 0 && t(` (${o.cars_without_driver} hayana dereva)`, ` (${o.cars_without_driver} without a driver)`)} ·{" "}
+              {t("Madereva", "Drivers")} {o.drivers}
+              {o.drivers_without_car > 0 && t(` (${o.drivers_without_car} hawana gari)`, ` (${o.drivers_without_car} without a car)`)}
             </p>
           </section>
 

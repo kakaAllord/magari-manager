@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import { query } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 
@@ -5,7 +6,7 @@ import { requireUser } from "@/lib/session";
 export async function GET(_request: Request, ctx: RouteContext<"/receipts/[id]">) {
   const user = await requireUser();
   const id = Number((await ctx.params).id);
-  if (!Number.isInteger(id)) return new Response("Haipo", { status: 404 });
+  if (!Number.isInteger(id)) return new Response((await getT())("Haipo", "Not found"), { status: 404 });
 
   const rows = await query<{ content_type: string; data: Buffer }>(
     `SELECT rc.content_type, rc.data FROM receipts rc JOIN money_requests r ON r.id = rc.request_id
@@ -13,7 +14,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/receipts/[id]">
     [id, user.role === "driver" ? user.id : null],
   );
   const receipt = rows[0];
-  if (!receipt) return new Response("Haipo", { status: 404 });
+  if (!receipt) return new Response((await getT())("Haipo", "Not found"), { status: 404 });
 
   return new Response(new Uint8Array(receipt.data), {
     headers: {

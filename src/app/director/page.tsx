@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import { BalanceCard } from "@/components/balance-card";
 import { LiveUpdates } from "@/components/live-updates";
 import { IncomeBreakdown } from "@/components/income-breakdown";
@@ -15,6 +16,7 @@ import { getCarMoneyThisMonth, getOverview } from "@/lib/stats";
 // Who asked, approved or paid what lives in the reports, not here.
 export default async function DirectorDashboard() {
   await requireUser("director");
+  const t = await getT();
   const [o, income, debtors, cars, fuel] = await Promise.all([
     getOverview(),
     getIncomeTotals(),
@@ -29,27 +31,27 @@ export default async function DirectorDashboard() {
   return (
     <main className="page">
       <LiveUpdates channel={MANAGERS_CHANNEL} />
-      <PageHeader title="Dashibodi" description={formatToday()} />
+      <PageHeader title={t("Dashibodi", "Dashboard")} description={formatToday(t)} />
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Muhtasari wa mwezi huu">
-        <StatTile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok">
-          Mwezi uliopita {formatMoney(income.last_month)}
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label={t("Muhtasari wa mwezi huu", "This month's summary")}>
+        <StatTile label={t("Mapato mwezi huu", "Income this month")} value={formatMoney(income.this_month)} tone="ok">
+          {t("Mwezi uliopita", "Last month")} {formatMoney(income.last_month)}
           {Number(income.this_month_owed) > 0 && (
             <>
               <br />
-              Ndani yake deni {formatMoney(income.this_month_owed)}
+              {t("Ndani yake deni", "Of which owed")} {formatMoney(income.this_month_owed)}
             </>
           )}
         </StatTile>
-        <StatTile label="Matumizi mwezi huu" value={formatMoney(o.this_month)}>
-          Mwezi uliopita {formatMoney(o.last_month)}
+        <StatTile label={t("Matumizi mwezi huu", "Spending this month")} value={formatMoney(o.this_month)}>
+          {t("Mwezi uliopita", "Last month")} {formatMoney(o.last_month)}
         </StatTile>
-        <StatTile label="Salio mwezi huu" value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
-          Mwezi uliopita {keepMinus(formatMoney(lastBalance))}
+        <StatTile label={t("Salio mwezi huu", "Balance this month")} value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
+          {t("Mwezi uliopita", "Last month")} {keepMinus(formatMoney(lastBalance))}
           <NoDebtLine balance={balance} owed={income.this_month_owed} />
         </StatTile>
-        <StatTile label="Salio tangu mwanzo" value={formatMoney(allTime)} tone={allTime < 0 ? "danger" : "ok"}>
-          Mapato {formatMoney(income.all_time)}
+        <StatTile label={t("Salio tangu mwanzo", "Balance since the start")} value={formatMoney(allTime)} tone={allTime < 0 ? "danger" : "ok"}>
+          {t("Mapato", "Income")} {formatMoney(income.all_time)}
           <NoDebtLine balance={allTime} owed={income.owed} />
         </StatTile>
       </section>
