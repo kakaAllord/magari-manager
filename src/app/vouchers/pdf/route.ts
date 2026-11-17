@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const sp = Object.fromEntries(new URL(request.url).searchParams);
   const { from, to } = parseReportParams(sp, todayInTanzania());
   const vouchers = await vouchersBetween(from, to);
-  if (vouchers.length === 0) return new Response("Hakuna hati za malipo kati ya tarehe hizo.", { status: 404 });
+  if (vouchers.length === 0) return new Response("Hakuna payment voucher kati ya tarehe hizo.", { status: 404 });
   if (vouchers.length > MAX_VOUCHERS_PER_PDF) {
     return new Response(`Ni zaidi ya hati ${MAX_VOUCHERS_PER_PDF}. Chagua kipindi kifupi zaidi.`, { status: 413 });
   }

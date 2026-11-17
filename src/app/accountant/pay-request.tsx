@@ -96,7 +96,7 @@ export function PayRequest({ id, amount, summary, fuel }: { id: number; amount: 
             <Err text={errors.other} />
           </fieldset>
           <Err text={errors.form} />
-          <p className="text-xs text-muted">Hati ya malipo inatengenezwa yenyewe ukithibitisha, na ombi linahamia Risiti.</p>
+          <p className="text-xs text-muted">Payment voucher inatengenezwa yenyewe ukithibitisha, na ombi linahamia Risiti.</p>
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost">
               Ghairi

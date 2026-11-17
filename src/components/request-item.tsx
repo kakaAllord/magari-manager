@@ -67,7 +67,7 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
             <>
               {" · "}
               <a href={`/vouchers/${r.id}`} target="_blank" className="font-medium text-accent underline">
-                Hati ya malipo {r.voucher_number}
+                Payment voucher {r.voucher_number}
               </a>
             </>
           )}
@@ -104,7 +104,7 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
             <>
               {" · "}
               <a href={`/vouchers/${r.id}`} target="_blank" className="font-medium text-accent underline">
-                Hati ya malipo {r.voucher_number}
+                Payment voucher {r.voucher_number}
               </a>
             </>
           )}

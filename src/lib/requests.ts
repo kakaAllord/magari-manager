@@ -18,7 +18,7 @@ export type MoneyRequest = {
   factory_reviewer_name: string | null;
   issued_at: Date | null;
   issue_note: string | null;
-  // The payment voucher (hati ya malipo) of a payment made in the app; typed-in history has none.
+  // The payment voucher of a payment made in the app; typed-in history has none.
   voucher_number: string | null;
   requester_id: number;
   requester_name: string;

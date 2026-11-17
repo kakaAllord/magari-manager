@@ -10,7 +10,7 @@ import { paymentMethod } from "@/lib/voucher-fields";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-// Hati za malipo: every payment's voucher for a period (this month by default), newest first, with
+// Payment vouchers: every payment's voucher for a period (this month by default), newest first, with
 // one download each and one button for all of them in a single PDF. Shared by every staff role.
 export async function VoucherList({ searchParams }: { searchParams: SearchParams }) {
   const today = todayInTanzania();
@@ -23,7 +23,7 @@ export async function VoucherList({ searchParams }: { searchParams: SearchParams
   return (
     <main className="page">
       <PageHeader
-        title="Hati za malipo"
+        title="Payment vouchers"
         description="Kila pesa iliyotoka ina hati yake ya malipo. Pakua moja, au zote za kipindi kwenye PDF moja."
       />
       {/* One shrinkable column, so a long name or reason truncates instead of widening the card. */}
@@ -67,7 +67,7 @@ export async function VoucherList({ searchParams }: { searchParams: SearchParams
                   href={`/vouchers/${r.id}`}
                   target="_blank"
                   className="btn btn-ghost size-11 shrink-0 rounded-full p-0 sm:size-9"
-                  aria-label={`Pakua hati ya malipo ${r.voucher_number}`}
+                  aria-label={`Pakua payment voucher ${r.voucher_number}`}
                   title="Pakua PDF"
                 >
                   <Icon name="download" className="size-4" />

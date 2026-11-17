@@ -64,7 +64,7 @@ export default async function AccountantPage({ searchParams }: PageProps<"/accou
         {tab === "kulipa" ? (
           <>
             <p className="text-sm text-muted">
-              Bonyeza Lipa, chagua njia ya malipo na viambatisho. Hati ya malipo inatengenezwa yenyewe, na ombi linahamia Risiti hadi uweke risiti yake.
+              Bonyeza Lipa, chagua njia ya malipo na viambatisho. Payment voucher inatengenezwa yenyewe, na ombi linahamia Risiti hadi uweke risiti yake.
             </p>
             {waiting.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted">Umelipa yote. 👍</p>

@@ -8,7 +8,7 @@ export function PaidToast({ id, number }: { id: number; number: string }) {
   const router = useRouter();
   return (
     <Toast
-      message={`Imelipwa. Hati ya malipo ${number} iko tayari.`}
+      message={`Imelipwa. Payment voucher ${number} iko tayari.`}
       link={{ href: `/vouchers/${id}`, label: "Pakua hati" }}
       onClose={() => router.replace("/accountant", { scroll: false })}
     />

@@ -2,7 +2,7 @@ import { getVoucherRequest } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
 import { buildVoucherPdf } from "@/lib/voucher-pdf";
 
-// A payment's voucher (hati ya malipo) as a PDF to print, sign and file, named by its number.
+// A payment's voucher as a PDF to print, sign and file, named by its number.
 // Staff see every voucher; a driver sees only their own, as with receipts.
 export async function GET(_request: Request, ctx: RouteContext<"/vouchers/[id]">) {
   const user = await requireUser();
