@@ -4,5 +4,10 @@ export const COMPANY = "Zuraja Transport and Logistics";
 export const COMPANY_SHORT = COMPANY;
 
 // Printed under the name on invoices and payment vouchers, one line each, as on the company's paper
-// invoice. Add the phone and TIN here as lines once the company gives them.
-export const COMPANY_DETAILS: string[] = ["S.L.P. 225, Muleba - Kagera", "Barua pepe: zurajalogistics@gmail.com"];
+// invoice.
+export const COMPANY_DETAILS: string[] = [
+  "S.L.P. 225, Muleba - Kagera",
+  "Simu: 0754 662 419",
+  "Barua pepe: zurajalogistics@gmail.com",
+  "TIN: 111-579-253",
+];
