@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/components/lang-provider";
 import { useActionState, useState } from "react";
 import { createIncome } from "@/app/actions/incomes";
 import { DuplicateWarning } from "@/components/duplicate-warning";
@@ -14,6 +15,7 @@ import { cargoUnit, MAX_CUSTOMER_LENGTH, MAX_DESCRIPTION_LENGTH, MAX_DESTINATION
 // By default the client paid it all. "Amelipa sehemu" takes the client's name and what they paid now
 // (0 when they paid nothing), and the rest is their debt.
 export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }) {
+  const t = useT();
   const [state, action, pending] = useActionState(createIncome, undefined);
   const failed = state && !state.ok ? state : undefined;
   const [past, setPast] = useState(false);
@@ -36,11 +38,11 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
   }
   const type = (field: keyof typeof blank) => (e: React.FormEvent<HTMLInputElement>) => {
     const value = e.currentTarget.value;
-    setTyped((t) => ({ ...t, [field]: value }));
+    setTyped((prev) => ({ ...prev, [field]: value }));
   };
-  const cargo = parseCargo(typed.rate, typed.quantity, unit, "");
+  const cargo = parseCargo(typed.rate, typed.quantity, unit, "", t);
   const total = "amount" in cargo ? cargo.amount : null;
-  const per = unit === "kg" ? "kilo" : "tani";
+  const per = unit === "kg" ? t("kilo", "kilo") : t("tani", "tonne");
   // The job's total, cargo or not, and what stays owed after what was paid now.
   const jobTotal = kind === "cargo" ? total : shillings(typed.amount) > 0 ? shillings(typed.amount) : null;
   const paidNow = typed.paid.trim() === "" ? null : shillings(typed.paid);
@@ -49,12 +51,12 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2">
       <fieldset className="sm:col-span-2">
-        <legend className="label">Aina ya mapato</legend>
+        <legend className="label">{t("Aina ya mapato", "Kind of income")}</legend>
         <div className="grid grid-cols-2 gap-1 rounded-lg border border-line p-1">
           {(
             [
-              ["cargo", "Mzigo (tani au kilo)"],
-              ["other", "Mengineyo"],
+              ["cargo", t("Mzigo (tani au kilo)", "Cargo (tonnes or kilos)")],
+              ["other", t("Mengineyo", "Other")],
             ] as const
           ).map(([value, label]) => (
             <label
@@ -76,7 +78,7 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
         </div>
       </fieldset>
       <label className="block">
-        <span className="label">Gari</span>
+        <span className="label">{t("Gari", "Car")}</span>
         {/* React doesn't apply a new defaultValue to a mounted select, so remount it to keep the car
             picked when the form comes back with an error. */}
         <select
@@ -87,7 +89,7 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
           className="input"
         >
           <option value="" disabled>
-            Chagua namba ya gari
+            {t("Chagua namba ya gari", "Pick the car's plate")}
           </option>
           {cars.map((c) => (
             <option key={c.id} value={c.id}>
@@ -101,12 +103,12 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
       {kind === "cargo" ? (
         <label className="block">
           <span className="label">
-            Kwenda <span className="font-normal text-muted">(si lazima)</span>
+            {t("Kwenda", "Destination")} <span className="font-normal text-muted">{t("(si lazima)", "(optional)")}</span>
           </span>
           <input
             name="destination"
             maxLength={MAX_DESTINATION_LENGTH}
-            placeholder="Mfano: Dar es Salaam - Mwanza"
+            placeholder={t("Mfano: Dar es Salaam - Mwanza", "E.g. Dar es Salaam - Mwanza")}
             defaultValue={failed?.values.destination}
             className="input"
           />
@@ -114,7 +116,7 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
         </label>
       ) : (
         <label className="block">
-          <span className="label">Kiasi</span>
+          <span className="label">{t("Kiasi", "Amount")}</span>
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
             <input
@@ -133,12 +135,12 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
       {kind === "cargo" && (
         <div className="grid gap-2 sm:col-span-2">
           <fieldset>
-            <legend className="label">Bei kwa</legend>
+            <legend className="label">{t("Bei kwa", "Priced by")}</legend>
             <div className="grid grid-cols-2 gap-1 rounded-lg border border-line p-1">
               {(
                 [
-                  ["tonne", "Tani"],
-                  ["kg", "Kilo (kg)"],
+                  ["tonne", t("Tani", "Tonne")],
+                  ["kg", t("Kilo (kg)", "Kilo (kg)")],
                 ] as const
               ).map(([value, label]) => (
                 <label
@@ -161,7 +163,7 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
           </fieldset>
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="label">Bei kwa {per}</span>
+              <span className="label">{t(`Bei kwa ${per}`, `Price per ${per}`)}</span>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
                 <input
@@ -177,7 +179,7 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
               {failed?.errors.rate && <p className="mt-1 text-sm text-danger">{failed.errors.rate}</p>}
             </label>
             <label className="block">
-              <span className="label">{unit === "kg" ? "Kilo" : "Tani"}</span>
+              <span className="label">{unit === "kg" ? t("Kilo", "Kilos") : t("Tani", "Tonnes")}</span>
               <div className="relative">
                 <input
                   name="quantity"
@@ -196,19 +198,19 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
             </label>
           </div>
           <div className="flex items-baseline justify-between gap-3 rounded-lg bg-background px-3 py-2.5" aria-live="polite">
-            <span className="text-sm text-muted">Jumla ya mapato</span>
+            <span className="text-sm text-muted">{t("Jumla ya mapato", "Total income")}</span>
             <span className="text-lg font-semibold text-ok tabular-nums">{total === null ? "–" : formatMoney(total)}</span>
           </div>
           {failed?.errors.amount && <p className="text-sm text-danger">{failed.errors.amount}</p>}
         </div>
       )}
       <fieldset className="grid gap-3 sm:col-span-2">
-        <legend className="label">Malipo</legend>
+        <legend className="label">{t("Malipo", "Payment")}</legend>
         <div className="grid grid-cols-2 gap-1 rounded-lg border border-line p-1">
           {(
             [
-              ["full", "Amelipa yote"],
-              ["part", "Amelipa sehemu / deni"],
+              ["full", t("Amelipa yote", "Paid in full")],
+              ["part", t("Amelipa sehemu / deni", "Part paid / debt")],
             ] as const
           ).map(([value, label]) => (
             <label
@@ -234,20 +236,20 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
         {payment === "part" && (
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="label">Jina la mteja</span>
+              <span className="label">{t("Jina la mteja", "Client's name")}</span>
               <input
                 name="customer"
                 required
                 maxLength={MAX_CUSTOMER_LENGTH}
                 autoComplete="off"
-                placeholder="Mfano: Kilimanjaro Traders"
+                placeholder={t("Mfano: Kilimanjaro Traders", "E.g. Kilimanjaro Traders")}
                 defaultValue={failed?.values.customer}
                 className="input"
               />
               {failed?.errors.customer && <p className="mt-1 text-sm text-danger">{failed.errors.customer}</p>}
             </label>
             <label className="block">
-              <span className="label">Amelipa sasa</span>
+              <span className="label">{t("Amelipa sasa", "Paid now")}</span>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
                 <input
@@ -263,11 +265,11 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
               {failed?.errors.paid ? (
                 <p className="mt-1 text-sm text-danger">{failed.errors.paid}</p>
               ) : (
-                <p className="mt-1 text-xs text-muted">Andika 0 kama hajalipa chochote: yote yatakuwa deni.</p>
+                <p className="mt-1 text-xs text-muted">{t("Andika 0 kama hajalipa chochote: yote yatakuwa deni.", "Write 0 if they paid nothing: it all becomes a debt.")}</p>
               )}
             </label>
             <div className="flex items-baseline justify-between gap-3 rounded-lg bg-warn-soft px-3 py-2.5 sm:col-span-2" aria-live="polite">
-              <span className="text-sm text-muted">Deni litakalobaki</span>
+              <span className="text-sm text-muted">{t("Deni litakalobaki", "Debt left")}</span>
               <span className="text-lg font-semibold text-warn tabular-nums">
                 {owed === null || owed < 0 ? "–" : formatMoney(owed)}
               </span>
@@ -280,17 +282,21 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
         defaultValue={failed?.values.date}
         error={failed?.errors.date}
         onPast={setPast}
-        pastHint="Tarehe iliyopita: yatahifadhiwa kama mapato ya zamani ya siku hiyo."
+        pastHint={t("Tarehe iliyopita: yatahifadhiwa kama mapato ya zamani ya siku hiyo.", "A past date: it is saved as past income of that day.")}
       />
       <label className="block sm:col-span-2">
         <span className="label">
-          Maelezo <span className="font-normal text-muted">(si lazima)</span>
+          {t("Maelezo", "Description")} <span className="font-normal text-muted">{t("(si lazima)", "(optional)")}</span>
         </span>
         <textarea
           name="description"
           rows={2}
           maxLength={MAX_DESCRIPTION_LENGTH}
-          placeholder={kind === "cargo" ? "Mfano: mzigo wa saruji, mteja Kilimanjaro Traders" : "Mfano: Safari ya Arusha, mteja amelipa siku mbili"}
+          placeholder={
+            kind === "cargo"
+              ? t("Mfano: mzigo wa saruji, mteja Kilimanjaro Traders", "E.g. cement load, client Kilimanjaro Traders")
+              : t("Mfano: Safari ya Arusha, mteja amelipa siku mbili", "E.g. Arusha trip, client paid for two days")
+          }
           defaultValue={failed?.values.description}
           className="input"
         />
@@ -298,20 +304,20 @@ export function IncomeForm({ cars, today }: { cars: CarOption[]; today: string }
       </label>
       {failed?.duplicate && (
         <div className="sm:col-span-2">
-          <DuplicateWarning match={failed.duplicate} what="Mapato" />
+          <DuplicateWarning match={failed.duplicate} what={t("Mapato", "Income")} />
         </div>
       )}
       <div className="grid gap-2 sm:col-span-2 sm:flex sm:items-center">
         <button type="submit" disabled={pending} className="btn btn-primary">
           {pending
-            ? "Inahifadhi…"
+            ? t("Inahifadhi…", "Saving…")
             : failed?.duplicate
-              ? "Ndiyo, ni mapya: hifadhi"
+              ? t("Ndiyo, ni mapya: hifadhi", "Yes, it's new: save")
               : past
-                ? "Hifadhi mapato ya zamani"
+                ? t("Hifadhi mapato ya zamani", "Save past income")
                 : payment === "part"
-                  ? "Hifadhi mapato na deni"
-                  : "Hifadhi mapato"}
+                  ? t("Hifadhi mapato na deni", "Save income and debt")
+                  : t("Hifadhi mapato", "Save income")}
         </button>
         {state?.ok && (
           <p role="status" className="text-sm text-ok">

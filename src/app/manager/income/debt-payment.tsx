@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/components/lang-provider";
 import { createContext, use, useActionState, useState } from "react";
 import { recordDebtPayment, type DebtPaymentState } from "@/app/actions/incomes";
 import { Dialog } from "@/components/dialog";
@@ -23,6 +24,7 @@ export function DebtToasts({ children }: { children: React.ReactNode }) {
 // "Pokea malipo" on a debt: the amount starts at everything still owed, and can be lowered when the
 // client pays only some of it again.
 export function DebtPayment({ incomeId, customer, owed }: { incomeId: number; customer: string; owed: number }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const showToast = use(ShowToast);
   const [state, action, pending] = useActionState(async (prev: DebtPaymentState, formData: FormData) => {
@@ -38,19 +40,19 @@ export function DebtPayment({ incomeId, customer, owed }: { incomeId: number; cu
     <>
       <div className="flex justify-end">
         <button type="button" onClick={() => setOpen(true)} className="btn btn-primary">
-          Pokea malipo
+          {t("Pokea malipo", "Take payment")}
         </button>
       </div>
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        title={`Malipo ya ${customer}`}
-        description={`Anadaiwa ${formatMoney(owed)}. Akilipa yote, deni linafungwa.`}
+        title={t(`Malipo ya ${customer}`, `Payment from ${customer}`)}
+        description={t(`Anadaiwa ${formatMoney(owed)}. Akilipa yote, deni linafungwa.`, `Owes ${formatMoney(owed)}. Paying it all closes the debt.`)}
       >
         <form action={action} className="grid gap-3">
           <input type="hidden" name="incomeId" value={incomeId} />
           <label className="block">
-            <span className="label">Amelipa</span>
+            <span className="label">{t("Amelipa", "Paid")}</span>
             <div className="relative">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
               <input
@@ -64,23 +66,23 @@ export function DebtPayment({ incomeId, customer, owed }: { incomeId: number; cu
           </label>
           <label className="block">
             <span className="label">
-              Kumbukumbu <span className="font-normal text-muted">(si lazima)</span>
+              {t("Kumbukumbu", "Reference")} <span className="font-normal text-muted">{t("(si lazima)", "(optional)")}</span>
             </span>
             <input
               name="note"
               maxLength={MAX_ISSUE_NOTE_LENGTH}
               autoComplete="off"
-              placeholder="Mfano: namba ya M-Pesa au benki"
+              placeholder={t("Mfano: namba ya M-Pesa au benki", "E.g. M-Pesa or bank number")}
               className="input"
             />
           </label>
           {state && !state.ok && <p className="text-sm text-danger">{state.error}</p>}
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost">
-              Ghairi
+              {t("Ghairi", "Cancel")}
             </button>
             <button type="submit" disabled={pending} className="btn btn-primary">
-              {pending ? "Inahifadhi…" : "Hifadhi malipo"}
+              {pending ? t("Inahifadhi…", "Saving…") : t("Hifadhi malipo", "Save payment")}
             </button>
           </div>
         </form>

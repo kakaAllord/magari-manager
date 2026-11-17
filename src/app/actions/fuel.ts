@@ -1,5 +1,6 @@
 "use server";
 
+import { getT } from "@/lib/lang";
 import { revalidatePath } from "next/cache";
 import { query, transaction } from "@/lib/db";
 import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
@@ -28,14 +29,15 @@ const refresh = async () => {
 // the last one, without the driver's limit on how far it jumps.
 export async function recordReading(_prev: ReadingFormState, formData: FormData): Promise<ReadingFormState> {
   const manager = await requireUser("manager");
+  const t = await getT();
   const values = {
     carId: String(formData.get("carId") ?? ""),
     odometer: String(formData.get("odometer") ?? ""),
     gauge: String(formData.get("gauge") ?? ""),
   };
   const carId = Number(values.carId);
-  const parsed = parseReading(values);
-  const carError = Number.isInteger(carId) && carId > 0 ? undefined : "Chagua gari.";
+  const parsed = parseReading(values, t);
+  const carError = Number.isInteger(carId) && carId > 0 ? undefined : t("Chagua gari.", "Pick a car.");
   if (!parsed.ok || carError) {
     return { ok: false, errors: { ...(parsed.ok ? {} : parsed.errors), carId: carError }, values };
   }
@@ -47,12 +49,12 @@ export async function recordReading(_prev: ReadingFormState, formData: FormData)
       "SELECT plate, driver_id FROM cars WHERE id = $1 FOR UPDATE",
       [carId],
     );
-    if (!car.rows[0]) return { error: { carId: "Gari hilo halipo tena." } };
+    if (!car.rows[0]) return { error: { carId: t("Gari hilo halipo tena.", "That car is gone.") } };
     const last = await client.query<{ odometer_km: number }>(
       "SELECT odometer_km FROM fuel_readings WHERE car_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1",
       [carId],
     );
-    const odometerError = checkOdometer(parsed.odometer, last.rows[0]?.odometer_km ?? null, false);
+    const odometerError = checkOdometer(parsed.odometer, last.rows[0]?.odometer_km ?? null, false, t);
     if (odometerError) return { error: { odometer: odometerError } };
     await client.query(
       `INSERT INTO fuel_readings (car_id, driver_id, recorded_by, odometer_km, gauge_eighths)
@@ -63,7 +65,7 @@ export async function recordReading(_prev: ReadingFormState, formData: FormData)
   });
   if ("error" in result) return { ok: false, errors: result.error, values };
   await refresh();
-  return { ok: true, message: `Kipimo cha ${result.plate} kimehifadhiwa.`, savedAt: Date.now() };
+  return { ok: true, message: t(`Kipimo cha ${result.plate} kimehifadhiwa.`, `Reading for ${result.plate} saved.`), savedAt: Date.now() };
 }
 
 // Only a car's latest reading can go, so a typo can be fixed without rewriting history.
@@ -85,14 +87,15 @@ export type SettingsState = { ok: boolean; message: string } | undefined;
 
 export async function saveTank(_prev: SettingsState, formData: FormData): Promise<SettingsState> {
   await requireUser("manager");
+  const t = await getT();
   const carId = Number(formData.get("carId"));
   const fuelType = formData.get("fuelType");
-  const tank = parseTankLitres(String(formData.get("tank") ?? ""));
+  const tank = parseTankLitres(String(formData.get("tank") ?? ""), t);
   if (!Number.isInteger(carId) || (fuelType !== "petrol" && fuelType !== "diesel")) {
-    return { ok: false, message: "Chagua aina ya mafuta." };
+    return { ok: false, message: t("Chagua aina ya mafuta.", "Pick the fuel type.") };
   }
   if ("error" in tank) return { ok: false, message: tank.error };
   await query("UPDATE cars SET fuel_type = $2, tank_litres = $3 WHERE id = $1", [carId, fuelType, tank.litres]);
   await refresh();
-  return { ok: true, message: "Imehifadhiwa." };
+  return { ok: true, message: t("Imehifadhiwa.", "Saved.") };
 }

@@ -1,3 +1,5 @@
+import { sourceLabel } from "@/lib/reports";
+import { getT } from "@/lib/lang";
 import Link from "next/link";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageHeader } from "@/components/page-header";
@@ -16,6 +18,7 @@ const RECENT = 5;
 // lives on the history page. The tab lives in the URL so live refreshes keep it.
 export default async function IncomePage({ searchParams }: PageProps<"/manager/income">) {
   const manager = await requireUser("manager");
+  const t = await getT();
   const tab = (await searchParams).tab === "madeni" ? "madeni" : "karibuni";
   const [recent, totals, cars, debts] = await Promise.all([
     listIncomes(manager.id, { limit: RECENT, byEntry: true }),
@@ -28,18 +31,24 @@ export default async function IncomePage({ searchParams }: PageProps<"/manager/i
     <main className="page">
       <LiveUpdates channel={MANAGERS_CHANNEL} />
       <PageHeader
-        title="Mapato"
+        title={t("Mapato", "Income")}
         description={
-          `Mwezi huu ${formatMoney(totals.this_month)} · mwezi uliopita ${formatMoney(totals.last_month)}` +
-          (totals.debts > 0 ? ` · wateja wanadaiwa ${formatMoney(totals.owed)}` : "")
+          t(
+            `Mwezi huu ${formatMoney(totals.this_month)} · mwezi uliopita ${formatMoney(totals.last_month)}`,
+            `This month ${formatMoney(totals.this_month)} · last month ${formatMoney(totals.last_month)}`,
+          ) + (totals.debts > 0 ? t(` · wateja wanadaiwa ${formatMoney(totals.owed)}`, ` · clients owe ${formatMoney(totals.owed)}`) : "")
         }
       />
 
       <section className="card">
-        <h2 className="mb-4 text-lg font-semibold">Rekodi mapato</h2>
+        <h2 className="mb-4 text-lg font-semibold">{t("Rekodi mapato", "Record income")}</h2>
         {cars.length === 0 ? (
           <p className="text-sm text-muted">
-            Mapato yanarekodiwa kwa gari. <Link href="/manager/cars" className="font-medium text-accent underline">Ongeza gari</Link> kwanza.
+            {t("Mapato yanarekodiwa kwa gari.", "Income is recorded per car.")}{" "}
+            <Link href="/manager/cars" className="font-medium text-accent underline">
+              {t("Ongeza gari", "Add a car")}
+            </Link>{" "}
+            {t("kwanza.", "first.")}
           </p>
         ) : (
           <IncomeForm cars={cars} today={todayInTanzania()} />
@@ -47,22 +56,22 @@ export default async function IncomePage({ searchParams }: PageProps<"/manager/i
       </section>
 
       <section className="card grid gap-3">
-        <nav className="-mx-4 -mt-4 flex border-b border-line sm:-mx-5 sm:-mt-5" aria-label="Mapato ya karibuni au madeni">
+        <nav className="-mx-4 -mt-4 flex border-b border-line sm:-mx-5 sm:-mt-5" aria-label={t("Mapato ya karibuni au madeni", "Recent income or debts")}>
           {(
             [
-              { key: "karibuni", label: "Ya karibuni", count: null, href: "/manager/income" },
-              { key: "madeni", label: "Madeni", count: debts.length, href: "/manager/income?tab=madeni" },
+              { key: "karibuni", label: t("Ya karibuni", "Recent"), count: null, href: "/manager/income" },
+              { key: "madeni", label: t("Madeni", "Debts"), count: debts.length, href: "/manager/income?tab=madeni" },
             ] as const
-          ).map((t) => (
+          ).map((x) => (
             <Link
-              key={t.key}
-              href={t.href}
+              key={x.key}
+              href={x.href}
               scroll={false}
-              aria-current={tab === t.key ? "page" : undefined}
+              aria-current={tab === x.key ? "page" : undefined}
               className="flex flex-1 items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted hover:text-foreground aria-[current=page]:border-accent aria-[current=page]:text-foreground"
             >
-              {t.label}
-              {t.count !== null && <span className="rounded-full bg-background px-2 text-xs tabular-nums">{t.count}</span>}
+              {x.label}
+              {x.count !== null && <span className="rounded-full bg-background px-2 text-xs tabular-nums">{x.count}</span>}
             </Link>
           ))}
         </nav>
@@ -70,13 +79,16 @@ export default async function IncomePage({ searchParams }: PageProps<"/manager/i
         {tab === "karibuni" ? (
           <>
             <p className="text-sm text-muted">
-              Umekosea? Bonyeza Badilisha kurekebisha mapato, au uyafute ndani ya saa {DELETE_WINDOW_HOURS}. Mkurugenzi ataona yaliyofutwa na yaliyobadilishwa.
+              {t(
+                `Umekosea? Bonyeza Badilisha kurekebisha mapato, au uyafute ndani ya saa ${DELETE_WINDOW_HOURS}. Mkurugenzi ataona yaliyofutwa na yaliyobadilishwa.`,
+                `A mistake? Press Edit to correct the income, or delete it within ${DELETE_WINDOW_HOURS} hours. The director sees what was deleted and changed.`,
+              )}
             </p>
-            <IncomeList incomes={recent.rows} empty="Bado hakuna mapato. Rekodi ya kwanza hapo juu." edit={{ cars, today: todayInTanzania() }} />
+            <IncomeList incomes={recent.rows} empty={t("Bado hakuna mapato. Rekodi ya kwanza hapo juu.", "No income yet. Record the first above.")} edit={{ cars, today: todayInTanzania() }} />
             {recent.total > RECENT && (
               <p className="text-sm">
                 <Link href="/manager/income/history" className="font-medium text-accent underline">
-                  Historia ya mapato yote ({recent.total}) →
+                  {t("Historia ya mapato yote", "History of all income")} ({recent.total}) →
                 </Link>
               </p>
             )}
@@ -85,17 +97,20 @@ export default async function IncomePage({ searchParams }: PageProps<"/manager/i
           <>
             {debts.length > 0 && (
               <p className="text-sm text-muted">
-                Wateja wanadaiwa {formatMoney(totals.owed)}, ya zamani juu. Mteja akilipa, bonyeza Pokea malipo.
+                {t(
+                  `Wateja wanadaiwa ${formatMoney(totals.owed)}, ya zamani juu. Mteja akilipa, bonyeza Pokea malipo.`,
+                  `Clients owe ${formatMoney(totals.owed)}, oldest first. When a client pays, press Take payment.`,
+                )}
               </p>
             )}
             <DebtToasts>
               <IncomeList
                 incomes={debts}
-                empty="Madeni yote yamelipwa. 👍"
+                empty={`${t("Madeni yote yamelipwa.", "All debts are paid.")} 👍`}
                 action={(i) => (
                   <DebtPayment
                     incomeId={i.id}
-                    customer={i.customer_name ?? i.source}
+                    customer={i.customer_name ?? sourceLabel(i.source, t)}
                     owed={Number(i.amount) - Number(i.amount_paid)}
                   />
                 )}

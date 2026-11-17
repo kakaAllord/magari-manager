@@ -1,5 +1,6 @@
 "use server";
 
+import { getT } from "@/lib/lang";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { claimDriverlessReading, transaction } from "@/lib/db";
@@ -10,13 +11,14 @@ export type DriverFormState = { ok: boolean; message: string } | undefined;
 
 export async function createDriver(_prev: DriverFormState, formData: FormData): Promise<DriverFormState> {
   await requireUser("manager");
+  const t = await getT();
   const name = String(formData.get("name") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const rawCar = String(formData.get("carId") ?? "");
   const carId = rawCar === "" ? null : Number(rawCar);
 
-  if (name.length < 2) return { ok: false, message: "Andika jina la dereva." };
-  const passwordError = checkNewPassword(password);
+  if (name.length < 2) return { ok: false, message: t("Andika jina la dereva.", "Write the driver's name.") };
+  const passwordError = checkNewPassword(password, t);
   if (passwordError) return { ok: false, message: passwordError };
 
   const hash = await bcrypt.hash(password, 10);
@@ -39,14 +41,14 @@ export async function createDriver(_prev: DriverFormState, formData: FormData): 
   });
 
   if (plate instanceof CarTakenError) {
-    return { ok: false, message: "Gari hilo tayari lina dereva. Chagua gari lingine au fungua ukurasa upya." };
+    return { ok: false, message: t("Gari hilo tayari lina dereva. Chagua gari lingine au fungua ukurasa upya.", "That car has a driver already. Pick another car or reload the page.") };
   }
   revalidatePath("/manager", "layout");
   return {
     ok: true,
     message: plate
-      ? `${name} ameongezwa. Ataingia kwa namba ${plate} na nenosiri ulilochagua.`
-      : `${name} ameongezwa. Mpe gari kwenye ukurasa wa Magari ili aweze kuingia.`,
+      ? t(`${name} ameongezwa. Ataingia kwa namba ${plate} na nenosiri ulilochagua.`, `${name} was added. They sign in with ${plate} and the password you chose.`)
+      : t(`${name} ameongezwa. Mpe gari kwenye ukurasa wa Magari ili aweze kuingia.`, `${name} was added. Give them a car on Cars so they can sign in.`),
   };
 }
 
@@ -55,11 +57,12 @@ class CarTakenError extends Error {}
 // Setting a new password also signs the driver out everywhere.
 export async function setDriverPassword(_prev: DriverFormState, formData: FormData): Promise<DriverFormState> {
   await requireUser("manager");
+  const t = await getT();
   const driverId = Number(formData.get("driverId"));
   const password = String(formData.get("password") ?? "");
-  const passwordError = checkNewPassword(password);
+  const passwordError = checkNewPassword(password, t);
   if (passwordError) return { ok: false, message: passwordError };
-  if (!Number.isInteger(driverId)) return { ok: false, message: "Dereva hajulikani." };
+  if (!Number.isInteger(driverId)) return { ok: false, message: t("Dereva hajulikani.", "Unknown driver.") };
 
   const hash = await bcrypt.hash(password, 10);
   const updated = await transaction(async (client) => {
@@ -70,6 +73,6 @@ export async function setDriverPassword(_prev: DriverFormState, formData: FormDa
     await client.query("DELETE FROM sessions WHERE user_id = $1", [driverId]);
     return rowCount;
   });
-  if (!updated) return { ok: false, message: "Dereva hajulikani." };
-  return { ok: true, message: "Nenosiri jipya limehifadhiwa. Mpe dereva." };
+  if (!updated) return { ok: false, message: t("Dereva hajulikani.", "Unknown driver.") };
+  return { ok: true, message: t("Nenosiri jipya limehifadhiwa. Mpe dereva.", "New password saved. Give it to the driver.") };
 }

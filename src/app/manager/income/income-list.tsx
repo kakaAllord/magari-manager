@@ -1,3 +1,6 @@
+import { sourceLabel } from "@/lib/reports";
+import type { Tr } from "@/lib/i18n";
+import { getT } from "@/lib/lang";
 import Link from "next/link";
 import { cargoLine, formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { Income } from "@/lib/incomes";
@@ -6,7 +9,7 @@ import { DeleteIncome } from "./delete-income";
 import { EditIncome } from "./edit-income";
 
 // `action` takes the place of Futa, such as the button to record a payment on a debt.
-export function IncomeList({
+export async function IncomeList({
   incomes,
   empty,
   action,
@@ -19,6 +22,7 @@ export function IncomeList({
   edit?: { cars: CarOption[]; today: string };
 }) {
   if (incomes.length === 0) return <p className="py-6 text-center text-sm text-muted">{empty}</p>;
+  const t = await getT();
   return (
     <ul className="divide-y divide-line">
       {incomes.map((i) => (
@@ -26,10 +30,10 @@ export function IncomeList({
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="font-medium break-words">
-                {i.source}
+                {sourceLabel(i.source, t)}
                 {i.car && <span className="font-normal text-muted"> · {i.car}</span>}
               </p>
-              {cargoLine(i) && <p className="text-sm break-words">{cargoLine(i)}</p>}
+              {cargoLine(i, t) && <p className="text-sm break-words">{cargoLine(i, t)}</p>}
               {i.invoice_id !== null ? (
                 <p className="text-sm">
                   <Link href={`/manager/invoices/${i.invoice_id}`} className="font-medium text-accent underline">
@@ -39,30 +43,36 @@ export function IncomeList({
               ) : (
                 i.description && <p className="text-sm break-words">{i.description}</p>
               )}
-              <DebtLines income={i} />
+              <DebtLines income={i} t={t} />
               {i.duplicate_amount !== null && i.duplicate_at !== null && (
                 <p className="mt-1 text-xs">
-                  <span className="rounded bg-warn-soft px-1.5 py-px font-medium text-warn">Huenda ni marudio</span>{" "}
+                  <span className="rounded bg-warn-soft px-1.5 py-px font-medium text-warn">{t("Huenda ni marudio", "Possible repeat")}</span>{" "}
                   <span className="text-muted">
-                    ya {formatMoney(i.duplicate_amount)} la {formatDateTime(i.duplicate_at)}
+                    {t(
+                      `ya ${formatMoney(i.duplicate_amount)} la ${formatDateTime(i.duplicate_at)}`,
+                      `of ${formatMoney(i.duplicate_amount)} from ${formatDateTime(i.duplicate_at)}`,
+                    )}
                   </span>
                 </p>
               )}
               <p className="mt-1 text-xs text-muted">
                 {i.backfilled_at ? (
                   <>
-                    {formatDate(i.created_at)} · <span className="font-medium text-warn">Rekodi ya zamani</span>,
-                    imeingizwa na {i.recorder_name ?? "meneja"} {formatDateTime(i.backfilled_at)}
+                    {formatDate(i.created_at)} · <span className="font-medium text-warn">{t("Rekodi ya zamani", "Past record")}</span>,{" "}
+                    {t(`imeingizwa na ${i.recorder_name ?? "meneja"}`, `entered by ${i.recorder_name ?? "the manager"}`)}{" "}
+                    {formatDateTime(i.backfilled_at)}
                   </>
                 ) : (
                   <>
-                    {formatDateTime(i.created_at)} · Imerekodiwa na {i.recorder_name ?? "meneja"}
+                    {formatDateTime(i.created_at)} ·{" "}
+                    {t(`Imerekodiwa na ${i.recorder_name ?? "meneja"}`, `Recorded by ${i.recorder_name ?? "the manager"}`)}
                   </>
                 )}
               </p>
               {i.edited_at && (
                 <p className="text-xs text-muted">
-                  <span className="font-medium text-warn">Imebadilishwa</span> na {i.editor_name ?? "meneja"} {formatDateTime(i.edited_at)}
+                  <span className="font-medium text-warn">{t("Imebadilishwa", "Edited")}</span>{" "}
+                  {t(`na ${i.editor_name ?? "meneja"}`, `by ${i.editor_name ?? "the manager"}`)} {formatDateTime(i.edited_at)}
                 </p>
               )}
             </div>
@@ -85,25 +95,25 @@ export function IncomeList({
 }
 
 // For income taken on credit: the client, what is still owed (or that it's cleared) and each payment.
-function DebtLines({ income: i }: { income: Income }) {
+function DebtLines({ income: i, t }: { income: Income; t: Tr }) {
   if (i.customer_name === null) return null;
   const owed = Number(i.amount) - Number(i.amount_paid);
   return (
     <div className="mt-1 grid gap-0.5 text-sm">
       <p className="break-words">
         {owed > 0 ? (
-          <span className="rounded bg-warn-soft px-1.5 py-px text-xs font-medium text-warn">Deni {formatMoney(owed)}</span>
+          <span className="rounded bg-warn-soft px-1.5 py-px text-xs font-medium text-warn">{t("Deni", "Owed")} {formatMoney(owed)}</span>
         ) : (
-          <span className="rounded bg-ok-soft px-1.5 py-px text-xs font-medium text-ok">Deni limelipwa</span>
+          <span className="rounded bg-ok-soft px-1.5 py-px text-xs font-medium text-ok">{t("Deni limelipwa", "Debt paid")}</span>
         )}{" "}
         {i.customer_name}
-        {owed > 0 && <span className="text-muted"> · amelipa {formatMoney(i.amount_paid)}</span>}
+        {owed > 0 && <span className="text-muted"> · {t("amelipa", "paid")} {formatMoney(i.amount_paid)}</span>}
       </p>
       {i.payments.map((p, n) => (
         <p key={n} className="text-xs text-muted">
           {formatDateTime(new Date(p.paid_at))} · {formatMoney(p.amount)}
           {p.note && ` · ${p.note}`}
-          {p.recorder_name && ` · alipokea ${p.recorder_name}`}
+          {p.recorder_name && t(` · alipokea ${p.recorder_name}`, ` · taken by ${p.recorder_name}`)}
         </p>
       ))}
     </div>

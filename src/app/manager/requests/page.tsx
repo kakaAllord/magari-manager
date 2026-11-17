@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import Link from "next/link";
 import { reviewRequest } from "@/app/actions/requests";
 import { LiveUpdates } from "@/components/live-updates";
@@ -13,6 +14,7 @@ import { requireUser } from "@/lib/session";
 // Only what needs a decision. Everything decided lives on Historia.
 export default async function RequestsPage() {
   await requireUser("manager");
+  const t = await getT();
   const pending = await listPending();
   const today = todayInTanzania();
   const pendingTotal = pending.reduce((s, r) => s + Number(r.amount), 0);
@@ -21,20 +23,23 @@ export default async function RequestsPage() {
     <main className="page">
       <LiveUpdates channel={MANAGERS_CHANNEL} />
       <PageHeader
-        title="Maombi"
+        title={t("Maombi", "Requests")}
         description={
           pending.length > 0
-            ? `Maombi ${pending.length} yanasubiri idhini yako, jumla ${formatMoney(pendingTotal)}. Ukikubali, yanakwenda kwa meneja wa kiwanda kuidhinishwa, kisha kwa mhasibu.`
-            : "Hakuna ombi linalosubiri kwa sasa."
+            ? t(
+                `Maombi ${pending.length} yanasubiri idhini yako, jumla ${formatMoney(pendingTotal)}. Ukikubali, yanakwenda kwa meneja wa kiwanda kuidhinishwa, kisha kwa mhasibu.`,
+                `${pending.length} requests await your approval, ${formatMoney(pendingTotal)} in all. Once you approve, they go to the factory manager to authorise, then to the accountant.`,
+              )
+            : t("Hakuna ombi linalosubiri kwa sasa.", "No request is waiting right now.")
         }
       />
 
       <section className="card">
         <h2 className="mb-2 text-lg font-semibold">
-          Yanasubiri idhini <span className="text-muted">({pending.length})</span>
+          {t("Yanasubiri idhini", "Awaiting approval")} <span className="text-muted">({pending.length})</span>
         </h2>
         {pending.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted">Umemaliza yote. 👍</p>
+          <p className="py-6 text-center text-sm text-muted">{t("Umemaliza yote.", "All done.")} 👍</p>
         ) : (
           <ul className="divide-y divide-line">
             {pending.map((r) => (
@@ -45,13 +50,13 @@ export default async function RequestsPage() {
                   <form action={reviewRequest} className="grid">
                     <input type="hidden" name="id" value={r.id} />
                     <button name="decision" value="approved" className="btn btn-primary">
-                      Kubali
+                      {t("Kubali", "Approve")}
                     </button>
                   </form>
                   <form action={reviewRequest} className="grid">
                     <input type="hidden" name="id" value={r.id} />
                     <button name="decision" value="rejected" className="btn btn-ghost text-danger">
-                      Kataa
+                      {t("Kataa", "Decline")}
                     </button>
                   </form>
                 </div>
@@ -61,7 +66,7 @@ export default async function RequestsPage() {
         )}
         <p className="mt-3 text-sm">
           <Link href="/manager/history" className="font-medium text-accent underline">
-            Historia ya maombi yote →
+            {t("Historia ya maombi yote", "History of all requests")} →
           </Link>
         </p>
       </section>

@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import Link from "next/link";
 import { BalanceCard } from "@/components/balance-card";
 import { LiveUpdates } from "@/components/live-updates";
@@ -15,6 +16,7 @@ import { MoneyChart } from "./money-chart";
 
 export default async function DashboardPage() {
   await requireUser("manager");
+  const t = await getT();
   const [o, income, debtors, monthly, byCar] = await Promise.all([
     getOverview(),
     getIncomeTotals(),
@@ -28,44 +30,48 @@ export default async function DashboardPage() {
   return (
       <main className="page">
         <LiveUpdates channel={MANAGERS_CHANNEL} />
-        <PageHeader title="Dashibodi" description={formatToday()} />
+        <PageHeader title={t("Dashibodi", "Dashboard")} description={formatToday(t)} />
 
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-3" aria-label="Muhtasari">
-          <Tile label="Mapato mwezi huu" value={formatMoney(income.this_month)} tone="ok" href="/manager/income">
-            Mwezi uliopita {formatMoney(income.last_month)}
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-3" aria-label={t("Muhtasari", "Summary")}>
+          <Tile label={t("Mapato mwezi huu", "Income this month")} value={formatMoney(income.this_month)} tone="ok" href="/manager/income">
+            {t("Mwezi uliopita", "Last month")} {formatMoney(income.last_month)}
             {Number(income.this_month_owed) > 0 && (
               <>
                 <br />
-                Ndani yake deni {formatMoney(income.this_month_owed)}
+                {t("Ndani yake deni", "Of which owed")} {formatMoney(income.this_month_owed)}
               </>
             )}
           </Tile>
-          <Tile label="Matumizi mwezi huu" value={formatMoney(o.this_month)}>
-            Wiki hii {formatMoney(o.this_week)}
+          <Tile label={t("Matumizi mwezi huu", "Spending this month")} value={formatMoney(o.this_month)}>
+            {t("Wiki hii", "This week")} {formatMoney(o.this_week)}
             <br />
-            Mwezi uliopita {formatMoney(o.last_month)}
+            {t("Mwezi uliopita", "Last month")} {formatMoney(o.last_month)}
           </Tile>
-          <Tile label="Salio mwezi huu" value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
-            Mapato toa matumizi
+          <Tile label={t("Salio mwezi huu", "Balance this month")} value={formatMoney(balance)} tone={balance < 0 ? "danger" : "ok"}>
+            {t("Mapato toa matumizi", "Income minus spending")}
             <NoDebtLine balance={balance} owed={income.this_month_owed} />
           </Tile>
           <Tile
-            label="Yanasubiri idhini"
+            label={t("Yanasubiri idhini", "Awaiting approval")}
             value={String(o.pending_count)}
             tone={o.pending_count > 0 ? "warn" : undefined}
             href="/manager/requests"
           >
-            {o.pending_count > 0 ? `${formatMoney(o.pending_total)} · Yashughulikie` : "Hakuna linalosubiri"}
+            {o.pending_count > 0 ? `${formatMoney(o.pending_total)} · ${t("Yashughulikie", "Deal with them")}` : t("Hakuna linalosubiri", "Nothing waiting")}
             <AwaitingIssue
               authorisation={{ count: o.awaiting_authorisation_count, total: o.awaiting_authorisation_total }}
               issue={{ count: o.awaiting_issue_count, total: o.awaiting_issue_total }}
             />
           </Tile>
-          <Tile label="Magari" value={String(o.cars)} href="/manager/cars">
-            {o.cars_without_driver === 0 ? "Yote yana madereva" : `${o.cars_without_driver} hayana dereva`}
+          <Tile label={t("Magari", "Cars")} value={String(o.cars)} href="/manager/cars">
+            {o.cars_without_driver === 0
+              ? t("Yote yana madereva", "All have drivers")
+              : t(`${o.cars_without_driver} hayana dereva`, `${o.cars_without_driver} without a driver`)}
           </Tile>
-          <Tile label="Madereva" value={String(o.drivers)} href="/manager/drivers">
-            {o.drivers_without_car === 0 ? "Wote wana magari" : `${o.drivers_without_car} hawana gari`}
+          <Tile label={t("Madereva", "Drivers")} value={String(o.drivers)} href="/manager/drivers">
+            {o.drivers_without_car === 0
+              ? t("Wote wana magari", "All have cars")
+              : t(`${o.drivers_without_car} hawana gari`, `${o.drivers_without_car} without a car`)}
           </Tile>
         </section>
 
@@ -84,26 +90,29 @@ export default async function DashboardPage() {
 
         <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
           <section className="card">
-            <h2 className="font-semibold">Mapato na matumizi kwa mwezi</h2>
+            <h2 className="font-semibold">{t("Mapato na matumizi kwa mwezi", "Income and spending by month")}</h2>
             <p className="mb-4 text-sm text-muted">
-              Miezi 6 iliyopita · tangu mwanzo mapato {formatMoney(income.all_time)}, matumizi {formatMoney(o.all_time)}
+              {t(
+                `Miezi 6 iliyopita · tangu mwanzo mapato ${formatMoney(income.all_time)}, matumizi ${formatMoney(o.all_time)}`,
+                `The last 6 months · since the start, income ${formatMoney(income.all_time)}, spending ${formatMoney(o.all_time)}`,
+              )}
             </p>
             <MoneyChart data={monthly.toReversed()} />
           </section>
 
           <section className="card">
-            <h2 className="font-semibold">Mwezi huu kwa gari</h2>
+            <h2 className="font-semibold">{t("Mwezi huu kwa gari", "This month by car")}</h2>
             <p className="mb-3 text-sm text-muted">
-              Magari {spentCars} kati ya {byCar.length} yametumia pesa mwezi huu
+              {t(`Magari ${spentCars} kati ya ${byCar.length} yametumia pesa mwezi huu`, `${spentCars} of ${byCar.length} cars spent money this month`)}
             </p>
             {byCar.length === 0 ? (
-              <p className="text-sm text-muted">Bado hakuna gari.</p>
+              <p className="text-sm text-muted">{t("Bado hakuna gari.", "No cars yet.")}</p>
             ) : (
               <table className="w-full text-sm">
                 <thead className="sr-only">
                   <tr>
-                    <th>Gari</th>
-                    <th>Matumizi</th>
+                    <th>{t("Gari", "Car")}</th>
+                    <th>{t("Matumizi", "Spending")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -112,13 +121,13 @@ export default async function DashboardPage() {
                       <td className="py-2 pr-2">
                         <span className="plate">{c.plate}</span>
                         <span className="mt-0.5 block text-xs text-muted">
-                          {[c.car, c.driver ?? "Hakuna dereva"].filter(Boolean).join(" · ")}
+                          {[c.car, c.driver ?? t("Hakuna dereva", "No driver")].filter(Boolean).join(" · ")}
                         </span>
                       </td>
                       <td className="py-2 text-right align-top tabular-nums">
                         <span className="font-medium">{formatMoney(c.total)}</span>
                         <span className="block text-xs text-muted">
-                          {c.count === 1 ? "ombi 1" : `maombi ${c.count}`}
+                          {c.count === 1 ? t("ombi 1", "1 request") : t(`maombi ${c.count}`, `${c.count} requests`)}
                         </span>
                       </td>
                     </tr>

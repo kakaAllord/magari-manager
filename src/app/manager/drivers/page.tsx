@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import { PageHeader } from "@/components/page-header";
 import { query } from "@/lib/db";
 import { requireUser } from "@/lib/session";
@@ -7,6 +8,7 @@ type DriverRow = { id: number; name: string; plate: string | null; car: string |
 
 export default async function DriversPage() {
   await requireUser("manager");
+  const t = await getT();
   const [drivers, freeCars] = await Promise.all([
     query<DriverRow>(
       `SELECT u.id, u.name, c.plate, c.name AS car
@@ -21,21 +23,21 @@ export default async function DriversPage() {
   return (
     <main className="page">
       <PageHeader
-        title="Madereva"
-        description="Dereva anaingia kwa namba ya gari lake na nenosiri unaloweka hapa."
+        title={t("Madereva", "Drivers")}
+        description={t("Dereva anaingia kwa namba ya gari lake na nenosiri unaloweka hapa.", "A driver signs in with their car's plate and the password you set here.")}
       />
 
       <section className="card">
-        <h2 className="mb-4 text-lg font-semibold">Ongeza dereva</h2>
+        <h2 className="mb-4 text-lg font-semibold">{t("Ongeza dereva", "Add driver")}</h2>
         <AddDriverForm freeCars={freeCars} />
       </section>
 
       <section className="card">
         <h2 className="mb-2 text-lg font-semibold">
-          Madereva wote <span className="text-muted">({drivers.length})</span>
+          {t("Madereva wote", "All drivers")} <span className="text-muted">({drivers.length})</span>
         </h2>
         {drivers.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted">Bado hakuna dereva. Ongeza wa kwanza hapo juu.</p>
+          <p className="py-6 text-center text-sm text-muted">{t("Bado hakuna dereva. Ongeza wa kwanza hapo juu.", "No drivers yet. Add the first one above.")}</p>
         ) : (
           <ul className="divide-y divide-line">
             {drivers.map((d) => (
@@ -53,10 +55,10 @@ export default async function DriversPage() {
                     <p className="font-medium">{d.name}</p>
                     {d.plate ? (
                       <p className="flex flex-wrap items-center gap-1.5 text-sm text-muted">
-                        Anaingia kwa <span className="plate">{d.plate}</span> {d.car}
+                        {t("Anaingia kwa", "Signs in with")} <span className="plate">{d.plate}</span> {d.car}
                       </p>
                     ) : (
-                      <p className="text-sm text-warn">Hana gari, kwa hiyo hawezi kuingia bado</p>
+                      <p className="text-sm text-warn">{t("Hana gari, kwa hiyo hawezi kuingia bado", "No car, so they can't sign in yet")}</p>
                     )}
                   </div>
                 </div>

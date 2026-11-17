@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/components/lang-provider";
 import { useActionState, useState } from "react";
 import { createDriver, setDriverPassword } from "@/app/actions/drivers";
 import { Dialog } from "@/components/dialog";
@@ -13,27 +14,28 @@ function Message({ state }: { state: { ok: boolean; message: string } | undefine
 }
 
 export function AddDriverForm({ freeCars }: { freeCars: { id: number; label: string }[] }) {
+  const t = useT();
   const [state, action, pending] = useActionState(createDriver, undefined);
 
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2">
       <label>
-        <span className="label">Jina</span>
+        <span className="label">{t("Jina", "Name")}</span>
         <input name="name" required autoComplete="off" placeholder="Juma Hassan" className="input" />
       </label>
       <label>
-        <span className="label">Gari (namba yake ya kuingia)</span>
+        <span className="label">{t("Gari (namba yake ya kuingia)", "Car (its plate is their sign-in)")}</span>
         <select name="carId" defaultValue={freeCars[0]?.id ?? ""} className="input">
           {freeCars.map((c) => (
             <option key={c.id} value={c.id}>
               {c.label}
             </option>
           ))}
-          <option value="">Bado hana gari</option>
+          <option value="">{t("Bado hana gari", "No car yet")}</option>
         </select>
       </label>
       <label>
-        <span className="label">Nenosiri la kumpa</span>
+        <span className="label">{t("Nenosiri la kumpa", "Their password")}</span>
         <input
           name="password"
           required
@@ -44,7 +46,7 @@ export function AddDriverForm({ freeCars }: { freeCars: { id: number; label: str
       </label>
       <div className="flex items-end">
         <button type="submit" disabled={pending} className="btn btn-primary w-full">
-          {pending ? "Inaongeza…" : "Ongeza dereva"}
+          {pending ? t("Inaongeza…", "Adding…") : t("Ongeza dereva", "Add driver")}
         </button>
       </div>
       <div className="sm:col-span-2">
@@ -56,18 +58,22 @@ export function AddDriverForm({ freeCars }: { freeCars: { id: number; label: str
 
 // The "⋯" menu on each driver: a new password, given in a dialog like on Wafanyakazi.
 export function DriverMenu({ driverId, driverName }: { driverId: number; driverName: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <>
       <RowMenu
-        label={`Vitendo kwa ${driverName}`}
-        items={[{ label: "Badilisha nenosiri", icon: "key", onSelect: () => setOpen(true) }]}
+        label={t(`Vitendo kwa ${driverName}`, `Actions for ${driverName}`)}
+        items={[{ label: t("Badilisha nenosiri", "Change password"), icon: "key", onSelect: () => setOpen(true) }]}
       />
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        title="Badilisha nenosiri"
-        description={`${driverName} atatolewa kwenye vifaa vyote na kuingia kwa nenosiri jipya.`}
+        title={t("Badilisha nenosiri", "Change password")}
+        description={t(
+          `${driverName} atatolewa kwenye vifaa vyote na kuingia kwa nenosiri jipya.`,
+          `${driverName} will be signed out on every device and sign in with the new password.`,
+        )}
       >
         <PasswordForm driverId={driverId} onDone={() => setOpen(false)} />
       </Dialog>
@@ -76,11 +82,12 @@ export function DriverMenu({ driverId, driverName }: { driverId: number; driverN
 }
 
 function PasswordForm({ driverId, onDone }: { driverId: number; onDone: () => void }) {
+  const t = useT();
   const [state, action, pending] = useActionState(setDriverPassword, undefined);
   return (
     <form action={action} className="grid gap-4">
       <input type="hidden" name="driverId" value={driverId} />
-      <PasswordInput label="Nenosiri jipya" />
+      <PasswordInput label={t("Nenosiri jipya", "New password")} />
       {state && (
         <p role="status" className={`rounded-md px-3 py-2 text-sm ${state.ok ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger"}`}>
           {state.message}
@@ -88,11 +95,11 @@ function PasswordForm({ driverId, onDone }: { driverId: number; onDone: () => vo
       )}
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onDone} className="btn btn-ghost">
-          {state?.ok ? "Funga" : "Ghairi"}
+          {state?.ok ? t("Funga", "Close") : t("Ghairi", "Cancel")}
         </button>
         {!state?.ok && (
           <button type="submit" disabled={pending} className="btn btn-primary">
-            {pending ? "Inahifadhi…" : "Hifadhi nenosiri"}
+            {pending ? t("Inahifadhi…", "Saving…") : t("Hifadhi nenosiri", "Save password")}
           </button>
         )}
       </div>

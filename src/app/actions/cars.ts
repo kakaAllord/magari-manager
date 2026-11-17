@@ -1,5 +1,7 @@
 "use server";
 
+import type { Tr } from "@/lib/i18n";
+import { getT } from "@/lib/lang";
 import { revalidatePath } from "next/cache";
 import { claimDriverlessReading, transaction } from "@/lib/db";
 import { missingForFuel } from "@/lib/fuel-ready";
@@ -28,11 +30,11 @@ const readValues = (formData: FormData): CarValues => ({
 
 // Everything but the plate can wait: Aina for good, the fuel type, tank and starting reading until
 // someone asks for fuel for the car.
-function parseDetails(values: CarValues, errors: CarErrors) {
+function parseDetails(values: CarValues, errors: CarErrors, t: Tr) {
   const fuelType = values.fuelType === "petrol" || values.fuelType === "diesel" ? values.fuelType : null;
-  const tank = values.tank ? parseTankLitres(values.tank) : { litres: null };
+  const tank = values.tank ? parseTankLitres(values.tank, t) : { litres: null };
   if ("error" in tank) errors.tank = tank.error;
-  const start = parseStartingReading(values);
+  const start = parseStartingReading(values, t);
   if (!start.ok) Object.assign(errors, start.errors);
   return {
     name: values.name || null,
@@ -43,13 +45,16 @@ function parseDetails(values: CarValues, errors: CarErrors) {
 }
 
 // "Toyota IST (T103ABE)", or just the plate, and what's still missing before fuel.
-function saved(plate: string, details: ReturnType<typeof parseDetails>, measured: boolean, what: string) {
+function saved(plate: string, details: ReturnType<typeof parseDetails>, measured: boolean, added: boolean, t: Tr) {
   const label = details.name ? `${details.name} (${plate})` : plate;
-  const missing = missingForFuel({ fuelType: details.fuelType, tank: details.tank, measured });
+  const missing = missingForFuel({ fuelType: details.fuelType, tank: details.tank, measured }, t);
+  const what = added ? t("limeongezwa", "added") : t("limehifadhiwa", "saved");
   return {
     ok: true as const,
     ready: !missing,
-    message: missing ? `${label} ${what}. Kabla ya kuomba mafuta, weka ${missing}.` : `${label} ${what}. Liko tayari kwa mafuta.`,
+    message: missing
+      ? t(`${label} ${what}. Kabla ya kuomba mafuta, weka ${missing}.`, `${label} ${what}. Before asking for fuel, add the ${missing}.`)
+      : t(`${label} ${what}. Liko tayari kwa mafuta.`, `${label} ${what}. It is ready for fuel.`),
   };
 }
 
@@ -64,12 +69,13 @@ const refreshCars = async () => {
 // the car is given to takes it over.
 export async function createCar(_prev: CarFormState, formData: FormData): Promise<CarFormState> {
   const manager = await requireUser("manager");
+  const t = await getT();
   const values = readValues(formData);
   const plate = normalizePlate(values.plate);
   const errors: CarErrors = {};
-  const plateError = checkPlate(plate);
+  const plateError = checkPlate(plate, t);
   if (plateError) errors.plate = plateError;
-  const details = parseDetails(values, errors);
+  const details = parseDetails(values, errors, t);
   if (Object.keys(errors).length) return { ok: false, errors, values };
 
   try {
@@ -87,12 +93,12 @@ export async function createCar(_prev: CarFormState, formData: FormData): Promis
     });
   } catch (err) {
     if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
-      return { ok: false, errors: { plate: `Gari lenye namba ${plate} tayari lipo.` }, values };
+      return { ok: false, errors: { plate: t(`Gari lenye namba ${plate} tayari lipo.`, `A car with plate ${plate} already exists.`) }, values };
     }
     throw err;
   }
   await refreshCars();
-  return saved(plate, details, details.reading !== null, "limeongezwa");
+  return saved(plate, details, details.reading !== null, true, t);
 }
 
 // Aina, fuel type and tank can change any time. The starting reading is only taken here while the
@@ -100,11 +106,12 @@ export async function createCar(_prev: CarFormState, formData: FormData): Promis
 // stays, since the driver signs in with it.
 export async function updateCar(_prev: CarFormState, formData: FormData): Promise<CarFormState> {
   const manager = await requireUser("manager");
+  const t = await getT();
   const carId = Number(formData.get("carId"));
   const values = readValues(formData);
   const errors: CarErrors = {};
-  const details = parseDetails(values, errors);
-  if (!Number.isInteger(carId)) errors.car = "Gari hilo halipo tena.";
+  const details = parseDetails(values, errors, t);
+  if (!Number.isInteger(carId)) errors.car = t("Gari hilo halipo tena.", "That car is gone.");
   if (Object.keys(errors).length) return { ok: false, errors, values };
 
   const result = await transaction(async (client) => {
@@ -129,15 +136,18 @@ export async function updateCar(_prev: CarFormState, formData: FormData): Promis
     }
     return { plate: row.plate, measured: row.measured || details.reading !== null };
   });
-  if (!result) return { ok: false, errors: { car: "Gari hilo halipo tena." }, values };
+  if (!result) return { ok: false, errors: { car: t("Gari hilo halipo tena.", "That car is gone.") }, values };
   await refreshCars();
-  return saved(result.plate, details, result.measured, "limehifadhiwa");
+  return saved(result.plate, details, result.measured, false, t);
 }
 
 export type DeleteCarState = { message: string } | undefined;
 
-const CAR_HAS_HISTORY =
-  "Gari hili lina maombi au mapato yaliyorekodiwa, kwa hiyo haliwezi kufutwa. Historia yake inabaki ili matumizi yasifichwe.";
+const carHasHistory = (t: Tr) =>
+  t(
+    "Gari hili lina maombi au mapato yaliyorekodiwa, kwa hiyo haliwezi kufutwa. Historia yake inabaki ili matumizi yasifichwe.",
+    "This car has requests or income recorded, so it can't be deleted. Its history stays so spending isn't hidden.",
+  );
 const FOREIGN_KEY_VIOLATION = "23503";
 
 // For a car added by mistake, such as a mistyped plate. It goes only while nothing was ever booked
@@ -145,8 +155,9 @@ const FOREIGN_KEY_VIOLATION = "23503";
 // refuses as well. Its fuel readings go with it, and a driver who had it is signed out.
 export async function deleteCar(_prev: DeleteCarState, formData: FormData): Promise<DeleteCarState> {
   await requireUser("manager");
+  const t = await getT();
   const carId = Number(formData.get("carId"));
-  if (!Number.isInteger(carId)) return { message: "Gari hilo halipo tena." };
+  if (!Number.isInteger(carId)) return { message: t("Gari hilo halipo tena.", "That car is gone.") };
 
   const outcome = await transaction(async (client) => {
     const car = await client.query<{ driver_id: number | null; used: boolean }>(
@@ -166,7 +177,7 @@ export async function deleteCar(_prev: DeleteCarState, formData: FormData): Prom
     if ((err as { code?: string }).code === FOREIGN_KEY_VIOLATION) return "used" as const;
     throw err;
   });
-  if (outcome === "used") return { message: CAR_HAS_HISTORY };
+  if (outcome === "used") return { message: carHasHistory(t) };
   await refreshCars();
   return undefined;
 }
