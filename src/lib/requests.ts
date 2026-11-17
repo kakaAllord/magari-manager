@@ -35,9 +35,8 @@ export type MoneyRequest = {
   // A paid request's receipt: still awaited, or added by the mhasibu. Older payments have none.
   receipt: "due" | "added" | null;
   receipt_note: string | null;
-  // What the voucher prints (migration 026): the department, the breakdown if one was given, and
+  // What the voucher prints (migration 026): the breakdown if one was given, and
   // how it was paid with the documents attached. Payments before 026 have no method.
-  department: string;
   items: { description: string; quantity: string; unit_price: string; amount: string }[];
   payment_method: string | null;
   supporting_documents: string[];
@@ -71,7 +70,7 @@ const SELECT = `
          r.duplicate_of, dup.amount AS duplicate_amount, dup.created_at AS duplicate_at,
          (r.status IN ('pending', 'approved') AND r.issued_at IS NULL) OR r.backfilled_at IS NOT NULL AS can_edit,
          r.edited_at, eu.name AS editor_name,
-         r.department, r.payment_method, r.supporting_documents, r.supporting_other,
+         r.payment_method, r.supporting_documents, r.supporting_other,
          (SELECT coalesce(json_agg(json_build_object('description', i.description, 'quantity', i.quantity,
                                                      'unit_price', i.unit_price, 'amount', i.amount) ORDER BY i.position), '[]')
             FROM money_request_items i WHERE i.request_id = r.id) AS items,

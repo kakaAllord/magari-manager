@@ -1,10 +1,8 @@
 // Pure validation, kept free of server imports so it can be unit tested with node --test.
 
 import {
-  DEPARTMENTS,
   PAYMENT_METHODS,
   SUPPORTING_DOCUMENTS,
-  type Department,
   type PaymentMethod,
   type SupportingDocument,
 } from "./voucher-fields.ts";
@@ -506,10 +504,6 @@ export function parseExpenseItems(
   if (total > MAX_AMOUNT) return { ok: false, errors: {}, message: "Jumla ya mchanganuo ni kubwa mno." };
   return { ok: true, items, total };
 }
-
-// The department a request is booked to; anything unknown (an old page, a driver) is Usafirishaji.
-export const parseDepartment = (input: string): Department =>
-  DEPARTMENTS.some((d) => d.key === input) ? (input as Department) : "usafirishaji";
 
 // How the mhasibu paid, for the voucher: the method is needed, and so is a reference number for
 // anything but cash. Supporting documents are optional ticks; "Nyingine" can say what it was.

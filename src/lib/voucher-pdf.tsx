@@ -4,7 +4,7 @@ import { amountInEnglish } from "@/lib/amount-words-en";
 import { COMPANY, COMPANY_DETAILS } from "@/lib/company";
 import { formatDate, formatLitres } from "@/lib/format";
 import type { MoneyRequest } from "@/lib/requests";
-import { department, paymentMethod, SUPPORTING_DOCUMENTS } from "@/lib/voucher-fields";
+import { paymentMethod, SUPPORTING_DOCUMENTS } from "@/lib/voucher-fields";
 
 // The payment voucher of one payment, one A4 page, laid out like the company's own template
 // (A. details, B. particulars, C. expenditure, D. documents, E. review and authorisation) but
@@ -88,7 +88,6 @@ function VoucherPage({ request: r }: { request: MoneyRequest }) {
   const fields: [string, string][] = [
     ["Voucher no.", number],
     ["Date", when(r.issued_at)],
-    ["Department", department(r.department)?.en ?? "-"],
     ["Vehicle reg. no.", plate ?? "No vehicle"],
     ["Payment method", method ?? "-"],
     ["Reference no.", r.issue_note ? pdfText(r.issue_note) : "-"],

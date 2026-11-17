@@ -1,7 +1,7 @@
 import { gaugeLabel } from "@/lib/fuel-calc";
 import { formatDate, formatDateTime, formatKm, formatLitres, formatMoney } from "@/lib/format";
 import type { MoneyRequest } from "@/lib/requests";
-import { department, paymentMethod } from "@/lib/voucher-fields";
+import { paymentMethod } from "@/lib/voucher-fields";
 
 // One request as every list shows it: amount, who asked, the reason, then each step with its time.
 // `mine` hides the requester's own name on their pages.
@@ -60,7 +60,7 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
         // History typed in later: it was paid on its day, outside the app, so there are no steps to show.
         <p className="mt-1 text-xs text-muted">
           {r.car ?? "Hakuna gari"}
-          {r.department !== "usafirishaji" && ` · ${department(r.department)?.sw ?? r.department}`} · <span className="font-medium text-warn">Rekodi ya zamani</span> ya{" "}
+          {" · "}<span className="font-medium text-warn">Rekodi ya zamani</span> ya{" "}
           {formatDate(r.issued_at)} · imeingizwa na {r.reviewer_name ?? "meneja"} {formatDateTime(r.backfilled_at)}
           {r.payment_method && ` · ${paymentMethod(r.payment_method)?.sw ?? r.payment_method}`}
           {r.voucher_number && (
@@ -81,7 +81,7 @@ export function RequestSummary({ request: r, mine = false }: { request: MoneyReq
       ) : (
         <p className="mt-1 text-xs text-muted">
           {r.car ?? "Hakuna gari"}
-          {r.department !== "usafirishaji" && ` · ${department(r.department)?.sw ?? r.department}`} · Imetumwa {formatDateTime(r.created_at)}
+          {" · "}Imetumwa {formatDateTime(r.created_at)}
           {r.reviewed_at &&
             (selfApproved
               ? " · Ombi la meneja, limekubaliwa moja kwa moja"

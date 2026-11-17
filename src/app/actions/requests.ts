@@ -16,7 +16,6 @@ import {
   checkReceiptImage,
   MAX_ISSUE_NOTE_LENGTH,
   parseCarChoice,
-  parseDepartment,
   parseEntryDate,
   parseExpenseItems,
   parseFuelOrder,
@@ -53,7 +52,6 @@ type FormValues = {
   odometer?: string;
   gauge?: string;
   date?: string;
-  department?: string;
   items?: ExpenseItemInput[];
   paymentMethod?: string;
   reference?: string;
@@ -179,12 +177,11 @@ export async function createRequest(
   });
   if ("confirm" in check) return { ok: false, errors: {}, values, duplicate: check.confirm };
 
-  // A driver's request is always for Usafirishaji, the department the drivers are in.
   if (!reading || !order) {
     await transaction(async (client) => {
       const inserted = await client.query<{ id: number }>(
-        `INSERT INTO money_requests (requester_id, car_id, amount, reason, duplicate_of, department)
-         VALUES ($1, (SELECT id FROM cars WHERE driver_id = $1), $2, $3, $4, 'usafirishaji') RETURNING id`,
+        `INSERT INTO money_requests (requester_id, car_id, amount, reason, duplicate_of)
+         VALUES ($1, (SELECT id FROM cars WHERE driver_id = $1), $2, $3, $4) RETURNING id`,
         [driver.id, parsed.amount, parsed.reason, check.duplicateOf],
       );
       if (items.ok && items.items.length) await saveItems(client, inserted.rows[0].id, items.items);
@@ -255,7 +252,6 @@ export async function createManagerRequest(
     reason: String(formData.get("reason") ?? ""),
     carId: String(formData.get("carId") ?? ""),
     date: String(formData.get("date") ?? ""),
-    department: String(formData.get("department") ?? ""),
     items: readItems(formData),
     paymentMethod: String(formData.get("paymentMethod") ?? ""),
     reference: String(formData.get("reference") ?? ""),
@@ -314,7 +310,7 @@ export async function createManagerRequest(
     const row = await client.query<{ id: number }>(
     `WITH at AS (SELECT CASE WHEN $6::date IS NULL THEN now() ELSE ($6::date + time '12:00') AT TIME ZONE $7 END AS t)
      INSERT INTO money_requests (requester_id, car_id, amount, reason, status, reviewed_by, reviewed_at, kind, fuel_price,
-                                 created_at, factory_reviewed_at, issued_at, backfilled_at, duplicate_of, department,
+                                 created_at, factory_reviewed_at, issued_at, backfilled_at, duplicate_of,
                                  payment_method, issue_note)
      SELECT $1, $2::int, $3, $4, 'approved', $1, at.t, $5,
             CASE WHEN $5 = 'fuel' THEN $8::int END,
@@ -322,9 +318,9 @@ export async function createManagerRequest(
             CASE WHEN $6::date IS NULL THEN NULL ELSE at.t END,
             CASE WHEN $6::date IS NULL THEN NULL ELSE at.t END,
             CASE WHEN $6::date IS NULL THEN NULL ELSE now() END,
-            $9::int, $10,
-            CASE WHEN $6::date IS NULL THEN NULL ELSE $11 END,
-            CASE WHEN $6::date IS NULL THEN NULL ELSE $12 END
+            $9::int,
+            CASE WHEN $6::date IS NULL THEN NULL ELSE $10 END,
+            CASE WHEN $6::date IS NULL THEN NULL ELSE $11 END
        FROM at
       WHERE $2::int IS NULL OR EXISTS (SELECT 1 FROM cars WHERE id = $2::int)
      RETURNING id`,
@@ -338,7 +334,6 @@ export async function createManagerRequest(
       TIME_ZONE,
       order && "price" in order ? order.price : null,
       check.duplicateOf,
-      parseDepartment(values.department!),
       method,
       reference,
     ],

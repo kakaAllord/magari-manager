@@ -401,11 +401,9 @@ try {
     }
   }
   // Voucher details (migration 026): how demo payments were paid and what came with them, a breakdown
-  // on a few requests (their amount is the breakdown's total), and office spending under Utawala.
-  // Drivers' requests stay Usafirishaji, as the app books them.
+  // on a few requests (their amount is the breakdown's total).
   const { rows: existingItems } = await client.query("SELECT 1 FROM money_request_items LIMIT 1");
   if (existingItems.length === 0) {
-    await client.query("UPDATE money_requests SET department = 'utawala' WHERE car_id IS NULL");
     await client.query(
       `UPDATE money_requests SET payment_method = CASE WHEN kind = 'fuel' THEN 'mobile' ELSE 'cash' END,
               issue_note = CASE WHEN kind = 'fuel' THEN coalesce(issue_note, 'QX' || upper(substr(md5(id::text), 1, 8))) ELSE issue_note END,

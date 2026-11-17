@@ -11,7 +11,7 @@ import { gaugeLabel } from "@/lib/fuel-calc";
 import { formatDateTime, formatKm, formatMoney } from "@/lib/format";
 import type { CarOption } from "@/lib/reports";
 import { MAX_ISSUE_NOTE_LENGTH, MAX_REASON_LENGTH } from "@/lib/validation";
-import { DEPARTMENTS, PAYMENT_METHODS } from "@/lib/voucher-fields";
+import { PAYMENT_METHODS } from "@/lib/voucher-fields";
 
 // One tap fills a common reason; the driver can still type anything. Fuel is its own kind of request.
 const quickReasons = ["Matengenezo", "Maegesho", "Usafi wa gari", "Ushuru wa barabara"];
@@ -148,25 +148,6 @@ export function RequestForm({
             </p>
           )}
           {failed?.errors.carId && <p className="mt-1 text-sm text-danger">{failed.errors.carId}</p>}
-        </label>
-      )}
-
-      {cars && (
-        <label className="block">
-          <span className="label">Idara</span>
-          <select
-            key={failed ? `dept-${failed.values.department}` : "fresh"}
-            name="department"
-            defaultValue={failed?.values.department || "usafirishaji"}
-            className="input"
-          >
-            {DEPARTMENTS.map((d) => (
-              <option key={d.key} value={d.key}>
-                {d.sw}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-muted">Inaandikwa kwenye hati ya malipo.</p>
         </label>
       )}
 

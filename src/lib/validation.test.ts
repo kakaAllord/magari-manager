@@ -23,7 +23,6 @@ import {
   parseReading,
   parseStartingReading,
   parseTankLitres,
-  parseDepartment,
   parseExpenseItems,
   parsePayment,
 } from "./validation.ts";
@@ -355,12 +354,6 @@ test("a breakdown adds up its lines, skips empty ones and checks each", () => {
   assert.ok(!many.ok && many.message);
   const huge = parseExpenseItems([{ description: "Gari", quantity: "2", unitPrice: "60,000,000" }]);
   assert.ok(!huge.ok && huge.message);
-});
-
-test("a department is one of the list, anything else is Usafirishaji", () => {
-  assert.equal(parseDepartment("utawala"), "utawala");
-  assert.equal(parseDepartment(""), "usafirishaji");
-  assert.equal(parseDepartment("hacker"), "usafirishaji");
 });
 
 test("paying needs a method, and a reference unless it is cash", () => {
