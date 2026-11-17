@@ -23,7 +23,7 @@ export async function reportResponse(request: Request) {
     return new Response(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${reportFilename(data.params, "pdf")}"`,
+        "Content-Disposition": `attachment; filename="${reportFilename(data.params, "pdf", data.t)}"`,
         "Cache-Control": "no-store",
       },
     });
@@ -32,7 +32,7 @@ export async function reportResponse(request: Request) {
   return new Response(new Uint8Array(file), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${reportFilename(data.params)}"`,
+      "Content-Disposition": `attachment; filename="${reportFilename(data.params, "xlsx", data.t)}"`,
       "Cache-Control": "no-store",
     },
   });

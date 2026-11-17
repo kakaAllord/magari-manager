@@ -3,11 +3,14 @@ import ExcelJS from "exceljs";
 import { COMPANY } from "@/lib/company";
 import { cargoSum } from "@/lib/format";
 import type { ReportParams } from "@/lib/report-params";
-import { expenseCar, incomeCar, periodOfRow, type ReportData } from "@/lib/report-data";
+import { sw, type Tr } from "@/lib/i18n";
+import { expenseCar, incomeCar, kindLabel, periodOfRow, type ReportData } from "@/lib/report-data";
 import { addCharts, type ChartSpec } from "@/lib/xlsx-charts";
 
-// The Excel report. Totals on Muhtasari are formulas over the Matumizi and Mapato sheets, so
-// editing or filtering the data there flows into the summary and its charts.
+// The Excel report, in the reader's language. Totals on Muhtasari are formulas over the Matumizi and
+// Mapato sheets, so editing or filtering the data there flows into the summary and its charts. The
+// labels the formulas match (car, period, kind, Faida/Hasara) come from the same translations on
+// both sides, so they line up in either language.
 
 const MONEY = '"TSh" #,##0';
 const NUMBER = "#,##0";
@@ -32,17 +35,26 @@ const COLOR = {
 // Slice colours for the pies, without the alpha byte.
 const PALETTE = ["1D4ED8", "D08A1A", "0F7B6C", "C22F2F", "7A4FB5", "1F7A45", "8A6D3B", "4A90A4", "B5487A", "5F6673"];
 
-const groupName = { car: "gari", month: "mwezi", week: "wiki" } as const;
+const groupName = { car: ["gari", "car"], month: ["mwezi", "month"], week: ["wiki", "week"] } as const;
 
-export function reportFilename(p: ReportParams, ext: "xlsx" | "pdf" = "xlsx") {
-  return `zuraja_ripoti_${p.from}_hadi_${p.to}_kwa-${groupName[p.group]}.${ext}`;
+export function reportFilename(p: ReportParams, ext: "xlsx" | "pdf" = "xlsx", t: Tr = sw) {
+  const group = t<string>(groupName[p.group][0], groupName[p.group][1]);
+  return t(`zuraja_ripoti_${p.from}_hadi_${p.to}_kwa-${group}.${ext}`, `zuraja_report_${p.from}_to_${p.to}_by-${group}.${ext}`);
 }
+
+// The sheet (and table) names, which the formulas and charts point at.
+const sheetNames = (t: Tr) => ({
+  summary: t("Muhtasari", "Summary"),
+  spend: t("Matumizi", "Spending"),
+  income: t("Mapato", "Income"),
+  fuel: t("Mafuta", "Fuel"),
+});
 
 // "2026-09-29 14:05" (Tanzanian time) -> a Date whose UTC fields match, which Excel shows as-is.
 const excelDate = (local: string) => {
-  const [d, t] = local.split(" ");
+  const [d, time] = local.split(" ");
   const [y, mo, da] = d.split("-").map(Number);
-  const [h, mi] = t.split(":").map(Number);
+  const [h, mi] = time.split(":").map(Number);
   return new Date(Date.UTC(y, mo - 1, da, h, mi));
 };
 
@@ -53,12 +65,13 @@ export async function buildWorkbook(data: ReportData) {
   const wb = new ExcelJS.Workbook();
   wb.creator = COMPANY;
   wb.company = COMPANY;
-  wb.title = `Ripoti ${data.rangeLabel}`;
+  const { t } = data;
+  wb.title = `${t("Ripoti", "Report")} ${data.rangeLabel}`;
   wb.created = new Date();
   wb.calcProperties.fullCalcOnLoad = true;
 
   // Muhtasari comes first in the file but is filled last, once the data sheets know their ranges.
-  const summary = wb.addWorksheet("Muhtasari", {
+  const summary = wb.addWorksheet(sheetNames(t).summary, {
     properties: { tabColor: { argb: COLOR.accent } },
     views: [{ showGridLines: false }],
   });
@@ -75,14 +88,16 @@ type DataRange = { sheet: string; rows: number; amountCol: string; carCol: strin
 
 // Every paid request, as a filterable Excel table.
 function addSpendSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
-  const s = wb.addWorksheet("Matumizi", { views: [{ state: "frozen", ySplit: 1 }], properties: { tabColor: { argb: COLOR.out } } });
+  const { t } = data;
+  const name = sheetNames(t).spend;
+  const s = wb.addWorksheet(name, { views: [{ state: "frozen", ySplit: 1 }], properties: { tabColor: { argb: COLOR.out } } });
   const periodGroup = data.params.group === "week" ? "week" : "month";
   const rows = data.expenses.map((x, i) => [
     excelDate(x.issued_at),
-    periodOfRow(x, periodGroup),
-    expenseCar(x),
+    periodOfRow(x, periodGroup, t),
+    expenseCar(x, t),
     x.car ?? "",
-    x.kind === "fuel" ? "Mafuta" : "Mengineyo",
+    kindLabel(x.kind, t),
     x.requester,
     x.reason,
     Number(x.amount),
@@ -95,29 +110,31 @@ function addSpendSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     x.fuel_price ? { formula: `IF(N${i + 2}>0,H${i + 2}/N${i + 2},"")`, result: Number(x.amount) / x.fuel_price } : "",
   ]);
   s.addTable({
-    name: "Matumizi",
+    name,
     ref: "A1",
     headerRow: true,
     totalsRow: true,
     style: { theme: "TableStyleMedium7", showRowStripes: true },
     columns: [
-      { name: "Imetolewa", filterButton: true, totalsRowLabel: "Jumla" },
+      { name: t("Imetolewa", "Paid"), filterButton: true, totalsRowLabel: t("Jumla", "Total") },
       { name: data.periodName, filterButton: true },
-      { name: "Namba", filterButton: true },
-      { name: "Gari", filterButton: true },
-      { name: "Aina", filterButton: true },
-      { name: "Aliyeomba", filterButton: true },
-      { name: "Sababu", filterButton: true },
-      { name: "Kiasi", filterButton: true, totalsRowFunction: "sum" },
-      { name: "Imekubaliwa na", filterButton: true },
-      { name: "Imeidhinishwa na", filterButton: true },
-      { name: "Imetolewa na", filterButton: true },
-      { name: "Kumbukumbu", filterButton: true },
-      { name: "Iliombwa", filterButton: true },
-      { name: "Bei kwa lita", filterButton: true },
-      { name: "Lita", filterButton: true },
+      { name: t("Namba", "Plate"), filterButton: true },
+      { name: t("Gari", "Vehicle"), filterButton: true },
+      { name: t("Aina", "Kind"), filterButton: true },
+      { name: t("Aliyeomba", "Asked by"), filterButton: true },
+      { name: t("Sababu", "Reason"), filterButton: true },
+      { name: t("Kiasi", "Amount"), filterButton: true, totalsRowFunction: "sum" },
+      { name: t("Imekubaliwa na", "Approved by"), filterButton: true },
+      { name: t("Imeidhinishwa na", "Authorised by"), filterButton: true },
+      { name: t("Imetolewa na", "Paid by"), filterButton: true },
+      { name: t("Kumbukumbu", "Reference"), filterButton: true },
+      { name: t("Iliombwa", "Asked on"), filterButton: true },
+      { name: t("Bei kwa lita", "Price per litre"), filterButton: true },
+      { name: t("Lita", "Litres"), filterButton: true },
     ],
-    rows: rows.length ? rows : [[null, "", "", "", "", "", "Hakuna matumizi katika kipindi hiki", 0, "", "", "", "", null, "", ""]],
+    rows: rows.length
+      ? rows
+      : [[null, "", "", "", "", "", t("Hakuna matumizi katika kipindi hiki", "No spending in this period"), 0, "", "", "", "", null, "", ""]],
   });
   [18, 14, 12, 20, 12, 20, 40, 16, 20, 20, 20, 24, 18, 14, 10].forEach((w, i) => (s.getColumn(i + 1).width = w));
   s.getColumn(1).numFmt = DATE;
@@ -131,23 +148,25 @@ function addSpendSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     rules: [{ type: "dataBar", priority: 1, minLength: 0, maxLength: 100, cfvo: [{ type: "min" }, { type: "max" }], color: { argb: "FFF2C27A" } } as ExcelJS.DataBarRuleType],
   });
   setupPrint(s);
-  return { sheet: "Matumizi", rows: n, amountCol: "H", carCol: "C", periodCol: "B", kindCol: "E" };
+  return { sheet: name, rows: n, amountCol: "H", carCol: "C", periodCol: "B", kindCol: "E" };
 }
 
 // Every income entry, as a filterable Excel table.
 function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
-  const s = wb.addWorksheet("Mapato", { views: [{ state: "frozen", ySplit: 1 }], properties: { tabColor: { argb: COLOR.in } } });
+  const { t } = data;
+  const name = sheetNames(t).income;
+  const s = wb.addWorksheet(name, { views: [{ state: "frozen", ySplit: 1 }], properties: { tabColor: { argb: COLOR.in } } });
   const periodGroup = data.params.group === "week" ? "week" : "month";
   const rows = data.incomes.map((x) => [
     excelDate(x.recorded_at),
-    periodOfRow(x, periodGroup),
-    incomeCar(x),
+    periodOfRow(x, periodGroup, t),
+    incomeCar(x, t),
     x.car_id !== null ? (x.car ?? "") : x.source,
     x.destination ?? "",
     x.description ?? "",
     // Kipimo is the cargo as it was typed, by the tonne or the kilo. Kilos are kept as tonnes too,
     // so the Tani column adds up whichever way each was typed.
-    x.tonnes === null || x.rate_per_tonne === null ? "" : cargoSum({ tonnes: x.tonnes, rate_per_tonne: x.rate_per_tonne, unit: x.unit }),
+    x.tonnes === null || x.rate_per_tonne === null ? "" : cargoSum({ tonnes: x.tonnes, rate_per_tonne: x.rate_per_tonne, unit: x.unit }, t),
     x.tonnes === null ? null : Number(x.tonnes),
     x.rate_per_tonne === null ? null : Number(x.rate_per_tonne),
     Number(x.amount),
@@ -156,27 +175,27 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     Number(x.owed),
   ]);
   s.addTable({
-    name: "Mapato",
+    name,
     ref: "A1",
     headerRow: true,
     totalsRow: true,
     style: { theme: "TableStyleMedium7", showRowStripes: true },
     columns: [
-      { name: "Imerekodiwa", filterButton: true, totalsRowLabel: "Jumla" },
+      { name: t("Imerekodiwa", "Recorded"), filterButton: true, totalsRowLabel: t("Jumla", "Total") },
       { name: data.periodName, filterButton: true },
-      { name: "Namba", filterButton: true },
-      { name: "Gari au chanzo", filterButton: true },
-      { name: "Kwenda", filterButton: true },
-      { name: "Maelezo", filterButton: true },
-      { name: "Kipimo", filterButton: true },
-      { name: "Tani", filterButton: true, totalsRowFunction: "sum" },
-      { name: "Bei kwa tani", filterButton: true },
-      { name: "Kiasi", filterButton: true, totalsRowFunction: "sum" },
-      { name: "Imerekodiwa na", filterButton: true },
-      { name: "Mteja (deni)", filterButton: true },
-      { name: "Deni bado", filterButton: true, totalsRowFunction: "sum" },
+      { name: t("Namba", "Plate"), filterButton: true },
+      { name: t("Gari au chanzo", "Vehicle or source"), filterButton: true },
+      { name: t("Kwenda", "Destination"), filterButton: true },
+      { name: t("Maelezo", "Description"), filterButton: true },
+      { name: t("Kipimo", "Quantity"), filterButton: true },
+      { name: t("Tani", "Tonnes"), filterButton: true, totalsRowFunction: "sum" },
+      { name: t("Bei kwa tani", "Price per tonne"), filterButton: true },
+      { name: t("Kiasi", "Amount"), filterButton: true, totalsRowFunction: "sum" },
+      { name: t("Imerekodiwa na", "Recorded by"), filterButton: true },
+      { name: t("Mteja (deni)", "Client (debt)"), filterButton: true },
+      { name: t("Deni bado", "Still owed"), filterButton: true, totalsRowFunction: "sum" },
     ],
-    rows: rows.length ? rows : [[null, "", "", "", "", "Hakuna mapato katika kipindi hiki", "", null, null, 0, "", "", 0]],
+    rows: rows.length ? rows : [[null, "", "", "", "", t("Hakuna mapato katika kipindi hiki", "No income in this period"), "", null, null, 0, "", "", 0]],
   });
   [18, 14, 12, 24, 20, 40, 28, 10, 14, 16, 20, 20, 14].forEach((w, i) => (s.getColumn(i + 1).width = w));
   s.getColumn(1).numFmt = DATE;
@@ -190,29 +209,34 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     rules: [{ type: "dataBar", priority: 1, minLength: 0, maxLength: 100, cfvo: [{ type: "min" }, { type: "max" }], color: { argb: "FF8FD1A5" } } as ExcelJS.DataBarRuleType],
   });
   setupPrint(s);
-  return { sheet: "Mapato", rows: n, amountCol: "J", carCol: "C", periodCol: "B" };
+  return { sheet: name, rows: n, amountCol: "J", carCol: "C", periodCol: "B" };
 }
 
 function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRange, income: DataRange): ChartSpec[] {
+  const { t } = data;
+  const names = sheetNames(t);
   [16, 22, 18, 18, 18, 12, 10, 3].forEach((w, i) => (s.getColumn(i + 1).width = w));
-  const range = (r: DataRange, c: string) => `${r.sheet}!$${c}$2:$${c}$${r.rows + 1}`;
+  const range = (r: DataRange, c: string) => `${quote(r.sheet)}!$${c}$2:$${c}$${r.rows + 1}`;
   const spendAmounts = range(spend, spend.amountCol);
   const incomeAmounts = range(income, income.amountCol);
 
   s.getCell("A1").value = COMPANY;
   s.getCell("A1").font = { bold: true, size: 16, color: { argb: COLOR.accent } };
-  s.getCell("A2").value = "Ripoti ya mapato na matumizi";
+  s.getCell("A2").value = t("Ripoti ya mapato na matumizi", "Income and spending report");
   s.getCell("A2").font = { bold: true, size: 13, color: { argb: COLOR.ink } };
   s.getCell("A3").value = `${data.rangeLabel} · ${data.carsLabel} · ${data.groupLabel}`;
   s.getCell("A3").font = { color: { argb: COLOR.muted } };
-  s.getCell("A4").value = `Imetengenezwa ${data.createdLabel}. Saa za Tanzania. Jumla hizi ni fomula za karatasi za Matumizi na Mapato.`;
+  s.getCell("A4").value = t(
+    `Imetengenezwa ${data.createdLabel}. Saa za Tanzania. Jumla hizi ni fomula za karatasi za ${names.spend} na ${names.income}.`,
+    `Made ${data.createdLabel}. Tanzania time. These totals are formulas over the ${names.spend} and ${names.income} sheets.`,
+  );
   s.getCell("A4").font = { italic: true, size: 9, color: { argb: COLOR.muted } };
 
   // The three headline numbers, each in its own colour.
   const kpis: [string, string, number, string, string][] = [
-    ["Mapato", `SUM(${incomeAmounts})`, data.totals.income, COLOR.in, COLOR.inSoft],
-    ["Matumizi", `SUM(${spendAmounts})`, data.totals.spend, COLOR.out, COLOR.outSoft],
-    ["Salio", "B6-B7", data.totals.balance, COLOR.balance, COLOR.balanceSoft],
+    [t("Mapato", "Income"), `SUM(${incomeAmounts})`, data.totals.income, COLOR.in, COLOR.inSoft],
+    [t("Matumizi", "Spending"), `SUM(${spendAmounts})`, data.totals.spend, COLOR.out, COLOR.outSoft],
+    [t("Salio", "Balance"), "B6-B7", data.totals.balance, COLOR.balance, COLOR.balanceSoft],
   ];
   kpis.forEach(([label, formula, result, color, soft], i) => {
     const r = 6 + i;
@@ -229,9 +253,9 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
   });
   s.getCell("C6").value = { formula: `COUNTIF(${incomeAmounts},">0")`, result: data.incomes.length };
   s.getCell("C7").value = { formula: `COUNTIF(${spendAmounts},">0")`, result: data.expenses.length };
-  s.getCell("C6").numFmt = '0 "rekodi"';
-  s.getCell("C7").numFmt = '0 "maombi"';
-  s.getCell("C8").value = "Mapato toa matumizi";
+  s.getCell("C6").numFmt = t('0 "rekodi"', '0 "records"');
+  s.getCell("C7").numFmt = t('0 "maombi"', '0 "requests"');
+  s.getCell("C8").value = t("Mapato toa matumizi", "Income minus spending");
   for (const c of ["C6", "C7", "C8"]) s.getCell(c).font = { color: { argb: COLOR.muted } };
   s.addConditionalFormatting({
     ref: "A8:B8",
@@ -247,10 +271,20 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
 
   // Per car: income, spending, faida (or hasara) and request count, each a SUMIFS over the data sheets.
   let r = 10;
-  const byCarStart = sectionHeader(s, r, "Kwa gari", ["Namba", "Gari", "Mapato", "Matumizi", "Faida/Hasara", "Maombi", "Hali"]) + 1;
+  const byCarStart =
+    sectionHeader(s, r, t("Kwa gari", "By car"), [
+      t("Namba", "Plate"),
+      t("Gari", "Vehicle"),
+      t("Mapato", "Income"),
+      t("Matumizi", "Spending"),
+      t("Faida/Hasara", "Profit/Loss"),
+      t("Maombi", "Requests"),
+      t("Hali", "Status"),
+    ]) + 1;
+  const [gain, loss, even] = [t("Faida", "Profit"), t("Hasara", "Loss"), t("Sawa", "Even")];
   const hali = (row: number, net: number) => ({
-    formula: `IF(E${row}>0,"Faida",IF(E${row}<0,"Hasara","Sawa"))`,
-    result: net > 0 ? "Faida" : net < 0 ? "Hasara" : "Sawa",
+    formula: `IF(E${row}>0,"${gain}",IF(E${row}<0,"${loss}","${even}"))`,
+    result: net > 0 ? gain : net < 0 ? loss : even,
   });
   data.byCar.forEach((c, i) => {
     const row = byCarStart + i;
@@ -265,7 +299,7 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
     ];
   });
   const byCarEnd = byCarStart + Math.max(data.byCar.length, 1) - 1;
-  totalRow(s, byCarEnd + 1, byCarStart, byCarEnd, ["C", "D", "E", "F"]);
+  totalRow(s, byCarEnd + 1, byCarStart, byCarEnd, ["C", "D", "E", "F"], t);
   s.getCell(`G${byCarEnd + 1}`).value = hali(byCarEnd + 1, data.totals.balance);
   moneyCols(s, byCarStart, byCarEnd + 1, ["C", "D", "E"]);
   profitColors(s, byCarStart, byCarEnd + 1);
@@ -273,7 +307,13 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
 
   // Per month (or week): income, spending and balance.
   r = byCarEnd + 3;
-  const pStart = sectionHeader(s, r, `Kwa ${data.periodName.toLowerCase()}`, [data.periodName, "Mapato", "Matumizi", "Salio"]) + 1;
+  const pStart =
+    sectionHeader(s, r, t(`Kwa ${data.periodName.toLowerCase()}`, `By ${data.periodName.toLowerCase()}`), [
+      data.periodName,
+      t("Mapato", "Income"),
+      t("Matumizi", "Spending"),
+      t("Salio", "Balance"),
+    ]) + 1;
   data.periods.forEach((p, i) => {
     const row = pStart + i;
     s.getRow(row).values = [
@@ -284,13 +324,13 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
     ];
   });
   const pEnd = pStart + Math.max(data.periods.length, 1) - 1;
-  totalRow(s, pEnd + 1, pStart, pEnd, ["B", "C", "D"]);
+  totalRow(s, pEnd + 1, pStart, pEnd, ["B", "C", "D"], t);
   moneyCols(s, pStart, pEnd + 1, ["B", "C", "D"]);
   negativeRed(s, `D${pStart}:D${pEnd + 1}`);
 
   // Spending by kind, with each kind's share.
   r = pEnd + 3;
-  const kStart = sectionHeader(s, r, "Matumizi kwa aina", ["Aina", "Kiasi", "Sehemu"]) + 1;
+  const kStart = sectionHeader(s, r, t("Matumizi kwa aina", "Spending by kind"), [t("Aina", "Kind"), t("Kiasi", "Amount"), t("Sehemu", "Share")]) + 1;
   const kindTotal = data.totals.spend;
   data.byKind.forEach((k, i) => {
     const row = kStart + i;
@@ -301,14 +341,14 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
     ];
   });
   const kEnd = kStart + data.byKind.length - 1;
-  totalRow(s, kEnd + 1, kStart, kEnd, ["B", "C"]);
+  totalRow(s, kEnd + 1, kStart, kEnd, ["B", "C"], t);
   moneyCols(s, kStart, kEnd + 1, ["B"]);
   for (let row = kStart; row <= kEnd + 1; row++) s.getCell(`C${row}`).numFmt = "0%";
 
   // A short fuel line, pointing at the Mafuta sheet.
   r = kEnd + 3;
   const f = data.fuel.all;
-  sectionHeader(s, r, "Mafuta", ["Km", "Lita", "Km kwa lita", "TSh kwa km"]);
+  sectionHeader(s, r, names.fuel, ["Km", t("Lita", "Litres"), t("Km kwa lita", "Km per litre"), t("TSh kwa km", "TSh per km")]);
   s.getRow(r + 2).values = [
     f.km,
     Number(f.litres.toFixed(1)),
@@ -319,79 +359,80 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
   s.getCell(`B${r + 2}`).numFmt = DECIMAL;
   s.getCell(`C${r + 2}`).numFmt = DECIMAL;
   s.getCell(`D${r + 2}`).numFmt = MONEY;
-  s.getCell(`A${r + 3}`).value = "Maelezo kamili yako kwenye karatasi ya Mafuta.";
+  s.getCell(`A${r + 3}`).value = t(`Maelezo kamili yako kwenye karatasi ya ${names.fuel}.`, `The full detail is on the ${names.fuel} sheet.`);
   s.getCell(`A${r + 3}`).font = { italic: true, size: 9, color: { argb: COLOR.muted } };
 
   s.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 };
 
   // Charts sit to the right of the tables, two across: money over time and by kind, income and
   // spending by car, then each car's income against its spending and its faida.
-  const sheet = "Muhtasari";
+  const sheet = names.summary;
   const ref = (c: string, a: number, b: number) => `${quote(sheet)}!$${c}$${a}:$${c}$${b}`;
+  const [inName, outName] = [t("Mapato", "Income"), t("Matumizi", "Spending")];
   const charts: ChartSpec[] = [];
   if (data.periods.length) {
     charts.push({
       sheet,
       type: "column",
-      title: `Mapato na matumizi kwa ${data.periodName.toLowerCase()}`,
+      title: t(`Mapato na matumizi kwa ${data.periodName.toLowerCase()}`, `Income and spending by ${data.periodName.toLowerCase()}`),
       from: [8, 5],
       to: [16, 22],
       numberFormat: '#,##0',
       series: [
-        { name: "Mapato", color: "1F7A45", categoriesRef: ref("A", pStart, pEnd), valuesRef: ref("B", pStart, pEnd), categories: data.periods.map((p) => p.label), values: data.periods.map((p) => p.income) },
-        { name: "Matumizi", color: "D08A1A", categoriesRef: ref("A", pStart, pEnd), valuesRef: ref("C", pStart, pEnd), categories: data.periods.map((p) => p.label), values: data.periods.map((p) => p.spend) },
+        { name: inName, color: "1F7A45", categoriesRef: ref("A", pStart, pEnd), valuesRef: ref("B", pStart, pEnd), categories: data.periods.map((p) => p.label), values: data.periods.map((p) => p.income) },
+        { name: outName, color: "D08A1A", categoriesRef: ref("A", pStart, pEnd), valuesRef: ref("C", pStart, pEnd), categories: data.periods.map((p) => p.label), values: data.periods.map((p) => p.spend) },
       ],
     });
   }
   charts.push({
     sheet,
     type: "doughnut",
-    title: "Matumizi kwa aina",
+    title: t("Matumizi kwa aina", "Spending by kind"),
     from: [16, 5],
     to: [23, 22],
     pointColors: ["D08A1A", "2357B5"],
-    series: [{ name: "Matumizi", categoriesRef: ref("A", kStart, kEnd), valuesRef: ref("B", kStart, kEnd), categories: data.byKind.map((k) => k.label), values: data.byKind.map((k) => k.total) }],
+    series: [{ name: outName, categoriesRef: ref("A", kStart, kEnd), valuesRef: ref("B", kStart, kEnd), categories: data.byKind.map((k) => k.label), values: data.byKind.map((k) => k.total) }],
   });
   if (data.byCar.length) {
     const cars = data.byCar.map((c) => c.label);
     charts.push({
       sheet,
       type: "pie",
-      title: "Mapato kwa gari",
+      title: t("Mapato kwa gari", "Income by car"),
       from: [8, 23],
       to: [16, 41],
       pointColors: PALETTE,
-      series: [{ name: "Mapato", categoriesRef: ref("A", byCarStart, byCarEnd), valuesRef: ref("C", byCarStart, byCarEnd), categories: cars, values: data.byCar.map((c) => c.income) }],
+      series: [{ name: inName, categoriesRef: ref("A", byCarStart, byCarEnd), valuesRef: ref("C", byCarStart, byCarEnd), categories: cars, values: data.byCar.map((c) => c.income) }],
     });
     charts.push({
       sheet,
       type: "pie",
-      title: "Matumizi kwa gari",
+      title: t("Matumizi kwa gari", "Spending by car"),
       from: [16, 23],
       to: [23, 41],
       pointColors: PALETTE,
-      series: [{ name: "Matumizi", categoriesRef: ref("A", byCarStart, byCarEnd), valuesRef: ref("D", byCarStart, byCarEnd), categories: cars, values: data.byCar.map((c) => c.spend) }],
+      series: [{ name: outName, categoriesRef: ref("A", byCarStart, byCarEnd), valuesRef: ref("D", byCarStart, byCarEnd), categories: cars, values: data.byCar.map((c) => c.spend) }],
     });
     charts.push({
       sheet,
       type: "bar",
-      title: "Mapato na matumizi kwa gari",
+      title: t("Mapato na matumizi kwa gari", "Income and spending by car"),
       from: [8, 42],
       to: [16, 60],
       series: [
-        { name: "Mapato", color: "1F7A45", categoriesRef: ref("A", byCarStart, byCarEnd), valuesRef: ref("C", byCarStart, byCarEnd), categories: data.byCar.map((c) => c.label), values: data.byCar.map((c) => c.income) },
-        { name: "Matumizi", color: "D08A1A", categoriesRef: ref("A", byCarStart, byCarEnd), valuesRef: ref("D", byCarStart, byCarEnd), categories: data.byCar.map((c) => c.label), values: data.byCar.map((c) => c.spend) },
+        { name: inName, color: "1F7A45", categoriesRef: ref("A", byCarStart, byCarEnd), valuesRef: ref("C", byCarStart, byCarEnd), categories: data.byCar.map((c) => c.label), values: data.byCar.map((c) => c.income) },
+        { name: outName, color: "D08A1A", categoriesRef: ref("A", byCarStart, byCarEnd), valuesRef: ref("D", byCarStart, byCarEnd), categories: data.byCar.map((c) => c.label), values: data.byCar.map((c) => c.spend) },
       ],
     });
     // Green for faida, red for hasara, as the figures were when the file was made.
     charts.push({
       sheet,
       type: "bar",
-      title: "Faida kwa gari",
+      title: t("Faida kwa gari", "Profit by car"),
       from: [16, 42],
       to: [23, 60],
       pointColors: data.byCar.map((c) => (c.income - c.spend < 0 ? "C22F2F" : "1F7A45")),
-      series: [{ name: "Faida/Hasara", categoriesRef: ref("A", byCarStart, byCarEnd), valuesRef: ref("E", byCarStart, byCarEnd), categories: cars, values: data.byCar.map((c) => c.income - c.spend) }],
+      series: [{ name: t("Faida/Hasara", "Profit/Loss"), categoriesRef: ref("A", byCarStart, byCarEnd), valuesRef: ref("E", byCarStart, byCarEnd), categories: cars, values: data.byCar.map((c) => c.income - c.spend) }],
     });
   }
   return charts;
@@ -399,22 +440,26 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
 
 // Fuel by car and by driver.
 function addFuelSheets(wb: ExcelJS.Workbook, data: ReportData): ChartSpec[] {
-  const fuel = data.fuel;
-  const s = wb.addWorksheet("Mafuta", { properties: { tabColor: { argb: COLOR.balance } }, views: [{ showGridLines: false }] });
+  const { fuel, t } = data;
+  const sheet = sheetNames(t).fuel;
+  const s = wb.addWorksheet(sheet, { properties: { tabColor: { argb: COLOR.balance } }, views: [{ showGridLines: false }] });
   [12, 20, 20, 12, 12, 13, 16, 13, 3].forEach((w, i) => (s.getColumn(i + 1).width = w));
-  s.getCell("A1").value = "Matumizi ya mafuta";
+  s.getCell("A1").value = t("Matumizi ya mafuta", "Fuel use");
   s.getCell("A1").font = { bold: true, size: 14, color: { argb: COLOR.accent } };
-  s.getCell("A2").value = `${data.rangeLabel}. Km na lita ni kati ya vipimo vya kilomita na geji. Km kwa lita na TSh kwa km ni fomula.`;
+  s.getCell("A2").value = t(
+    `${data.rangeLabel}. Km na lita ni kati ya vipimo vya kilomita na geji. Km kwa lita na TSh kwa km ni fomula.`,
+    `${data.rangeLabel}. Km and litres are between odometer and gauge readings. Km per litre and TSh per km are formulas.`,
+  );
   s.getCell("A2").font = { color: { argb: COLOR.muted } };
 
-  const head = ["Namba", "Gari", "Dereva", "Km", "Lita", "Km kwa lita", "Gharama", "TSh kwa km"];
-  const carStart = sectionHeader(s, 4, "Kwa gari", head) + 1;
+  const head = [t("Namba", "Plate"), t("Gari", "Vehicle"), t("Dereva", "Driver"), "Km", t("Lita", "Litres"), t("Km kwa lita", "Km per litre"), t("Gharama", "Cost"), t("TSh kwa km", "TSh per km")];
+  const carStart = sectionHeader(s, 4, t("Kwa gari", "By car"), head) + 1;
   fuel.cars.forEach((c, i) => {
     const row = carStart + i;
     s.getRow(row).values = [
       c.plate,
       c.car ?? "",
-      c.driver ?? "Hana dereva",
+      c.driver ?? t("Hana dereva", "No driver"),
       c.totals.km,
       Number(c.totals.litres.toFixed(1)),
       { formula: `IFERROR(D${row}/E${row},"")`, result: c.totals.kmPerLitre ?? "" },
@@ -423,13 +468,13 @@ function addFuelSheets(wb: ExcelJS.Workbook, data: ReportData): ChartSpec[] {
     ];
   });
   const carEnd = carStart + Math.max(fuel.cars.length, 1) - 1;
-  totalRow(s, carEnd + 1, carStart, carEnd, ["D", "E", "G"]);
+  totalRow(s, carEnd + 1, carStart, carEnd, ["D", "E", "G"], t);
   s.getCell(`F${carEnd + 1}`).value = { formula: `IFERROR(D${carEnd + 1}/E${carEnd + 1},"")`, result: fuel.all.kmPerLitre ?? "" };
   s.getCell(`H${carEnd + 1}`).value = { formula: `IFERROR(G${carEnd + 1}/D${carEnd + 1},"")`, result: fuel.all.costPerKm ?? "" };
   fuelFormats(s, carStart, carEnd + 1);
   colorScale(s, `F${carStart}:F${carEnd}`);
 
-  const dStart = sectionHeader(s, carEnd + 3, "Kwa dereva", ["Dereva", "", "", "Km", "Lita", "Km kwa lita", "Gharama", "TSh kwa km"]) + 1;
+  const dStart = sectionHeader(s, carEnd + 3, t("Kwa dereva", "By driver"), [t("Dereva", "Driver"), "", "", ...head.slice(3)]) + 1;
   fuel.drivers.forEach((d, i) => {
     const row = dStart + i;
     s.getRow(row).values = [
@@ -450,29 +495,28 @@ function addFuelSheets(wb: ExcelJS.Workbook, data: ReportData): ChartSpec[] {
   s.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 };
 
   if (!fuel.cars.length) return [];
-  const sheet = "Mafuta";
   const ref = (c: string, a: number, b: number) => `${quote(sheet)}!$${c}$${a}:$${c}$${b}`;
   const charts: ChartSpec[] = [
     {
       sheet,
       type: "bar",
-      title: "Km kwa lita, kila gari",
+      title: t("Km kwa lita, kila gari", "Km per litre, each car"),
       from: [10, 3],
       to: [18, 18],
       numberFormat: "0.0",
-      series: [{ name: "Km kwa lita", color: "2357B5", categoriesRef: ref("A", carStart, carEnd), valuesRef: ref("F", carStart, carEnd), categories: fuel.cars.map((c) => c.plate), values: fuel.cars.map((c) => Number((c.totals.kmPerLitre ?? 0).toFixed(1))) }],
+      series: [{ name: t("Km kwa lita", "Km per litre"), color: "2357B5", categoriesRef: ref("A", carStart, carEnd), valuesRef: ref("F", carStart, carEnd), categories: fuel.cars.map((c) => c.plate), values: fuel.cars.map((c) => Number((c.totals.kmPerLitre ?? 0).toFixed(1))) }],
     },
   ];
   if (fuel.drivers.length) {
     charts.push({
       sheet,
       type: "pie",
-      title: "Lita zilizotumika kwa dereva",
+      title: t("Lita zilizotumika kwa dereva", "Litres used by driver"),
       from: [10, 19],
       to: [18, 35],
       pointColors: PALETTE,
       numberFormat: "0.0",
-      series: [{ name: "Lita", categoriesRef: ref("A", dStart, dEnd), valuesRef: ref("E", dStart, dEnd), categories: fuel.drivers.map((d) => d.name), values: fuel.drivers.map((d) => Number(d.totals.litres.toFixed(1))) }],
+      series: [{ name: t("Lita", "Litres"), categoriesRef: ref("A", dStart, dEnd), valuesRef: ref("E", dStart, dEnd), categories: fuel.drivers.map((d) => d.name), values: fuel.drivers.map((d) => Number(d.totals.litres.toFixed(1))) }],
     });
   }
   return charts;
@@ -493,8 +537,8 @@ function sectionHeader(s: ExcelJS.Worksheet, r: number, title: string, headers: 
   return r + 1;
 }
 
-function totalRow(s: ExcelJS.Worksheet, row: number, from: number, to: number, cols: string[]) {
-  s.getCell(`A${row}`).value = "Jumla";
+function totalRow(s: ExcelJS.Worksheet, row: number, from: number, to: number, cols: string[], t: Tr) {
+  s.getCell(`A${row}`).value = t("Jumla", "Total");
   for (const c of cols) {
     let result = 0;
     for (let r = from; r <= to; r++) {

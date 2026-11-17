@@ -2,7 +2,8 @@ import "server-only";
 import { Circle, Document, Page, Path, renderToBuffer, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import { COMPANY } from "@/lib/company";
 import { cargoLine, formatKm, formatLitres, formatMoney, formatRate, formatWallTime } from "@/lib/format";
-import { expenseCar, incomeCar, type ReportData } from "@/lib/report-data";
+import type { Tr } from "@/lib/i18n";
+import { expenseCar, incomeCar, kindLabel, type ReportData } from "@/lib/report-data";
 import type { IncomeRow } from "@/lib/reports";
 
 // The PDF report: headline numbers and charts first, then the tables (flowing on from the charts), then every entry.
@@ -93,7 +94,7 @@ function Kpi({ label, value, color, soft, note }: { label: string; value: number
 const compact = (n: number) => new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 
 // Side-by-side columns per period, drawn with boxes so no font or SVG text is needed.
-function ColumnChart({ items, height = 130 }: { items: { label: string; income: number; spend: number }[]; height?: number }) {
+function ColumnChart({ items, height = 130, t }: { items: { label: string; income: number; spend: number }[]; height?: number; t: Tr }) {
   const max = Math.max(1, ...items.flatMap((i) => [i.income, i.spend]));
   return (
     <View>
@@ -115,13 +116,13 @@ function ColumnChart({ items, height = 130 }: { items: { label: string; income: 
       <View style={s.row}>
         {items.map((i) => (
           <Text key={i.label} style={{ flex: 1, textAlign: "center", fontSize: 7, color: C.muted, marginTop: 3 }}>
-            {i.label.replace("Wiki ya ", "")}
+            {i.label.replace(t("Wiki ya ", "Week of "), "")}
           </Text>
         ))}
       </View>
       <View style={[s.row, { marginTop: 6, gap: 12, justifyContent: "center" }]}>
-        <Legend color={C.in} label="Mapato" />
-        <Legend color={C.outBar} label="Matumizi" />
+        <Legend color={C.in} label={t("Mapato", "Income")} />
+        <Legend color={C.outBar} label={t("Matumizi", "Spending")} />
       </View>
     </View>
   );
@@ -141,12 +142,12 @@ function Pie({
   items,
   hole = false,
   size = 110,
-  empty = "Hakuna matumizi",
+  empty,
 }: {
   items: { label: string; value: number; color: string }[];
   hole?: boolean;
   size?: number;
-  empty?: string;
+  empty: string;
 }) {
   const total = items.reduce((a, b) => a + b.value, 0);
   const r = size / 2;
@@ -212,9 +213,9 @@ function BarList({ items, format, color }: { items: { label: string; value: numb
 }
 
 // Each car's faida as a green bar to the right of a middle line, or its hasara as a red one to the left.
-function ProfitBars({ items }: { items: { label: string; value: number }[] }) {
+function ProfitBars({ items, t }: { items: { label: string; value: number }[]; t: Tr }) {
   const max = Math.max(1, ...items.map((i) => Math.abs(i.value)));
-  if (!items.length) return <Text style={[s.muted, { fontSize: 8 }]}>Hakuna gari lenye mapato au matumizi</Text>;
+  if (!items.length) return <Text style={[s.muted, { fontSize: 8 }]}>{t("Hakuna gari lenye mapato au matumizi", "No car had income or spending")}</Text>;
   return (
     <View style={{ gap: 5 }}>
       {items.map((i) => (
@@ -234,8 +235,8 @@ function ProfitBars({ items }: { items: { label: string; value: number }[] }) {
         </View>
       ))}
       <View style={[s.row, { marginTop: 4, gap: 12, justifyContent: "center" }]}>
-        <Legend color={C.in} label="Faida" />
-        <Legend color={C.danger} label="Hasara" />
+        <Legend color={C.in} label={t("Faida", "Profit")} />
+        <Legend color={C.danger} label={t("Hasara", "Loss")} />
       </View>
     </View>
   );
@@ -246,10 +247,10 @@ const signed = (n: number) => `${n < 0 ? "-" : ""}${formatMoney(Math.abs(n))}`;
 const negative = (n: number) => (n < 0 ? C.danger : undefined);
 // Faida green, hasara red, nothing either way in plain ink.
 const profitColor = (n: number) => (n > 0 ? C.in : n < 0 ? C.danger : C.ink);
-const profitLabel = (n: number) => (n > 0 ? "Faida" : n < 0 ? "Hasara" : "Sawa");
+const profitLabel = (n: number, t: Tr) => (n > 0 ? t("Faida", "Profit") : n < 0 ? t("Hasara", "Loss") : t("Sawa", "Even"));
 
 function ReportPdf({ data }: { data: ReportData }) {
-  const { totals, fuel } = data;
+  const { totals, fuel, t } = data;
   const carColor = (i: number) => PALETTE[i % PALETTE.length];
   const profits = data.byCar
     .filter((c) => c.id !== null && (c.income || c.spend))
@@ -260,60 +261,69 @@ function ReportPdf({ data }: { data: ReportData }) {
       <Text>
         {COMPANY} · {data.rangeLabel}
       </Text>
-      <Text render={({ pageNumber, totalPages }) => `Ukurasa ${pageNumber} kati ya ${totalPages}`} />
+      <Text render={({ pageNumber, totalPages }) => t(`Ukurasa ${pageNumber} kati ya ${totalPages}`, `Page ${pageNumber} of ${totalPages}`)} />
     </View>
   );
 
   return (
-    <Document title={`Ripoti ${data.rangeLabel}`} author={COMPANY} creator={COMPANY} producer={COMPANY}>
+    <Document title={`${t("Ripoti", "Report")} ${data.rangeLabel}`} author={COMPANY} creator={COMPANY} producer={COMPANY}>
       <Page size="A4" style={s.page}>
         <View style={[s.row, { justifyContent: "space-between", alignItems: "flex-start" }]}>
           <View>
             <Text style={s.company}>{COMPANY}</Text>
-            <Text style={s.title}>Ripoti ya mapato na matumizi</Text>
+            <Text style={s.title}>{t("Ripoti ya mapato na matumizi", "Income and spending report")}</Text>
             <Text style={[s.muted, { marginTop: 2 }]}>
               {data.rangeLabel} · {data.carsLabel} · {data.groupLabel}
             </Text>
           </View>
-          <Text style={[s.muted, { fontSize: 8, textAlign: "right", width: 120 }]}>Imetengenezwa {data.createdLabel}</Text>
+          <Text style={[s.muted, { fontSize: 8, textAlign: "right", width: 120 }]}>
+            {t("Imetengenezwa", "Made")} {data.createdLabel}
+          </Text>
         </View>
 
         <View style={[s.row, { gap: 8, marginTop: 14 }]}>
-          <Kpi label="Mapato" value={totals.income} color={C.in} soft={C.inSoft} note={`Rekodi ${data.incomes.length}`} />
-          <Kpi label="Matumizi" value={totals.spend} color={C.out} soft={C.outSoft} note={`Maombi ${data.expenses.length} yaliyolipwa`} />
+          <Kpi label={t("Mapato", "Income")} value={totals.income} color={C.in} soft={C.inSoft} note={t(`Rekodi ${data.incomes.length}`, `${data.incomes.length} records`)} />
           <Kpi
-            label="Salio"
+            label={t("Matumizi", "Spending")}
+            value={totals.spend}
+            color={C.out}
+            soft={C.outSoft}
+            note={t(`Maombi ${data.expenses.length} yaliyolipwa`, `${data.expenses.length} paid requests`)}
+          />
+          <Kpi
+            label={t("Salio", "Balance")}
             value={totals.balance}
             color={totals.balance < 0 ? C.danger : C.balance}
             soft={totals.balance < 0 ? C.dangerSoft : C.balanceSoft}
-            note={totals.balance < 0 ? "Matumizi yamezidi mapato" : "Mapato toa matumizi"}
+            note={totals.balance < 0 ? t("Matumizi yamezidi mapato", "Spending is above income") : t("Mapato toa matumizi", "Income minus spending")}
           />
         </View>
 
         <View style={[s.section, s.box]}>
-          <Text style={s.h2}>Mapato na matumizi kwa {data.periodName.toLowerCase()}</Text>
-          <ColumnChart items={data.periods} />
+          <Text style={s.h2}>{t(`Mapato na matumizi kwa ${data.periodName.toLowerCase()}`, `Income and spending by ${data.periodName.toLowerCase()}`)}</Text>
+          <ColumnChart items={data.periods} t={t} />
         </View>
 
         <View style={[s.row, { gap: 8, marginTop: 10 }]} wrap={false}>
           <View style={[s.box, { flex: 1 }]}>
-            <Text style={s.h2}>Mapato kwa gari</Text>
-            <Pie empty="Hakuna mapato" items={data.byCar.map((c, i) => ({ label: c.label, value: c.income, color: carColor(i) }))} />
+            <Text style={s.h2}>{t("Mapato kwa gari", "Income by car")}</Text>
+            <Pie empty={t("Hakuna mapato", "No income")} items={data.byCar.map((c, i) => ({ label: c.label, value: c.income, color: carColor(i) }))} />
           </View>
           <View style={[s.box, { flex: 1 }]}>
-            <Text style={s.h2}>Matumizi kwa gari</Text>
-            <Pie items={data.byCar.map((c, i) => ({ label: c.label, value: c.spend, color: carColor(i) }))} />
+            <Text style={s.h2}>{t("Matumizi kwa gari", "Spending by car")}</Text>
+            <Pie empty={t("Hakuna matumizi", "No spending")} items={data.byCar.map((c, i) => ({ label: c.label, value: c.spend, color: carColor(i) }))} />
           </View>
         </View>
 
         <View style={[s.row, { gap: 8, marginTop: 10 }]} wrap={false}>
           <View style={[s.box, { flex: 1 }]}>
-            <Text style={s.h2}>Faida kwa gari</Text>
-            <ProfitBars items={profits} />
+            <Text style={s.h2}>{t("Faida kwa gari", "Profit by car")}</Text>
+            <ProfitBars items={profits} t={t} />
           </View>
           <View style={[s.box, { flex: 1 }]}>
-            <Text style={s.h2}>Matumizi kwa aina</Text>
+            <Text style={s.h2}>{t("Matumizi kwa aina", "Spending by kind")}</Text>
             <Pie
+              empty={t("Hakuna matumizi", "No spending")}
               hole
               items={data.byKind.map((k, i) => ({ label: k.label, value: k.total, color: [C.outBar, C.balance][i] }))}
             />
@@ -321,49 +331,52 @@ function ReportPdf({ data }: { data: ReportData }) {
         </View>
 
         <View style={[s.section]} wrap={false}>
-          <Text style={s.h2}>Kila gari</Text>
+          <Text style={s.h2}>{t("Kila gari", "Every car")}</Text>
           <Table
             columns={[
-              { label: "Namba", width: 14, value: (c) => c.label },
-              { label: "Gari", width: 18, value: (c) => c.car ?? "" },
-              { label: "Mapato", width: 16, num: true, value: (c) => money(c.income), color: () => C.in },
-              { label: "Matumizi", width: 16, num: true, value: (c) => money(c.spend) },
-              { label: "Faida/Hasara", width: 17, num: true, value: (c) => signed(c.income - c.spend), color: (c) => profitColor(c.income - c.spend) },
-              { label: "Hali", width: 10, value: (c) => profitLabel(c.income - c.spend), color: (c) => profitColor(c.income - c.spend) },
-              { label: "Maombi", width: 9, num: true, value: (c) => String(c.count) },
+              { label: t("Namba", "Plate"), width: 14, value: (c) => c.label },
+              { label: t("Gari", "Vehicle"), width: 18, value: (c) => c.car ?? "" },
+              { label: t("Mapato", "Income"), width: 16, num: true, value: (c) => money(c.income), color: () => C.in },
+              { label: t("Matumizi", "Spending"), width: 16, num: true, value: (c) => money(c.spend) },
+              { label: t("Faida/Hasara", "Profit/Loss"), width: 17, num: true, value: (c) => signed(c.income - c.spend), color: (c) => profitColor(c.income - c.spend) },
+              { label: t("Hali", "Status"), width: 10, value: (c) => profitLabel(c.income - c.spend, t), color: (c) => profitColor(c.income - c.spend) },
+              { label: t("Maombi", "Requests"), width: 9, num: true, value: (c) => String(c.count) },
             ]}
             rows={data.byCar}
-            total={["Jumla", "", money(totals.income), money(totals.spend), signed(totals.balance), profitLabel(totals.balance), String(data.expenses.length)]}
+            total={[t("Jumla", "Total"), "", money(totals.income), money(totals.spend), signed(totals.balance), profitLabel(totals.balance, t), String(data.expenses.length)]}
           />
         </View>
         <View style={s.section} wrap={false}>
-          <Text style={s.h2}>Kwa {data.periodName.toLowerCase()}</Text>
+          <Text style={s.h2}>{t(`Kwa ${data.periodName.toLowerCase()}`, `By ${data.periodName.toLowerCase()}`)}</Text>
           <Table
             columns={[
               { label: data.periodName, width: 34, value: (p) => p.label },
-              { label: "Mapato", width: 22, num: true, value: (p) => money(p.income), color: () => C.in },
-              { label: "Matumizi", width: 22, num: true, value: (p) => money(p.spend) },
-              { label: "Salio", width: 22, num: true, value: (p) => money(p.income - p.spend), color: (p) => negative(p.income - p.spend) },
+              { label: t("Mapato", "Income"), width: 22, num: true, value: (p) => money(p.income), color: () => C.in },
+              { label: t("Matumizi", "Spending"), width: 22, num: true, value: (p) => money(p.spend) },
+              { label: t("Salio", "Balance"), width: 22, num: true, value: (p) => money(p.income - p.spend), color: (p) => negative(p.income - p.spend) },
             ]}
             rows={data.periods}
-            total={["Jumla", money(totals.income), money(totals.spend), money(totals.balance)]}
+            total={[t("Jumla", "Total"), money(totals.income), money(totals.spend), money(totals.balance)]}
           />
         </View>
 
         <View style={s.section}>
-          <Text style={s.h2}>Mafuta</Text>
+          <Text style={s.h2}>{t("Mafuta", "Fuel")}</Text>
           <Text style={[s.muted, { marginBottom: 6 }]}>
-            Km {formatKm(fuel.all.km)} · lita {formatLitres(fuel.all.litres)} · wastani {formatRate(fuel.all.kmPerLitre)} km kwa lita
-            {fuel.all.costPerKm !== null ? ` · ${money(fuel.all.costPerKm)} kwa km` : ""}
+            {t(
+              `Km ${formatKm(fuel.all.km)} · lita ${formatLitres(fuel.all.litres)} · wastani ${formatRate(fuel.all.kmPerLitre)} km kwa lita`,
+              `Km ${formatKm(fuel.all.km)} · ${formatLitres(fuel.all.litres)} litres · average ${formatRate(fuel.all.kmPerLitre)} km per litre`,
+            )}
+            {fuel.all.costPerKm !== null ? ` · ${money(fuel.all.costPerKm)} ${t("kwa km", "per km")}` : ""}
           </Text>
           <View style={[s.row, { gap: 8 }]}>
             <View style={{ flex: 3 }}>
               <Table
                 columns={[
-                  { label: "Gari", width: 17, value: (c) => c.plate },
-                  { label: "Dereva", width: 27, value: (c) => c.driver ?? "Hana dereva" },
+                  { label: t("Gari", "Car"), width: 17, value: (c) => c.plate },
+                  { label: t("Dereva", "Driver"), width: 27, value: (c) => c.driver ?? t("Hana dereva", "No driver") },
                   { label: "Km", width: 15, num: true, value: (c) => (c.totals.stretches ? formatKm(c.totals.km) : "-") },
-                  { label: "Lita", width: 13, num: true, value: (c) => (c.totals.stretches ? formatLitres(c.totals.litres) : "-") },
+                  { label: t("Lita", "Litres"), width: 13, num: true, value: (c) => (c.totals.stretches ? formatLitres(c.totals.litres) : "-") },
                   { label: "Km/L", width: 12, num: true, value: (c) => formatRate(c.totals.kmPerLitre).replace("–", "-") },
                   { label: "TSh/km", width: 16, num: true, value: (c) => (c.totals.costPerKm === null ? "-" : money(c.totals.costPerKm)) },
                 ]}
@@ -371,7 +384,7 @@ function ReportPdf({ data }: { data: ReportData }) {
               />
             </View>
             <View style={[s.box, { flex: 2 }]}>
-              <Text style={[s.h2, { fontSize: 9 }]}>Km kwa lita</Text>
+              <Text style={[s.h2, { fontSize: 9 }]}>{t("Km kwa lita", "Km per litre")}</Text>
               <BarList
                 color={C.balance}
                 format={(n) => formatRate(n)}
@@ -383,14 +396,14 @@ function ReportPdf({ data }: { data: ReportData }) {
 
         {fuel.drivers.length > 0 && (
           <View style={s.section} wrap={false}>
-            <Text style={s.h2}>Mafuta kwa dereva</Text>
+            <Text style={s.h2}>{t("Mafuta kwa dereva", "Fuel by driver")}</Text>
             <Table
               columns={[
-                { label: "Dereva", width: 36, value: (d) => d.name },
+                { label: t("Dereva", "Driver"), width: 36, value: (d) => d.name },
                 { label: "Km", width: 16, num: true, value: (d) => formatKm(d.totals.km) },
-                { label: "Lita", width: 16, num: true, value: (d) => formatLitres(d.totals.litres) },
+                { label: t("Lita", "Litres"), width: 16, num: true, value: (d) => formatLitres(d.totals.litres) },
                 { label: "Km/L", width: 14, num: true, value: (d) => formatRate(d.totals.kmPerLitre).replace("–", "-") },
-                { label: "TSh kwa km", width: 18, num: true, value: (d) => (d.totals.costPerKm === null ? "-" : money(d.totals.costPerKm)) },
+                { label: t("TSh kwa km", "TSh per km"), width: 18, num: true, value: (d) => (d.totals.costPerKm === null ? "-" : money(d.totals.costPerKm)) },
               ]}
               rows={fuel.drivers}
             />
@@ -401,41 +414,45 @@ function ReportPdf({ data }: { data: ReportData }) {
       </Page>
 
       <Page size="A4" style={s.page}>
-        <Text style={s.h2}>Matumizi yote ({data.expenses.length})</Text>
+        <Text style={s.h2}>
+          {t("Matumizi yote", "All spending")} ({data.expenses.length})
+        </Text>
         <Table
           columns={[
-            { label: "Imetolewa", width: 17, value: (e) => formatWallTime(e.issued_at) },
-            { label: "Gari", width: 11, value: (e) => expenseCar(e) },
-            { label: "Aina", width: 10, value: (e) => (e.kind === "fuel" ? "Mafuta" : "Mengineyo") },
-            { label: "Aliyeomba", width: 15, value: (e) => e.requester },
-            { label: "Sababu", width: 31, value: (e) => e.reason },
-            { label: "Kiasi", width: 16, num: true, value: (e) => money(Number(e.amount)) },
+            { label: t("Imetolewa", "Paid"), width: 17, value: (e) => formatWallTime(e.issued_at) },
+            { label: t("Gari", "Car"), width: 11, value: (e) => expenseCar(e, t) },
+            { label: t("Aina", "Kind"), width: 10, value: (e) => kindLabel(e.kind, t) },
+            { label: t("Aliyeomba", "Asked by"), width: 15, value: (e) => e.requester },
+            { label: t("Sababu", "Reason"), width: 31, value: (e) => e.reason },
+            { label: t("Kiasi", "Amount"), width: 16, num: true, value: (e) => money(Number(e.amount)) },
           ]}
           rows={data.expenses}
-          total={["Jumla", "", "", "", "", money(totals.spend)]}
+          total={[t("Jumla", "Total"), "", "", "", "", money(totals.spend)]}
         />
 
         <View style={s.section}>
-          <Text style={s.h2}>Mapato yote ({data.incomes.length})</Text>
+          <Text style={s.h2}>
+            {t("Mapato yote", "All income")} ({data.incomes.length})
+          </Text>
           <Table
             columns={[
-              { label: "Imerekodiwa", width: 17, value: (i) => formatWallTime(i.recorded_at) },
-              { label: "Gari", width: 13, value: (i) => incomeCar(i) },
+              { label: t("Imerekodiwa", "Recorded"), width: 17, value: (i) => formatWallTime(i.recorded_at) },
+              { label: t("Gari", "Car"), width: 13, value: (i) => incomeCar(i, t) },
               {
-                label: "Maelezo",
+                label: t("Maelezo", "Details"),
                 width: 38,
                 // Helvetica has no arrow, so one typed in a destination prints as a dash.
                 value: (i) =>
-                  [cargoLine(i), i.description ?? (i.car_id !== null ? "" : i.source), debtNote(i)]
+                  [cargoLine(i, t), i.description ?? (i.car_id !== null ? "" : i.source), debtNote(i, t)]
                     .filter(Boolean)
                     .join(" · ")
                     .replaceAll("→", "-"),
               },
-              { label: "Na", width: 16, value: (i) => i.recorded_by ?? "" },
-              { label: "Kiasi", width: 16, num: true, value: (i) => money(Number(i.amount)), color: () => C.in },
+              { label: t("Na", "By"), width: 16, value: (i) => i.recorded_by ?? "" },
+              { label: t("Kiasi", "Amount"), width: 16, num: true, value: (i) => money(Number(i.amount)), color: () => C.in },
             ]}
             rows={data.incomes}
-            total={["Jumla", "", "", "", money(totals.income)]}
+            total={[t("Jumla", "Total"), "", "", "", money(totals.income)]}
           />
         </View>
         {footer}
@@ -447,9 +464,9 @@ function ReportPdf({ data }: { data: ReportData }) {
 export const buildPdf = (data: ReportData) => renderToBuffer(<ReportPdf data={data} />);
 
 // Income on credit: "Deni TSh 300,000 (Juma)", or that it's paid. Null for everything else.
-const debtNote = (i: IncomeRow) =>
+const debtNote = (i: IncomeRow, t: Tr) =>
   i.customer_name === null
     ? null
     : Number(i.owed) > 0
-      ? `Deni ${money(Number(i.owed))} (${i.customer_name})`
-      : `Deni limelipwa (${i.customer_name})`;
+      ? `${t("Deni", "Owed")} ${money(Number(i.owed))} (${i.customer_name})`
+      : `${t("Deni limelipwa", "Debt paid")} (${i.customer_name})`;
