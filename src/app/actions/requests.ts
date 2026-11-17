@@ -109,8 +109,8 @@ async function saveItems(client: PoolClient, requestId: number, items: ExpenseIt
   }
 }
 
-// The payment's voucher (hati ya malipo), numbered PV-YYYY-NNN for the year it was paid; the count
-// carries on from vouchers numbered HM- before 026. A lock held until the
+// The payment's voucher (hati ya malipo), numbered PV-YYYY-NNN for the year it was paid (vouchers
+// numbered HM- before 026 were renamed PV- in 027, keeping their digits). A lock held until the
 // end of the transaction keeps two payments from one number; a payment that has one keeps it.
 async function giveVoucher(client: PoolClient, requestId: number) {
   await client.query("SELECT pg_advisory_xact_lock(hashtext('payment_vouchers'))");
