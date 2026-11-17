@@ -4,6 +4,7 @@ import { getT } from "@/lib/lang";
 import { roleName, type User } from "@/lib/session";
 import Link from "next/link";
 import { BrandMark, Icon, type IconName } from "./icons";
+import { LangSwitch } from "./lang-switch";
 import { SideLinks, TabLinks } from "./nav-links";
 
 export type NavLink = { href: string; label: string; icon: IconName };
@@ -58,7 +59,10 @@ export async function AppShell({ user, links: items, children }: { user: User; l
               <p className="text-xs text-muted">{roleName(user.role, t)} · {t("Akaunti", "Account")}</p>
             </div>
           </Link>
-          {logoutButton(true)}
+          <div className="grid gap-1">
+            <LangSwitch variant="full" />
+            {logoutButton(true)}
+          </div>
         </div>
       </aside>
 
@@ -76,6 +80,7 @@ export async function AppShell({ user, links: items, children }: { user: User; l
           <Link href="/account" className="btn btn-ghost max-sm:size-11 max-sm:p-0" aria-label={t("Akaunti yangu", "My account")}>
             <Icon name="account" className="size-4" />
           </Link>
+          <LangSwitch variant="compact" />
           {logoutButton(false)}
         </div>
         {links.length > 1 && <TabLinks links={links} />}

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BrandMark } from "@/components/icons";
 import { COMPANY } from "@/lib/company";
 import { getCurrentUser, homeFor } from "@/lib/session";
+import { LangSwitch } from "@/components/lang-switch";
 import { LoginForm } from "./login-form";
 
 // The site is used for real, so demo logins show only where DEMO_MODE=1 (a local or demo copy).
@@ -22,6 +23,9 @@ export default async function LoginPage() {
           <p className="mt-1 text-sm font-medium text-muted">{COMPANY}</p>
         </div>
         <LoginForm demo={showDemo()} />
+        <div className="mt-6 flex justify-center">
+          <LangSwitch variant="link" />
+        </div>
       </div>
     </main>
   );
