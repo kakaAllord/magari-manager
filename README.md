@@ -63,7 +63,7 @@ PDF; the **Payment vouchers** tab (mhasibu, meneja, meneja wa kiwanda, mkurugenz
 vouchers with a download each and **Pakua zote** for all of them in one PDF (`/vouchers/pdf?from=&to=`,
 up to 400 a file). Staff open every voucher; a driver only their own. The company's name and the lines printed
 under it on invoices and vouchers live in `src/lib/company.ts` (`COMPANY_DETAILS`); for now that
-is the postal address and email; the phone and TIN go there once the company gives them.
+is the postal address, phone, email and TIN.
 Drivers have a Maoni tab, a suggestion box. The meneja, meneja wa kiwanda and mkurugenzi read the
 notes on their own Maoni tab, anonymously: they see the text and the day, never the driver or the
 car (`feedback.author_id` is kept only so drivers see their own notes). Each reader marks a note
