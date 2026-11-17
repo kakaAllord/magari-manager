@@ -1,5 +1,6 @@
 "use server";
 
+import { getT } from "@/lib/lang";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { transaction } from "@/lib/db";
@@ -49,7 +50,7 @@ export async function createInvoice(_prev: InvoiceFormState, formData: FormData)
       rate: rates[i] ?? "",
     })),
   };
-  const parsed = parseInvoice(values, todayInTanzania());
+  const parsed = parseInvoice(values, todayInTanzania(), await getT());
   if (!parsed.ok) return { ok: false, errors: parsed.errors, values };
   const inv = parsed.invoice;
 
@@ -145,21 +146,28 @@ export type CancelInvoiceResult = { ok: true } | { ok: false; error: string };
 // Its entries leave Mapato with it. Once the client has paid any of it on Madeni, it stays.
 export async function cancelInvoice(formData: FormData): Promise<CancelInvoiceResult> {
   const manager = await requireUser("manager");
+  const t = await getT();
   const id = Number(formData.get("id"));
-  if (!Number.isInteger(id)) return { ok: false, error: "Invoice haijulikani." };
+  if (!Number.isInteger(id)) return { ok: false, error: t("Invoice haijulikani.", "Unknown invoice.") };
   const result = await transaction(async (client) => {
     const incomes = await client.query<{ amount_paid: string }>(
       "SELECT amount_paid FROM incomes WHERE invoice_id = $1 AND deleted_at IS NULL ORDER BY id FOR UPDATE",
       [id],
     );
     if (incomes.rows.some((r) => Number(r.amount_paid) > 0)) {
-      return { ok: false as const, error: "Mteja ameshalipa sehemu ya invoice hii kwenye Madeni, kwa hiyo haiwezi kufutwa." };
+      return {
+        ok: false as const,
+        error: t(
+          "Mteja ameshalipa sehemu ya invoice hii kwenye Madeni, kwa hiyo haiwezi kufutwa.",
+          "The client has paid part of this invoice on Debts, so it can't be cancelled.",
+        ),
+      };
     }
     const cancelled = await client.query(
       "UPDATE invoices SET cancelled_at = now(), cancelled_by = $2 WHERE id = $1 AND paid_at IS NULL AND cancelled_at IS NULL",
       [id, manager.id],
     );
-    if (cancelled.rowCount === 0) return { ok: false as const, error: "Invoice hii imeshalipwa au kufutwa." };
+    if (cancelled.rowCount === 0) return { ok: false as const, error: t("Invoice hii imeshalipwa au kufutwa.", "This invoice is paid or cancelled already.") };
     await client.query(
       "UPDATE incomes SET deleted_at = now(), deleted_by = $2 WHERE invoice_id = $1 AND deleted_at IS NULL",
       [id, manager.id],

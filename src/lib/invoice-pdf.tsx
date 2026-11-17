@@ -1,8 +1,9 @@
 import "server-only";
 import { Document, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { amountInEnglish } from "@/lib/amount-words-en";
-import { COMPANY, COMPANY_DETAILS } from "@/lib/company";
+import { COMPANY, companyDetails } from "@/lib/company";
 import { formatDate, formatMoney, formatQuantity, formatUnitPrice, formatWallDate } from "@/lib/format";
+import { sw, type Tr } from "@/lib/i18n";
 import { bankRows, type InvoiceDetail } from "@/lib/invoices";
 
 // The invoice as a one-page PDF for the customer. Built-in Helvetica only covers Western
@@ -32,34 +33,34 @@ const s = StyleSheet.create({
   footer: { position: "absolute", bottom: 24, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", fontSize: 8, color: C.muted },
 });
 
-const pdfText = (t: string) => t.replaceAll("→", "-");
+const pdfText = (text: string) => text.replaceAll("→", "-");
 
-// Trips all priced the same way are headed "Tani" / "Bei kwa tani" (or kilo); an invoice mixing
-// the two heads them "Uzito" / "Bei" and says the unit on each line.
-function tableColumns(lines: InvoiceDetail["lines"]) {
+// The invoice is in the language of whoever downloads it. Trips all priced the same way are headed
+// "Tani" / "Bei kwa tani" (or kilo); an invoice mixing the two heads them "Uzito" / "Bei" and says
+// the unit on each line.
+function tableColumns(lines: InvoiceDetail["lines"], t: Tr) {
   const units = new Set(lines.map((l) => l.unit));
   const only = units.size === 1 ? [...units][0] : null;
-  const name = only === "kg" ? "kilo" : "tani";
   const columns = [
-    { label: "Na.", width: 6, num: false },
-    { label: "Safari", width: 36, num: false },
-    { label: "Gari", width: 12, num: false },
-    { label: only ? name[0].toUpperCase() + name.slice(1) : "Uzito", width: 12, num: true },
-    { label: only ? `Bei kwa ${name}` : "Bei", width: 16, num: true },
-    { label: "Kiasi", width: 18, num: true },
+    { label: t("Na.", "No."), width: 6, num: false },
+    { label: t("Safari", "Trip"), width: 36, num: false },
+    { label: t("Gari", "Vehicle"), width: 12, num: false },
+    { label: only === "kg" ? t("Kilo", "Kilos") : only ? t("Tani", "Tonnes") : t("Uzito", "Weight"), width: 12, num: true },
+    { label: only === "kg" ? t("Bei kwa kilo", "Price per kilo") : only ? t("Bei kwa tani", "Price per tonne") : t("Bei", "Price"), width: 16, num: true },
+    { label: t("Kiasi", "Amount"), width: 18, num: true },
   ];
   return { columns, mixed: !only };
 }
 
-function InvoicePdf({ invoice: inv }: { invoice: InvoiceDetail }) {
-  const { columns, mixed } = tableColumns(inv.lines);
+function InvoicePdf({ invoice: inv, t }: { invoice: InvoiceDetail; t: Tr }) {
+  const { columns, mixed } = tableColumns(inv.lines, t);
   return (
     <Document title={`${inv.number} ${COMPANY}`} author={COMPANY}>
       <Page size="A4" style={s.page}>
         <View style={s.head}>
           <View>
             <Text style={s.company}>{COMPANY}</Text>
-            {COMPANY_DETAILS.map((line) => (
+            {companyDetails(t).map((line) => (
               <Text key={line} style={{ color: C.muted, marginTop: 2 }}>
                 {line}
               </Text>
@@ -68,13 +69,19 @@ function InvoicePdf({ invoice: inv }: { invoice: InvoiceDetail }) {
           <View>
             <Text style={s.title}>INVOICE</Text>
             <Text style={[s.meta, s.bold, { color: C.ink }]}>{inv.number}</Text>
-            <Text style={s.meta}>Tarehe: {formatWallDate(inv.issued_on)}</Text>
-            {inv.due_on && <Text style={s.meta}>Mwisho wa kulipa: {formatWallDate(inv.due_on)}</Text>}
+            <Text style={s.meta}>
+              {t("Tarehe", "Date")}: {formatWallDate(inv.issued_on)}
+            </Text>
+            {inv.due_on && (
+              <Text style={s.meta}>
+                {t("Mwisho wa kulipa", "Due")}: {formatWallDate(inv.due_on)}
+              </Text>
+            )}
           </View>
         </View>
 
         <View style={s.box}>
-          <Text style={s.label}>KWA</Text>
+          <Text style={s.label}>{t("KWA", "BILL TO")}</Text>
           <Text style={[s.bold, { fontSize: 12 }]}>{pdfText(inv.customer_name)}</Text>
           {inv.customer_contact && <Text style={{ marginTop: 3, color: C.muted }}>{pdfText(inv.customer_contact)}</Text>}
         </View>
@@ -103,21 +110,21 @@ function InvoicePdf({ invoice: inv }: { invoice: InvoiceDetail }) {
               ))}
             </View>
           ))}
-          {/* Lined up with the Kiasi column. */}
+          {/* Lined up with the amount column. */}
           <View style={s.total}>
-            <Text style={[s.num, s.bold, { fontSize: 12, width: "82%" }]}>Jumla</Text>
+            <Text style={[s.num, s.bold, { fontSize: 12, width: "82%" }]}>{t("Jumla", "Total")}</Text>
             <Text style={[s.num, s.bold, { fontSize: 12, width: "18%" }]}>{formatMoney(inv.total)}</Text>
           </View>
           <Text style={s.words}>
-            <Text style={s.label}>KIASI KWA MANENO: </Text>
+            <Text style={s.label}>{t("KIASI KWA MANENO", "AMOUNT IN WORDS")}: </Text>
             {amountInEnglish(inv.total)}
           </Text>
         </View>
 
         {inv.bank_name && (
           <View style={s.box} wrap={false}>
-            <Text style={s.label}>TAARIFA ZA BENKI</Text>
-            {bankRows(inv).map(([key, value]) => (
+            <Text style={s.label}>{t("TAARIFA ZA BENKI", "BANK DETAILS")}</Text>
+            {bankRows(inv, t).map(([key, value]) => (
               <View key={key} style={s.bankRow}>
                 <Text style={s.bankKey}>{key}</Text>
                 <Text style={[s.bold, { flex: 1 }]}>{pdfText(value)}</Text>
@@ -128,15 +135,17 @@ function InvoicePdf({ invoice: inv }: { invoice: InvoiceDetail }) {
 
         {inv.payment_details && (
           <View style={s.box}>
-            <Text style={s.label}>MAELEZO YA MALIPO</Text>
+            <Text style={s.label}>{t("MAELEZO YA MALIPO", "PAYMENT DETAILS")}</Text>
             <Text>{pdfText(inv.payment_details)}</Text>
           </View>
         )}
 
         {inv.status === "paid" && inv.paid_at && (
-          <Text style={[s.stamp, { color: C.ok, borderColor: C.ok }]}>IMELIPWA {formatDate(inv.paid_at).toUpperCase()}</Text>
+          <Text style={[s.stamp, { color: C.ok, borderColor: C.ok }]}>
+            {t("IMELIPWA", "PAID")} {formatDate(inv.paid_at).toUpperCase()}
+          </Text>
         )}
-        {inv.status === "cancelled" && <Text style={[s.stamp, { color: C.danger, borderColor: C.danger }]}>IMEFUTWA</Text>}
+        {inv.status === "cancelled" && <Text style={[s.stamp, { color: C.danger, borderColor: C.danger }]}>{t("IMEFUTWA", "CANCELLED")}</Text>}
 
         <View style={s.footer} fixed>
           <Text>{COMPANY}</Text>
@@ -147,4 +156,4 @@ function InvoicePdf({ invoice: inv }: { invoice: InvoiceDetail }) {
   );
 }
 
-export const buildInvoicePdf = (invoice: InvoiceDetail) => renderToBuffer(<InvoicePdf invoice={invoice} />);
+export const buildInvoicePdf = (invoice: InvoiceDetail, t: Tr = sw) => renderToBuffer(<InvoicePdf invoice={invoice} t={t} />);

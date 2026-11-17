@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
@@ -10,6 +11,7 @@ import { InvoiceStatusBadge } from "./invoice-status";
 // Invoices for customers. Each one's trips go into Mapato as the client's debt until it is paid.
 export default async function InvoicesPage({ searchParams }: PageProps<"/manager/invoices">) {
   await requireUser("manager");
+  const t = await getT();
   const sp = await searchParams;
   const page = pageFrom(sp);
   const q = (typeof sp.q === "string" ? sp.q : "").trim().slice(0, 80);
@@ -19,11 +21,14 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/manager
     <main className="page">
       <PageHeader
         title="Invoice"
-        description="Invoice za wateja kwa safari za mizigo. Safari zake zinaingia Mapato kama deni la mteja hadi alipe."
+        description={t(
+          "Invoice za wateja kwa safari za mizigo. Safari zake zinaingia Mapato kama deni la mteja hadi alipe.",
+          "Client invoices for cargo trips. Their trips go into Income as the client's debt until paid.",
+        )}
         action={
           <Link href="/manager/invoices/new" className="btn btn-primary gap-2">
             <Icon name="plus" className="size-4" />
-            Tengeneza invoice
+            {t("Tengeneza invoice", "New invoice")}
           </Link>
         }
       />
@@ -35,22 +40,24 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/manager
             defaultValue={q}
             maxLength={80}
             autoComplete="off"
-            placeholder="Tafuta namba, mteja au gari"
-            aria-label="Tafuta invoice"
+            placeholder={t("Tafuta namba, mteja au gari", "Search number, client or car")}
+            aria-label={t("Tafuta invoice", "Search invoices")}
             className="input min-w-0 flex-1"
           />
           <button type="submit" className="btn btn-primary">
-            Tafuta
+            {t("Tafuta", "Search")}
           </button>
           {q && (
             <Link href="/manager/invoices" className="btn btn-ghost">
-              Futa
+              {t("Futa", "Clear")}
             </Link>
           )}
         </form>
         {rows.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted">
-            {q ? `Hakuna invoice inayolingana na “${q}”.` : "Bado hakuna invoice. Tengeneza ya kwanza."}
+            {q
+              ? t(`Hakuna invoice inayolingana na “${q}”.`, `No invoice matches “${q}”.`)
+              : t("Bado hakuna invoice. Tengeneza ya kwanza.", "No invoices yet. Make the first one.")}
           </p>
         ) : (
           <ul className="divide-y divide-line">
@@ -61,7 +68,7 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/manager
                     <p className="font-medium break-words">{i.customer_name}</p>
                     <p className="text-xs text-muted">
                       {i.number} · {formatWallDate(i.issued_on)}
-                      {i.due_on && i.status === "open" && ` · mwisho ${formatWallDate(i.due_on)}`}
+                      {i.due_on && i.status === "open" && ` · ${t("mwisho", "due")} ${formatWallDate(i.due_on)}`}
                     </p>
                   </div>
                   <div className="grid shrink-0 justify-items-end gap-1">

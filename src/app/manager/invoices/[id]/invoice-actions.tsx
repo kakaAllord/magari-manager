@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/components/lang-provider";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cancelInvoice, markInvoicePaid } from "@/app/actions/invoices";
@@ -29,26 +30,27 @@ export function InvoiceActions({
   owed: number;
   partPaid: boolean;
 }) {
+  const t = useT();
   const router = useRouter();
   const [ask, setAsk] = useState<"paid" | "cancel" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(saved ? `Invoice ${number} imehifadhiwa.` : null);
+  const [toast, setToast] = useState<string | null>(saved ? t(`Invoice ${number} imehifadhiwa.`, `Invoice ${number} saved.`) : null);
 
   return (
     <>
       <div className="flex flex-wrap gap-2">
         <a href={`/manager/invoices/${id}/pdf`} target="_blank" className="btn btn-primary gap-2">
           <Icon name="pdf" className="size-4" />
-          Pakua PDF
+          {t("Pakua PDF", "Download PDF")}
         </a>
         {open && (
           <>
             <button type="button" onClick={() => setAsk("paid")} className="btn btn-ghost">
-              Imelipwa
+              {t("Imelipwa", "Paid")}
             </button>
             {!partPaid && (
               <button type="button" onClick={() => setAsk("cancel")} className="btn btn-ghost text-danger">
-                Futa invoice
+                {t("Futa invoice", "Cancel invoice")}
               </button>
             )}
           </>
@@ -60,15 +62,27 @@ export function InvoiceActions({
           setAsk(null);
           setError(null);
         }}
-        title={ask === "paid" ? `Mteja amelipa ${number}?` : `Futa ${number}?`}
+        title={ask === "paid" ? t(`Mteja amelipa ${number}?`, `Did the client pay ${number}?`) : t(`Futa ${number}?`, `Cancel ${number}?`)}
         description={
           ask === "paid"
             ? inIncome
-              ? `Invoice itaonyesha Imelipwa, na deni la ${formatMoney(owed)} litaondoka kwenye Madeni na kuhesabiwa kama pesa iliyoingia kwenye Mapato.`
-              : "Invoice itaonyesha Imelipwa. Kumbuka kurekodi malipo kwenye Mapato kwa kila gari."
+              ? t(
+                  `Invoice itaonyesha Imelipwa, na deni la ${formatMoney(owed)} litaondoka kwenye Madeni na kuhesabiwa kama pesa iliyoingia kwenye Mapato.`,
+                  `The invoice will show Paid, and the ${formatMoney(owed)} debt leaves Debts and counts as money received in Income.`,
+                )
+              : t(
+                  "Invoice itaonyesha Imelipwa. Kumbuka kurekodi malipo kwenye Mapato kwa kila gari.",
+                  "The invoice will show Paid. Remember to record the payment in Income for each car.",
+                )
             : inIncome
-              ? "Invoice itabaki na namba yake lakini itaonyesha Imefutwa, na safari zake zitaondoka kwenye Mapato na Madeni. Haiwezi kurudishwa."
-              : "Invoice itabaki na namba yake lakini itaonyesha Imefutwa. Haiwezi kurudishwa."
+              ? t(
+                  "Invoice itabaki na namba yake lakini itaonyesha Imefutwa, na safari zake zitaondoka kwenye Mapato na Madeni. Haiwezi kurudishwa.",
+                  "The invoice keeps its number but shows Cancelled, and its trips leave Income and Debts. This can't be undone.",
+                )
+              : t(
+                  "Invoice itabaki na namba yake lakini itaonyesha Imefutwa. Haiwezi kurudishwa.",
+                  "The invoice keeps its number but shows Cancelled. This can't be undone.",
+                )
         }
       >
         {error && <p className="mb-3 text-sm text-danger">{error}</p>}
@@ -84,7 +98,7 @@ export function InvoiceActions({
             } else {
               await markInvoicePaid(formData);
             }
-            setToast(ask === "paid" ? `${number} imewekwa Imelipwa.` : `${number} imefutwa.`);
+            setToast(ask === "paid" ? t(`${number} imewekwa Imelipwa.`, `${number} marked Paid.`) : t(`${number} imefutwa.`, `${number} cancelled.`));
             setAsk(null);
             router.refresh();
           }}
@@ -99,10 +113,10 @@ export function InvoiceActions({
             }}
             className="btn btn-ghost"
           >
-            Hapana
+            {t("Hapana", "No")}
           </button>
           <button type="submit" className={`btn ${ask === "paid" ? "btn-primary" : "btn-primary bg-danger"}`}>
-            {ask === "paid" ? "Ndiyo, imelipwa" : "Ndiyo, futa"}
+            {ask === "paid" ? t("Ndiyo, imelipwa", "Yes, paid") : t("Ndiyo, futa", "Yes, cancel")}
           </button>
         </form>
       </Dialog>

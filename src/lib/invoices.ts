@@ -1,3 +1,4 @@
+import { sw, type Tr } from "@/lib/i18n";
 import "server-only";
 import { query } from "@/lib/db";
 import type { InvoiceBankInput } from "@/lib/validation";
@@ -86,14 +87,14 @@ export async function getInvoice(id: number): Promise<InvoiceDetail | null> {
 }
 
 // The bank block as label and value, in the order the invoice prints it; empty for invoices made before 025.
-export function bankRows(inv: InvoiceDetail): [string, string][] {
+export function bankRows(inv: InvoiceDetail, t: Tr = sw): [string, string][] {
   if (!inv.bank_name) return [];
   const rows: [string, string | null][] = [
-    ["Benki", inv.bank_name],
-    ["Namba ya akaunti", inv.bank_account_number],
-    ["Jina la akaunti", inv.bank_account_name],
+    [t("Benki", "Bank"), inv.bank_name],
+    [t("Namba ya akaunti", "Account number"), inv.bank_account_number],
+    [t("Jina la akaunti", "Account name"), inv.bank_account_name],
     ["SWIFT code", inv.bank_swift],
-    ["Malipo ni ya", inv.payment_purpose],
+    [t("Malipo ni ya", "Payment for"), inv.payment_purpose],
   ];
   return rows.filter((r): r is [string, string] => Boolean(r[1]));
 }
