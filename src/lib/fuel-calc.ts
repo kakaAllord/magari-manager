@@ -15,11 +15,20 @@ export type Fill = { at: number; amount: number; litres: number | null };
 export type Flag = "thirsty" | "gained" | "idle";
 
 // How each flag is explained: a short label for tables, a sentence for the stretch list.
-export const flagText: Record<Flag, { short: string; long: string }> = {
-  thirsty: { short: "Matumizi makubwa", long: "Km kwa lita chini sana ya kawaida ya gari hili" },
-  gained: { short: "Mafuta yaliongezeka", long: "Tanki lilijaa zaidi bila malipo ya mafuta. Angalia vipimo" },
-  idle: { short: "Mafuta yalipotea", long: "Robo tanki au zaidi lilipungua gari likiwa limesimama" },
-};
+export const flagText = (t: Tr = sw): Record<Flag, { short: string; long: string }> => ({
+  thirsty: {
+    short: t("Matumizi makubwa", "High consumption"),
+    long: t("Km kwa lita chini sana ya kawaida ya gari hili", "Far fewer km per litre than this car usually does"),
+  },
+  gained: {
+    short: t("Mafuta yaliongezeka", "Fuel went up"),
+    long: t("Tanki lilijaa zaidi bila malipo ya mafuta. Angalia vipimo", "The tank rose with no fuel paid for. Check the readings"),
+  },
+  idle: {
+    short: t("Mafuta yalipotea", "Fuel went missing"),
+    long: t("Robo tanki au zaidi lilipungua gari likiwa limesimama", "A quarter tank or more went while the car stood still"),
+  },
+});
 
 export type Stretch = {
   from: Reading;

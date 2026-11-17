@@ -6,6 +6,7 @@ import type { ReportParams } from "@/lib/report-params";
 import { sw, type Tr } from "@/lib/i18n";
 import { expenseCar, incomeCar, kindLabel, periodOfRow, type ReportData } from "@/lib/report-data";
 import { addCharts, type ChartSpec } from "@/lib/xlsx-charts";
+import { sourceLabel } from "@/lib/reports";
 
 // The Excel report, in the reader's language. Totals on Muhtasari are formulas over the Matumizi and
 // Mapato sheets, so editing or filtering the data there flows into the summary and its charts. The
@@ -161,7 +162,7 @@ function addIncomeSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     excelDate(x.recorded_at),
     periodOfRow(x, periodGroup, t),
     incomeCar(x, t),
-    x.car_id !== null ? (x.car ?? "") : x.source,
+    x.car_id !== null ? (x.car ?? "") : sourceLabel(x.source, t),
     x.destination ?? "",
     x.description ?? "",
     // Kipimo is the cargo as it was typed, by the tonne or the kilo. Kilos are kept as tonnes too,

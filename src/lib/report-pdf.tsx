@@ -4,7 +4,7 @@ import { COMPANY } from "@/lib/company";
 import { cargoLine, formatKm, formatLitres, formatMoney, formatRate, formatWallTime } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
 import { expenseCar, incomeCar, kindLabel, type ReportData } from "@/lib/report-data";
-import type { IncomeRow } from "@/lib/reports";
+import { sourceLabel, type IncomeRow } from "@/lib/reports";
 
 // The PDF report: headline numbers and charts first, then the tables (flowing on from the charts), then every entry.
 // Built-in Helvetica only covers Western European characters, so the text avoids symbols like ⚠.
@@ -443,7 +443,7 @@ function ReportPdf({ data }: { data: ReportData }) {
                 width: 38,
                 // Helvetica has no arrow, so one typed in a destination prints as a dash.
                 value: (i) =>
-                  [cargoLine(i, t), i.description ?? (i.car_id !== null ? "" : i.source), debtNote(i, t)]
+                  [cargoLine(i, t), i.description ?? (i.car_id !== null ? "" : sourceLabel(i.source, t)), debtNote(i, t)]
                     .filter(Boolean)
                     .join(" · ")
                     .replaceAll("→", "-"),
