@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { COMPANY, COMPANY_SHORT } from "@/lib/company";
 import { InstallPrompt } from "@/components/install-prompt";
+import { LangProvider } from "@/components/lang-provider";
+import { getLang } from "@/lib/lang";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,21 +16,27 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: COMPANY_SHORT,
-  description: `${COMPANY} · Maombi ya pesa za magari na ripoti za matumizi`,
-  appleWebApp: { title: COMPANY_SHORT, statusBarStyle: "default" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = await getLang();
+  return {
+    title: COMPANY_SHORT,
+    description: `${COMPANY} · ${lang === "en" ? "Vehicle money requests and spending reports" : "Maombi ya pesa za magari na ripoti za matumizi"}`,
+    appleWebApp: { title: COMPANY_SHORT, statusBarStyle: "default" },
+  };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const lang = await getLang();
   return (
     <html
-      lang="sw"
+      lang={lang}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        {children}
-        <InstallPrompt />
+        <LangProvider lang={lang}>
+          {children}
+          <InstallPrompt />
+        </LangProvider>
       </body>
     </html>
   );
