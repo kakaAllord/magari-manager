@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/components/lang-provider";
 import { useActionState, useState } from "react";
 import { updateRequest, type EditRequestState } from "@/app/actions/requests";
 import { Dialog } from "@/components/dialog";
@@ -17,6 +18,7 @@ const day = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE 
 // "Badilisha" on a matumizi request the mhasibu hasn't paid, or on typed-in history. Fuel is edited
 // as price and litres, like when it was asked for; the amount is worked out again.
 export function EditRequest({ request: r, today }: { request: MoneyRequest; today: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [state, action, pending] = useActionState(async (prev: EditRequestState, formData: FormData) => {
@@ -40,13 +42,13 @@ export function EditRequest({ request: r, today }: { request: MoneyRequest; toda
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="btn btn-ghost shrink-0">
-        Badilisha
+        {t("Badilisha", "Edit")}
       </button>
       {toast && <Toast key={toast} message={toast} onClose={() => setToast(null)} />}
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        title="Badilisha matumizi"
+        title={t("Badilisha matumizi", "Edit spending")}
         description={`${formatMoney(r.amount)} · ${r.requester_name}`}
       >
         <form action={action} className="grid gap-3">
@@ -54,12 +56,12 @@ export function EditRequest({ request: r, today }: { request: MoneyRequest; toda
           {fuel ? (
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="label">Bei kwa lita</span>
+                <span className="label">{t("Bei kwa lita", "Price per litre")}</span>
                 <input name="fuelPrice" inputMode="numeric" required autoComplete="off" defaultValue={r.fuel_price!.toLocaleString("en")} className="input tabular-nums" />
                 <Err text={errors.fuelPrice} />
               </label>
               <label className="block">
-                <span className="label">Lita</span>
+                <span className="label">{t("Lita", "Litres")}</span>
                 <input
                   name="litres"
                   inputMode="decimal"
@@ -73,7 +75,7 @@ export function EditRequest({ request: r, today }: { request: MoneyRequest; toda
             </div>
           ) : itemsOpen ? null : (
             <label className="block">
-              <span className="label">Kiasi</span>
+              <span className="label">{t("Kiasi", "Amount")}</span>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
                 <input name="amount" inputMode="numeric" required autoComplete="off" defaultValue={Number(r.amount).toLocaleString("en")} className="input pl-12 font-semibold tabular-nums" />
@@ -89,27 +91,30 @@ export function EditRequest({ request: r, today }: { request: MoneyRequest; toda
             </>
           )}
           <label className="block">
-            <span className="label">Sababu</span>
+            <span className="label">{t("Sababu", "Reason")}</span>
             <textarea name="reason" required rows={2} maxLength={MAX_REASON_LENGTH} defaultValue={r.reason} className="input" />
             <Err text={errors.reason} />
           </label>
           {history ? (
-            <EntryDate today={today} defaultValue={day(r.issued_at ?? r.created_at)} error={errors.date} pastHint="Rekodi ya zamani: tarehe hii ndiyo itakayotumika kwenye ripoti." />
+            <EntryDate today={today} defaultValue={day(r.issued_at ?? r.created_at)} error={errors.date} pastHint={t("Rekodi ya zamani: tarehe hii ndiyo itakayotumika kwenye ripoti.", "Past record: this date is the one reports will use.")} />
           ) : (
             <input type="hidden" name="date" value="" />
           )}
           {r.status === "authorised" && (
             <p className="rounded-md bg-warn-soft px-2 py-1 text-xs text-warn">
-              Meneja wa kiwanda ameshaidhinisha. Ukibadilisha kiasi, litarudi kwake kuidhinishwa tena.
+              {t(
+                "Meneja wa kiwanda ameshaidhinisha. Ukibadilisha kiasi, litarudi kwake kuidhinishwa tena.",
+                "The factory manager has authorised it. If you change the amount, it goes back to them to authorise again.",
+              )}
             </p>
           )}
           <Err text={errors.form} />
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost">
-              Ghairi
+              {t("Ghairi", "Cancel")}
             </button>
             <button type="submit" disabled={pending} className="btn btn-primary">
-              {pending ? "Inahifadhi…" : "Hifadhi mabadiliko"}
+              {pending ? t("Inahifadhi…", "Saving…") : t("Hifadhi mabadiliko", "Save changes")}
             </button>
           </div>
         </form>

@@ -1,3 +1,4 @@
+import { sw, type Tr } from "@/lib/i18n";
 import { TIME_ZONE } from "@/lib/time";
 
 // Tanzanian shillings, shown without cents: "TSh 40,000".
@@ -20,11 +21,11 @@ export const formatDateTime = (d: Date) => dateTime.format(d);
 // History typed in later has a day but no real time of day.
 const dateOnly = new Intl.DateTimeFormat("en-GB", { ...DAY, timeZone: TIME_ZONE });
 export const formatDate = (d: Date) => dateOnly.format(d);
-// Dashboard heading: "Ijumaa, 09/10/2026".
-const weekday = new Intl.DateTimeFormat("sw-TZ", { weekday: "long", timeZone: TIME_ZONE });
-export const formatToday = () => {
+// Dashboard heading: "Ijumaa, 09/10/2026" or "Friday, 09/10/2026".
+const weekday = { sw: new Intl.DateTimeFormat("sw-TZ", { weekday: "long", timeZone: TIME_ZONE }), en: new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: TIME_ZONE }) };
+export const formatToday = (t: Tr = sw) => {
   const now = new Date();
-  return `${weekday.format(now)}, ${dateOnly.format(now)}`;
+  return `${t(weekday.sw, weekday.en).format(now)}, ${dateOnly.format(now)}`;
 };
 
 // Report rows already carry Tanzanian wall time as "YYYY-MM-DD HH:MI"; read it as UTC so it isn't shifted again.
@@ -55,10 +56,11 @@ const inKilos = (c: Cargo) => c.unit === "kg";
 export const formatQuantity = (c: Cargo) => twoDecimals.format(Number(c.tonnes) * (inKilos(c) ? 1000 : 1));
 // The price for one tonne or one kilo: "TSh 45,000", "TSh 52.25".
 export const formatUnitPrice = (c: Cargo) => price.format(Number(c.rate_per_tonne) / (inKilos(c) ? 1000 : 1));
-export const unitName = (c: Cargo) => (inKilos(c) ? "Kilo" : "Tani");
-export const cargoSum = (c: Cargo) => `${unitName(c)} ${formatQuantity(c)} × ${formatUnitPrice(c)}`;
+export const unitName = (c: Cargo, t: Tr = sw) => (inKilos(c) ? t("Kilo", "kg") : t("Tani", "tonnes"));
+export const cargoSum = (c: Cargo, t: Tr = sw) =>
+  t(`${unitName(c, t)} ${formatQuantity(c)}`, `${formatQuantity(c)} ${unitName(c, t)}`) + ` × ${formatUnitPrice(c)}`;
 // Null for income that isn't cargo.
-export const cargoLine = (c: { tonnes: string | null; rate_per_tonne: string | null; unit: string; destination: string | null }) =>
+export const cargoLine = (c: { tonnes: string | null; rate_per_tonne: string | null; unit: string; destination: string | null }, t: Tr = sw) =>
   c.tonnes === null || c.rate_per_tonne === null
     ? null
-    : `${cargoSum({ tonnes: c.tonnes, rate_per_tonne: c.rate_per_tonne, unit: c.unit })}${c.destination ? ` · ${c.destination}` : ""}`;
+    : `${cargoSum({ tonnes: c.tonnes, rate_per_tonne: c.rate_per_tonne, unit: c.unit }, t)}${c.destination ? ` · ${c.destination}` : ""}`;

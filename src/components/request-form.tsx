@@ -1,5 +1,7 @@
 "use client";
 
+import type { Tr } from "@/lib/i18n";
+import { useT } from "@/components/lang-provider";
 import { useActionState, useState } from "react";
 import type { RequestFormState } from "@/app/actions/requests";
 import { DuplicateWarning } from "@/components/duplicate-warning";
@@ -14,7 +16,12 @@ import { MAX_ISSUE_NOTE_LENGTH, MAX_REASON_LENGTH } from "@/lib/validation";
 import { PAYMENT_METHODS } from "@/lib/voucher-fields";
 
 // One tap fills a common reason; the driver can still type anything. Fuel is its own kind of request.
-const quickReasons = ["Matengenezo", "Maegesho", "Usafi wa gari", "Ushuru wa barabara"];
+const quickReasons = (t: Tr) => [
+  t("Matengenezo", "Repairs"),
+  t("Maegesho", "Parking"),
+  t("Usafi wa gari", "Car wash"),
+  t("Ushuru wa barabara", "Road toll"),
+];
 
 // What a driver's fuel request is checked against: their car's last reading (none until the manager
 // records a starting one), whether a fuel request is still waiting to be paid, and what the car
@@ -43,6 +50,7 @@ export function RequestForm({
   today?: string;
   sent: string;
 }) {
+  const t = useT();
   const [state, action, pending] = useActionState(submit, undefined);
   const failed = state && !state.ok ? state : undefined;
   const [past, setPast] = useState(false);
@@ -76,12 +84,12 @@ export function RequestForm({
   return (
     <form action={action} className="grid gap-4">
       <fieldset key={fuelBlocked ? "blocked" : "open"}>
-        <legend className="label">Aina ya ombi</legend>
+        <legend className="label">{t("Aina ya ombi", "Kind of request")}</legend>
         <div className="grid grid-cols-2 gap-1 rounded-lg border border-line p-1">
           {(
             [
-              ["fuel", "Mafuta"],
-              ["other", "Mengineyo"],
+              ["fuel", t("Mafuta", "Fuel")],
+              ["other", t("Mengineyo", "Other")],
             ] as const
           ).map(([value, label]) => (
             <label
@@ -105,13 +113,19 @@ export function RequestForm({
         </div>
         {isDriver && fuel?.openFuel && (
           <p className="mt-1 text-xs text-muted">
-            Ombi lako la mafuta la mwisho bado halijalipwa. Utaomba mafuta tena likishalipwa au kukataliwa.
+            {t(
+              "Ombi lako la mafuta la mwisho bado halijalipwa. Utaomba mafuta tena likishalipwa au kukataliwa.",
+              "Your last fuel request hasn't been paid yet. You can ask for fuel again once it's paid or declined.",
+            )}
           </p>
         )}
-        {isDriver && fuel === null && <p className="mt-1 text-xs text-muted">Utaomba mafuta ukishapewa gari.</p>}
+        {isDriver && fuel === null && <p className="mt-1 text-xs text-muted">{t("Utaomba mafuta ukishapewa gari.", "You can ask for fuel once you have a car.")}</p>}
         {notReady && (
           <p className="mt-1 text-xs text-muted">
-            Gari lako bado halina {notReady}. Meneja akishakamilisha, utaomba mafuta.
+            {t(
+              `Gari lako bado halina ${notReady}. Meneja akishakamilisha, utaomba mafuta.`,
+              `Your car doesn't have its ${notReady} yet. Once the manager adds it, you can ask for fuel.`,
+            )}
           </p>
         )}
         {failed?.errors.kind && <p className="mt-1 text-sm text-danger">{failed.errors.kind}</p>}
@@ -119,7 +133,7 @@ export function RequestForm({
 
       {cars && (
         <label className="block">
-          <span className="label">Gari</span>
+          <span className="label">{t("Gari", "Car")}</span>
           {/* React doesn't apply a new defaultValue to a mounted select, so remount it to keep the car
               picked when the form comes back with an error. */}
           <select
@@ -130,21 +144,24 @@ export function RequestForm({
             className="input"
           >
             <option value="" disabled>
-              Chagua namba ya gari
+              {t("Chagua namba ya gari", "Pick the car's plate")}
             </option>
             {/* Fuel bought now needs the car's fuel type, tank and starting reading; past fuel is history. */}
             {cars.map((c) => (
               <option key={c.id} value={c.id} disabled={kind === "fuel" && !past && !c.fuelReady}>
                 {c.plate}
                 {c.car && ` · ${c.car}`}
-                {kind === "fuel" && !past && !c.fuelReady && " · bado haliko tayari kwa mafuta"}
+                {kind === "fuel" && !past && !c.fuelReady && t(" · bado haliko tayari kwa mafuta", " · not ready for fuel yet")}
               </option>
             ))}
-            {kind !== "fuel" && <option value="none">Bila gari (ofisi na mengineyo)</option>}
+            {kind !== "fuel" && <option value="none">{t("Bila gari (ofisi na mengineyo)", "No car (office and other)")}</option>}
           </select>
           {kind === "fuel" && !past && cars.some((c) => !c.fuelReady) && (
             <p className="mt-1 text-xs text-muted">
-              Gari linaombewa mafuta likishakuwa na aina ya mafuta, tanki na kipimo cha sasa. Vikamilishe kwenye Magari.
+              {t(
+                "Gari linaombewa mafuta likishakuwa na aina ya mafuta, tanki na kipimo cha sasa. Vikamilishe kwenye Magari.",
+                "Fuel can be asked for a car once it has a fuel type, a tank size and a current reading. Add them on Cars.",
+              )}
             </p>
           )}
           {failed?.errors.carId && <p className="mt-1 text-sm text-danger">{failed.errors.carId}</p>}
@@ -157,13 +174,16 @@ export function RequestForm({
           defaultValue={failed?.values.date}
           error={failed?.errors.date}
           onPast={setPast}
-          pastHint="Tarehe iliyopita: litahifadhiwa kama matumizi ya zamani yaliyokwisha lipwa, bila kupitia kwa meneja wa kiwanda wala mhasibu."
+          pastHint={t(
+            "Tarehe iliyopita: litahifadhiwa kama matumizi ya zamani yaliyokwisha lipwa, bila kupitia kwa meneja wa kiwanda wala mhasibu.",
+            "A past date: it is saved as past spending already paid, without going to the factory manager or the accountant.",
+          )}
         />
       )}
       {today && past && (
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="label">Yalilipwa kwa</span>
+            <span className="label">{t("Yalilipwa kwa", "Paid by")}</span>
             <select
               key={failed ? `method-${failed.values.paymentMethod}` : "fresh"}
               name="paymentMethod"
@@ -173,7 +193,7 @@ export function RequestForm({
             >
               {PAYMENT_METHODS.map((m) => (
                 <option key={m.key} value={m.key}>
-                  {m.sw}
+                  {t<string>(m.sw, m.en)}
                 </option>
               ))}
             </select>
@@ -181,13 +201,13 @@ export function RequestForm({
           </label>
           <label className="block">
             <span className="label">
-              Kumbukumbu <span className="font-normal text-muted">(si lazima)</span>
+              {t("Kumbukumbu", "Reference")} <span className="font-normal text-muted">{t("(si lazima)", "(optional)")}</span>
             </span>
             <input
               name="reference"
               maxLength={MAX_ISSUE_NOTE_LENGTH}
               autoComplete="off"
-              placeholder="Namba ya M-Pesa, benki…"
+              placeholder={t("Namba ya M-Pesa, benki…", "M-Pesa or bank number…")}
               defaultValue={failed?.values.reference}
               className="input"
             />
@@ -198,7 +218,7 @@ export function RequestForm({
       {isDriver && kind === "fuel" && (
         <>
           <label className="block">
-            <span className="label">Kilomita kwenye gari sasa</span>
+            <span className="label">{t("Kilomita kwenye gari sasa", "Kilometres on the car now")}</span>
             <input
               name="odometer"
               inputMode="numeric"
@@ -209,7 +229,7 @@ export function RequestForm({
             />
             {fuel?.last && (
               <p className="mt-1 text-xs text-muted">
-                Kipimo cha mwisho: km {formatKm(fuel.last.odometer)} · {gaugeLabel(fuel.last.eighths)} ·{" "}
+                {t("Kipimo cha mwisho", "Last reading")}: km {formatKm(fuel.last.odometer)} · {gaugeLabel(fuel.last.eighths, t)} ·{" "}
                 {formatDateTime(fuel.last.at)}
               </p>
             )}
@@ -221,7 +241,7 @@ export function RequestForm({
 
       {kind !== "fuel" && !itemsOpen && (
         <label className="block">
-          <span className="label">Kiasi</span>
+          <span className="label">{t("Kiasi", "Amount")}</span>
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
             <input
@@ -249,7 +269,7 @@ export function RequestForm({
         <div className="grid gap-2">
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="label">Bei ya lita moja</span>
+              <span className="label">{t("Bei ya lita moja", "Price per litre")}</span>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
                 <input
@@ -260,7 +280,7 @@ export function RequestForm({
                   defaultValue={failed?.values.fuelPrice}
                   onInput={(e) => {
                     const value = e.currentTarget.value;
-                    setTyped((t) => ({ ...t, price: value }));
+                    setTyped((prev) => ({ ...prev, price: value }));
                   }}
                   className="input pl-12 tabular-nums"
                 />
@@ -268,7 +288,7 @@ export function RequestForm({
               {failed?.errors.fuelPrice && <p className="mt-1 text-sm text-danger">{failed.errors.fuelPrice}</p>}
             </label>
             <label className="block">
-              <span className="label">Lita ngapi</span>
+              <span className="label">{t("Lita ngapi", "How many litres")}</span>
               <div className="relative">
                 <input
                   name="litres"
@@ -278,7 +298,7 @@ export function RequestForm({
                   defaultValue={failed?.values.litres}
                   onInput={(e) => {
                     const value = e.currentTarget.value;
-                    setTyped((t) => ({ ...t, litres: value }));
+                    setTyped((prev) => ({ ...prev, litres: value }));
                   }}
                   className="input pr-10 tabular-nums"
                 />
@@ -288,29 +308,29 @@ export function RequestForm({
             </label>
           </div>
           <div className="flex items-baseline justify-between gap-3 rounded-lg bg-background px-3 py-2.5" aria-live="polite">
-            <span className="text-sm text-muted">Jumla ya kuomba</span>
+            <span className="text-sm text-muted">{t("Jumla ya kuomba", "Total to ask for")}</span>
             <span className="text-lg font-semibold tabular-nums">{fuelTotal === null ? "–" : formatMoney(fuelTotal)}</span>
           </div>
-          <p className="text-xs text-muted">Bei ya kituo cha mafuta, kwa lita moja. Inatofautiana kati ya vituo.</p>
+          <p className="text-xs text-muted">{t("Bei ya kituo cha mafuta, kwa lita moja. Inatofautiana kati ya vituo.", "The fuel station's price for one litre. It differs between stations.")}</p>
         </div>
       )}
       <label className="block">
-        <span className="label">{kind === "fuel" ? "Maelezo (si lazima)" : "Sababu"}</span>
+        <span className="label">{kind === "fuel" ? t("Maelezo (si lazima)", "Note (optional)") : t("Sababu", "Reason")}</span>
         <textarea
           id="reason"
           name="reason"
           rows={kind === "fuel" ? 2 : 3}
           required={kind !== "fuel"}
           maxLength={MAX_REASON_LENGTH}
-          placeholder={kind === "fuel" ? "Mfano: safari ya Morogoro" : "Mfano: Kubadilisha oili"}
+          placeholder={kind === "fuel" ? t("Mfano: safari ya Morogoro", "E.g. trip to Morogoro") : t("Mfano: Kubadilisha oili", "E.g. Oil change")}
           defaultValue={failed?.values.reason}
           className="input"
         />
         {failed?.errors.reason && <p className="mt-1 text-sm text-danger">{failed.errors.reason}</p>}
       </label>
       {kind !== "fuel" && (
-        <div className="flex flex-wrap gap-2" aria-label="Sababu za haraka">
-          {quickReasons.map((r) => (
+        <div className="flex flex-wrap gap-2" aria-label={t("Sababu za haraka", "Quick reasons")}>
+          {quickReasons(t).map((r) => (
             <button
               key={r}
               type="button"
@@ -328,21 +348,21 @@ export function RequestForm({
           ))}
         </div>
       )}
-      {failed?.duplicate && <DuplicateWarning match={failed.duplicate} what="Ombi" />}
+      {failed?.duplicate && <DuplicateWarning match={failed.duplicate} what={t("Ombi", "Request")} />}
       <button type="submit" disabled={pending} className="btn btn-primary w-full">
         {pending
-          ? "Inatuma…"
+          ? t("Inatuma…", "Sending…")
           : failed?.duplicate
-            ? "Ndiyo, ni jipya: tuma"
+            ? t("Ndiyo, ni jipya: tuma", "Yes, it's new: send")
             : past
-              ? "Hifadhi matumizi ya zamani"
+              ? t("Hifadhi matumizi ya zamani", "Save past spending")
               : cars
-                ? "Omba na ukubali"
-                : "Tuma ombi"}
+                ? t("Omba na ukubali", "Request and approve")
+                : t("Tuma ombi", "Send request")}
       </button>
       {state?.ok && (
         <p role="status" className="rounded-md bg-ok-soft px-3 py-2 text-sm text-ok">
-          {state.backfilled ? "Matumizi ya zamani yamehifadhiwa kama yaliyokwisha lipwa." : sent}
+          {state.backfilled ? t("Matumizi ya zamani yamehifadhiwa kama yaliyokwisha lipwa.", "Past spending saved as already paid.") : sent}
         </p>
       )}
     </form>

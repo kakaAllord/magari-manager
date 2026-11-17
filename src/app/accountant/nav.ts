@@ -1,9 +1,9 @@
-import type { NavLink } from "@/components/app-shell";
+import type { NavItem } from "@/components/app-shell";
 
-export const accountantLinks: NavLink[] = [
-  { href: "/accountant", label: "Kulipa", icon: "money" },
-  { href: "/accountant/salio", label: "Dashibodi", icon: "dashboard" },
-  { href: "/accountant/history", label: "Historia", icon: "history" },
-  { href: "/accountant/vouchers", label: "Payment vouchers", icon: "pdf" },
-  { href: "/accountant/reports", label: "Ripoti", icon: "report" },
+export const accountantLinks: NavItem[] = [
+  { href: "/accountant", label: ["Kulipa", "To pay"], icon: "money" },
+  { href: "/accountant/salio", label: ["Dashibodi", "Dashboard"], icon: "dashboard" },
+  { href: "/accountant/history", label: ["Historia", "History"], icon: "history" },
+  { href: "/accountant/vouchers", label: ["Payment vouchers", "Payment vouchers"], icon: "pdf" },
+  { href: "/accountant/reports", label: ["Ripoti", "Reports"], icon: "report" },
 ];

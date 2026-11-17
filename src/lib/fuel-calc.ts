@@ -1,3 +1,4 @@
+import { sw, type Tr } from "./i18n.ts";
 // Pure fuel arithmetic, kept free of server imports so it can be unit tested with node --test.
 //
 // Between two readings of a car: km = odometer difference, and
@@ -34,20 +35,20 @@ export type Stretch = {
 
 // Gauge marks, in eighths of a tank.
 export const GAUGE = [
-  { eighths: 0, short: "E", label: "Tupu" },
-  { eighths: 1, short: "⅛", label: "⅛" },
-  { eighths: 2, short: "¼", label: "Robo" },
-  { eighths: 3, short: "⅜", label: "⅜" },
-  { eighths: 4, short: "½", label: "Nusu" },
-  { eighths: 5, short: "⅝", label: "⅝" },
-  { eighths: 6, short: "¾", label: "Robo tatu" },
-  { eighths: 7, short: "⅞", label: "⅞" },
-  { eighths: 8, short: "F", label: "Imejaa" },
+  { eighths: 0, short: "E", label: "Tupu", en: "Empty" },
+  { eighths: 1, short: "⅛", label: "⅛", en: "⅛" },
+  { eighths: 2, short: "¼", label: "Robo", en: "Quarter" },
+  { eighths: 3, short: "⅜", label: "⅜", en: "⅜" },
+  { eighths: 4, short: "½", label: "Nusu", en: "Half" },
+  { eighths: 5, short: "⅝", label: "⅝", en: "⅝" },
+  { eighths: 6, short: "¾", label: "Robo tatu", en: "Three quarters" },
+  { eighths: 7, short: "⅞", label: "⅞", en: "⅞" },
+  { eighths: 8, short: "F", label: "Imejaa", en: "Full" },
 ] as const;
 
-export const gaugeLabel = (eighths: number) => {
+export const gaugeLabel = (eighths: number, t: Tr = sw) => {
   const g = GAUGE[eighths];
-  return g.short === g.label ? `${g.label} ya tanki` : g.label;
+  return g.short === g.label ? t(`${g.label} ya tanki`, `${g.en} of a tank`) : t<string>(g.label, g.en);
 };
 
 // A stretch counts as thirsty when it gets less than this share of the car's usual km per litre.

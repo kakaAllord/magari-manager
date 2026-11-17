@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { query } from "@/lib/db";
+import type { Tr } from "@/lib/i18n";
 
 const COOKIE = "session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
@@ -11,13 +12,14 @@ const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 export type Role = "driver" | "manager" | "director" | "accountant" | "factory_manager";
 
 // "manager" is the vehicle manager; the factory manager authorises what they approve.
-export const roleName: Record<Role, string> = {
-  driver: "Dereva",
-  manager: "Meneja",
-  director: "Mkurugenzi",
-  accountant: "Mhasibu",
-  factory_manager: "Meneja wa kiwanda",
-};
+export const roleName = (role: Role, t: Tr): string =>
+  ({
+    driver: t("Dereva", "Driver"),
+    manager: t("Meneja", "Vehicle manager"),
+    director: t("Mkurugenzi", "Director"),
+    accountant: t("Mhasibu", "Accountant"),
+    factory_manager: t("Meneja wa kiwanda", "Factory manager"),
+  })[role];
 export type User = { id: number; name: string; email: string | null; role: Role };
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");

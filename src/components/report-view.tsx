@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
@@ -5,7 +6,7 @@ import { ReportToolbar } from "@/components/report-filters";
 import { cargoLine, formatMoney, formatWallDate, formatWallTime, keepMinus } from "@/lib/format";
 import { parseReportParams, presets, toSearch } from "@/lib/report-params";
 import { CarProfit } from "@/components/car-profit";
-import { getExpenses, getIncomes, listCars, moneyByCar, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
+import { getExpenses, getIncomes, listCars, moneyByCar, sourceLabel, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
 
 // The reports page, shared by both managers, the mhasibu and directors. `base` is the page's own path.
 export async function ReportView({
@@ -15,66 +16,70 @@ export async function ReportView({
   base: "/manager/reports" | "/director/reports" | "/accountant/reports" | "/factory/reports";
   searchParams: Record<string, string | string[] | undefined>;
 }) {
+  const t = await getT();
   const today = todayInTanzania();
   const params = parseReportParams(searchParams, today);
   const [cars, expenses, incomes] = await Promise.all([listCars(), getExpenses(params), getIncomes(params)]);
-  const summary = summarise(expenses, cars, params);
-  const income = summariseIncome(incomes, params);
+  const summary = summarise(expenses, cars, params, t);
+  const income = summariseIncome(incomes, params, t);
   const balance = income.total - summary.grandTotal;
   const chosen = params.carIds.length ? cars.filter((c) => params.carIds.includes(c.id)) : cars;
-  const byCar = moneyByCar(chosen, expenses, incomes);
+  const byCar = moneyByCar(chosen, expenses, incomes, t);
   const search = toSearch(params);
   // Spending and income share one card; the tab lives in the URL so filtering keeps it.
   const tab = searchParams.tab === "mapato" ? "mapato" : "matumizi";
-  const tabSearch = (t: string) => (t === "mapato" ? `${search}&tab=mapato` : search);
+  const tabSearch = (key: string) => (key === "mapato" ? `${search}&tab=mapato` : search);
 
   return (
       <main className="page">
         <PageHeader
-          title="Ripoti"
-          description="Mapato na matumizi kwa kipindi unachochagua. Matumizi ni pesa zilizotolewa na mhasibu, kwa tarehe ya kutolewa; mapato ni kwa tarehe ya kurekodiwa."
+          title={t("Ripoti", "Reports")}
+          description={t(
+            "Mapato na matumizi kwa kipindi unachochagua. Matumizi ni pesa zilizotolewa na mhasibu, kwa tarehe ya kutolewa; mapato ni kwa tarehe ya kurekodiwa.",
+            "Income and spending for the period you pick. Spending is money the accountant paid out, by the day it was paid; income is by the day it was recorded.",
+          )}
         />
 
         <ReportToolbar
-          presets={presets(today)}
+          presets={presets(today, t)}
           params={params}
           cars={cars}
           today={today}
           tab={tab}
           downloads={[
-            { label: "PDF", hint: "Tayari kuchapisha au kutuma", href: `${base}/export?${search}&format=pdf`, icon: "pdf" },
-            { label: "Excel", hint: "Fomula, chati na majedwali ya kuchuja", href: `${base}/export?${search}`, icon: "sheet" },
+            { label: "PDF", hint: t("Tayari kuchapisha au kutuma", "Ready to print or send"), href: `${base}/export?${search}&format=pdf`, icon: "pdf" },
+            { label: "Excel", hint: t("Fomula, chati na majedwali ya kuchuja", "Formulas, charts and filterable tables"), href: `${base}/export?${search}`, icon: "sheet" },
           ]}
         />
 
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Jumla">
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label={t("Jumla", "Totals")}>
           <Total
             tone="in"
             icon="moneyIn"
-            label="Mapato"
+            label={t("Mapato", "Income")}
             value={income.total}
-            note={income.count === 1 ? "Rekodi 1" : `Rekodi ${income.count}`}
+            note={income.count === 1 ? t("Rekodi 1", "1 record") : t(`Rekodi ${income.count}`, `${income.count} records`)}
           />
           <Total
             tone="out"
             icon="moneyOut"
-            label="Matumizi"
+            label={t("Matumizi", "Spending")}
             value={summary.grandTotal}
-            note={summary.count === 1 ? "Ombi 1 lililolipwa" : `Maombi ${summary.count} yaliyolipwa`}
+            note={summary.count === 1 ? t("Ombi 1 lililolipwa", "1 paid request") : t(`Maombi ${summary.count} yaliyolipwa`, `${summary.count} paid requests`)}
           />
           <Total
             wide
             tone={balance < 0 ? "negative" : "balance"}
             icon="wallet"
-            label="Salio"
+            label={t("Salio", "Balance")}
             value={balance}
-            note={balance < 0 ? "Matumizi yamezidi mapato" : "Mapato toa matumizi"}
+            note={balance < 0 ? t("Matumizi yamezidi mapato", "Spending is above income") : t("Mapato toa matumizi", "Income minus spending")}
           />
         </section>
 
         <section className="card">
-          <h2 className="font-semibold">Faida kwa gari</h2>
-          <p className="text-sm text-muted">Mapato ya kila gari ukilinganisha na matumizi yake katika kipindi hiki.</p>
+          <h2 className="font-semibold">{t("Faida kwa gari", "Profit by car")}</h2>
+          <p className="text-sm text-muted">{t("Mapato ya kila gari ukilinganisha na matumizi yake katika kipindi hiki.", "Each car's income against its spending in this period.")}</p>
           <CarProfit
             rows={byCar.map((c) => ({
               key: String(c.id ?? "none"),
@@ -87,22 +92,22 @@ export async function ReportView({
         </section>
 
         <section className="card grid gap-4">
-          <nav className="-mx-4 -mt-4 flex border-b border-line sm:-mx-5 sm:-mt-5" aria-label="Matumizi au mapato">
+          <nav className="-mx-4 -mt-4 flex border-b border-line sm:-mx-5 sm:-mt-5" aria-label={t("Matumizi au mapato", "Spending or income")}>
             {(
               [
-                { key: "matumizi", label: "Matumizi", count: summary.count },
-                { key: "mapato", label: "Mapato", count: income.count },
+                { key: "matumizi", label: t("Matumizi", "Spending"), count: summary.count },
+                { key: "mapato", label: t("Mapato", "Income"), count: income.count },
               ] as const
-            ).map((t) => (
+            ).map((x) => (
               <Link
-                key={t.key}
-                href={`?${tabSearch(t.key)}`}
+                key={x.key}
+                href={`?${tabSearch(x.key)}`}
                 scroll={false}
-                aria-current={tab === t.key ? "page" : undefined}
+                aria-current={tab === x.key ? "page" : undefined}
                 className="flex flex-1 items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted hover:text-foreground aria-[current=page]:border-accent aria-[current=page]:text-foreground"
               >
-                {t.label}
-                <span className="rounded-full bg-background px-2 text-xs tabular-nums">{t.count}</span>
+                {x.label}
+                <span className="rounded-full bg-background px-2 text-xs tabular-nums">{x.count}</span>
               </Link>
             ))}
           </nav>
@@ -110,8 +115,10 @@ export async function ReportView({
           {tab === "matumizi" ? (
             <>
               <p className="text-sm text-muted">
-                Maombi {summary.count} ·{" "}
-                {params.carIds.length ? `magari ${params.carIds.length} yaliyochaguliwa` : `magari yote (${cars.length})`}
+                {t(`Maombi ${summary.count}`, `${summary.count} requests`)} ·{" "}
+                {params.carIds.length
+                  ? t(`magari ${params.carIds.length} yaliyochaguliwa`, `${params.carIds.length} cars picked`)
+                  : t(`magari yote (${cars.length})`, `all cars (${cars.length})`)}
               </p>
 
               {params.group === "car" ? (
@@ -119,9 +126,9 @@ export async function ReportView({
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>Gari</th>
-                        <th className="num">Maombi</th>
-                        <th className="num">Jumla</th>
+                        <th>{t("Gari", "Car")}</th>
+                        <th className="num">{t("Maombi", "Requests")}</th>
+                        <th className="num">{t("Jumla", "Total")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -137,7 +144,7 @@ export async function ReportView({
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td>Jumla</td>
+                        <td>{t("Jumla", "Total")}</td>
                         <td className="num">{summary.count}</td>
                         <td className="num">{formatMoney(summary.grandTotal)}</td>
                       </tr>
@@ -149,13 +156,13 @@ export async function ReportView({
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>{params.group === "month" ? "Mwezi" : "Wiki"}</th>
+                        <th>{params.group === "month" ? t("Mwezi", "Month") : t("Wiki", "Week")}</th>
                         {summary.columns.map((c) => (
                           <th key={c.key} className="num">
                             {c.label}
                           </th>
                         ))}
-                        <th className="num">Jumla</th>
+                        <th className="num">{t("Jumla", "Total")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -173,10 +180,10 @@ export async function ReportView({
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td>Jumla</td>
-                        {summary.totals.map((t, i) => (
+                        <td>{t("Jumla", "Total")}</td>
+                        {summary.totals.map((sum, i) => (
                           <td key={summary.columns[i].key} className="num">
-                            {formatMoney(t)}
+                            {formatMoney(sum)}
                           </td>
                         ))}
                         <td className="num">{formatMoney(summary.grandTotal)}</td>
@@ -188,26 +195,26 @@ export async function ReportView({
 
               {expenses.length > 0 && (
                 <details>
-                  <summary className="cursor-pointer text-sm font-medium">Kila ombi na tarehe yake ({expenses.length})</summary>
+                  <summary className="cursor-pointer text-sm font-medium">{t("Kila ombi na tarehe yake", "Every request and its date")} ({expenses.length})</summary>
                   <ul className="mt-2 divide-y divide-line">
                     {expenses.map((e, i) => (
                       <li key={i} className="flex items-start justify-between gap-4 py-3">
                         <div className="min-w-0">
                           <p className="break-words">
-                            <span className="plate">{e.plate ?? "Hakuna gari"}</span> {e.reason}
+                            <span className="plate">{e.plate ?? t("Hakuna gari", "No car")}</span> {e.reason}
                           </p>
                           <p className="mt-1 text-xs text-muted">
                             {e.backfilled ? (
                               <>
-                                {formatWallDate(e.issued_at)} · <span className="font-medium text-warn">Rekodi ya zamani</span> ·{" "}
+                                {formatWallDate(e.issued_at)} · <span className="font-medium text-warn">{t("Rekodi ya zamani", "Past record")}</span> ·{" "}
                                 {e.requester}
                               </>
                             ) : (
                               <>
-                                Imetolewa {formatWallTime(e.issued_at)}
-                                {e.issued_by && ` na ${e.issued_by}`}
-                                {e.authorised_by && ` · imeidhinishwa na ${e.authorised_by}`} · imekubaliwa{" "}
-                                {formatWallTime(e.approved_at)} · iliombwa{" "}
+                                {t("Imetolewa", "Paid")} {formatWallTime(e.issued_at)}
+                                {e.issued_by && t(` na ${e.issued_by}`, ` by ${e.issued_by}`)}
+                                {e.authorised_by && t(` · imeidhinishwa na ${e.authorised_by}`, ` · authorised by ${e.authorised_by}`)} ·{" "}
+                                {t("imekubaliwa", "approved")} {formatWallTime(e.approved_at)} · {t("iliombwa", "asked")}{" "}
                                 {formatWallTime(e.requested_at)} · {e.requester}
                                 {e.issue_note && ` · ${e.issue_note}`}
                               </>
@@ -224,19 +231,19 @@ export async function ReportView({
           ) : (
             <>
               <p className="text-sm text-muted">
-                {income.count === 1 ? "Rekodi 1" : `Rekodi ${income.count}`} ·{" "}
-                {params.group === "car" ? "kwa chanzo" : params.group === "month" ? "kwa mwezi" : "kwa wiki"}
+                {income.count === 1 ? t("Rekodi 1", "1 record") : t(`Rekodi ${income.count}`, `${income.count} records`)} ·{" "}
+                {params.group === "car" ? t("kwa chanzo", "by source") : params.group === "month" ? t("kwa mwezi", "by month") : t("kwa wiki", "by week")}
               </p>
               {income.rows.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted">Hakuna mapato katika kipindi hiki.</p>
+                <p className="py-4 text-center text-sm text-muted">{t("Hakuna mapato katika kipindi hiki.", "No income in this period.")}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>{params.group === "car" ? "Chanzo" : params.group === "month" ? "Mwezi" : "Wiki"}</th>
-                        <th className="num">Mara</th>
-                        <th className="num">Jumla</th>
+                        <th>{params.group === "car" ? t("Chanzo", "Source") : params.group === "month" ? t("Mwezi", "Month") : t("Wiki", "Week")}</th>
+                        <th className="num">{t("Mara", "Times")}</th>
+                        <th className="num">{t("Jumla", "Total")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -252,7 +259,7 @@ export async function ReportView({
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td>Jumla</td>
+                        <td>{t("Jumla", "Total")}</td>
                         <td className="num">{income.count}</td>
                         <td className="num text-ok">{formatMoney(income.total)}</td>
                       </tr>
@@ -263,25 +270,25 @@ export async function ReportView({
 
               {incomes.length > 0 && (
                 <details>
-                  <summary className="cursor-pointer text-sm font-medium">Kila rekodi na tarehe yake ({incomes.length})</summary>
+                  <summary className="cursor-pointer text-sm font-medium">{t("Kila rekodi na tarehe yake", "Every record and its date")} ({incomes.length})</summary>
                   <ul className="mt-2 divide-y divide-line">
                     {incomes.map((x, i) => (
                       <li key={i} className="flex items-start justify-between gap-4 py-3">
                         <div className="min-w-0">
                           <p className="break-words">
-                            {x.car_id !== null ? <span className="plate">{x.source}</span> : x.source}
+                            {x.car_id !== null ? <span className="plate">{x.source}</span> : sourceLabel(x.source, t)}
                             {x.car && <span className="text-muted"> {x.car}</span>}
                           </p>
-                          {cargoLine(x) && <p className="text-sm break-words">{cargoLine(x)}</p>}
+                          {cargoLine(x, t) && <p className="text-sm break-words">{cargoLine(x, t)}</p>}
                           {x.description && <p className="text-sm break-words">{x.description}</p>}
                           {x.customer_name && (
                             <p className="text-sm break-words">
                               {Number(x.owed) > 0 ? (
                                 <span className="rounded bg-warn-soft px-1.5 py-px text-xs font-medium text-warn">
-                                  Deni {formatMoney(x.owed)}
+                                  {t("Deni", "Owed")} {formatMoney(x.owed)}
                                 </span>
                               ) : (
-                                <span className="rounded bg-ok-soft px-1.5 py-px text-xs font-medium text-ok">Deni limelipwa</span>
+                                <span className="rounded bg-ok-soft px-1.5 py-px text-xs font-medium text-ok">{t("Deni limelipwa", "Debt paid")}</span>
                               )}{" "}
                               {x.customer_name}
                             </p>
@@ -289,10 +296,10 @@ export async function ReportView({
                           <p className="mt-1 text-xs text-muted">
                             {x.backfilled ? (
                               <>
-                                {formatWallDate(x.recorded_at)} · <span className="font-medium text-warn">Rekodi ya zamani</span>
+                                {formatWallDate(x.recorded_at)} · <span className="font-medium text-warn">{t("Rekodi ya zamani", "Past record")}</span>
                               </>
                             ) : (
-                              <>Imerekodiwa {formatWallTime(x.recorded_at)}</>
+                              <>{t("Imerekodiwa", "Recorded")} {formatWallTime(x.recorded_at)}</>
                             )}
                             {x.recorded_by && ` · ${x.recorded_by}`}
                           </p>
@@ -333,15 +340,15 @@ function Total({
   value: number;
   note: string;
 }) {
-  const t = tones[tone];
+  const look = tones[tone];
   return (
-    <div className={`flex items-center gap-4 rounded-xl border p-4 sm:p-5 ${t.card} ${wide ? "col-span-2 sm:col-span-1" : ""}`}>
-      <span className={`grid size-11 shrink-0 place-items-center rounded-full max-sm:hidden ${t.icon}`}>
+    <div className={`flex items-center gap-4 rounded-xl border p-4 sm:p-5 ${look.card} ${wide ? "col-span-2 sm:col-span-1" : ""}`}>
+      <span className={`grid size-11 shrink-0 place-items-center rounded-full max-sm:hidden ${look.icon}`}>
         <Icon name={icon} className="size-5" />
       </span>
       <div className="min-w-0 flex-1 @container">
-        <p className={`text-sm font-medium ${t.text}`}>{label}</p>
-        <p className={`figure ${t.text}`}>{keepMinus(formatMoney(value))}</p>
+        <p className={`text-sm font-medium ${look.text}`}>{label}</p>
+        <p className={`figure ${look.text}`}>{keepMinus(formatMoney(value))}</p>
         <p className="text-xs text-muted">{note}</p>
       </div>
     </div>

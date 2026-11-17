@@ -1,20 +1,21 @@
 import "server-only";
 import { query } from "@/lib/db";
 import { missingForFuel } from "@/lib/fuel-ready";
+import type { Tr } from "@/lib/i18n";
+import { getT } from "@/lib/lang";
 import { stretchesFor, totalsOf, type Fill, type Reading, type Stretch, type Totals } from "@/lib/fuel-calc";
 
 export type FuelType = "petrol" | "diesel";
-export const fuelTypeName: Record<FuelType, string> = { petrol: "Petroli", diesel: "Dizeli" };
+export const fuelTypeName = (type: FuelType, t: Tr) => (type === "petrol" ? t("Petroli", "Petrol") : t("Dizeli", "Diesel"));
 
 export type FuelPeriod = "30" | "90" | "365" | "all";
-export const fuelPeriods: { value: FuelPeriod; label: string }[] = [
-  { value: "30", label: "Siku 30" },
-  { value: "90", label: "Siku 90" },
-  { value: "365", label: "Mwaka mmoja" },
-  { value: "all", label: "Tangu mwanzo" },
+export const fuelPeriods = (t: Tr): { value: FuelPeriod; label: string }[] => [
+  { value: "30", label: t("Siku 30", "30 days") },
+  { value: "90", label: t("Siku 90", "90 days") },
+  { value: "365", label: t("Mwaka mmoja", "One year") },
+  { value: "all", label: t("Tangu mwanzo", "Since the start") },
 ];
-export const parseFuelPeriod = (v: unknown): FuelPeriod =>
-  fuelPeriods.some((p) => p.value === v) ? (v as FuelPeriod) : "90";
+export const parseFuelPeriod = (v: unknown): FuelPeriod => (v === "30" || v === "90" || v === "365" || v === "all" ? v : "90");
 
 type CarRow = {
   id: number;
@@ -71,7 +72,8 @@ export type FuelRange = { since: number; until: number };
 // Everything the Mafuta page and the reports show. Stretches count in the range they end in;
 // `carIds` (empty for all) narrows to some cars.
 export async function getFuelOverview(range: FuelRange, carIds: number[] = []): Promise<FuelOverview> {
-  const [cars, readings, fills, priceRows, users] = await Promise.all([
+  const [t, cars, readings, fills, priceRows, users] = await Promise.all([
+    getT(),
     query<CarRow>(
       `SELECT c.id, c.plate, c.name AS car, c.fuel_type, c.tank_litres, u.name AS driver
          FROM cars c LEFT JOIN users u ON u.id = c.driver_id
@@ -96,7 +98,7 @@ export async function getFuelOverview(range: FuelRange, carIds: number[] = []): 
   const prices: Record<FuelType, number | null> = { petrol: null, diesel: null };
   for (const p of priceRows) prices[p.fuel_type] = p.price_per_litre;
   const names = new Map(users.map((u) => [u.id, u.name]));
-  const driverName = (id: number | null) => (id === null ? "Bila dereva" : (names.get(id) ?? "Dereva aliyeondolewa"));
+  const driverName = (id: number | null) => (id === null ? t("Bila dereva", "No driver") : (names.get(id) ?? t("Dereva aliyeondolewa", "Removed driver")));
 
   const inPeriod: StretchRow[] = [];
   const chosen = carIds.length ? cars.filter((c) => carIds.includes(c.id)) : cars;
@@ -186,6 +188,6 @@ export async function getDriverFuelContext(driverId: number) {
   return {
     last: row.odometer_km === null ? null : { odometer: row.odometer_km, eighths: row.gauge_eighths!, at: row.created_at! },
     openFuel: row.open_fuel,
-    missing: missingForFuel({ fuelType: row.fuel_type, tank: row.tank_litres, measured: row.odometer_km !== null }),
+    missing: missingForFuel({ fuelType: row.fuel_type, tank: row.tank_litres, measured: row.odometer_km !== null }, await getT()),
   };
 }

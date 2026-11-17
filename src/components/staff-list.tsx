@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import { StaffMenu } from "@/components/staff-forms";
 import { query } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
@@ -20,12 +21,6 @@ const roleBadge: Record<StaffRole, string> = {
   accountant: "bg-warn-soft text-warn",
 };
 
-// What "handled" counts for each role: requests decided, authorised or paid.
-const handledLabel: Record<StaffRole, string> = {
-  factory_manager: "Ameamua maombi",
-  manager: "Ameamua maombi",
-  accountant: "Amelipa maombi",
-};
 
 // Staff in `roles`, in that order, switched-off people last, each with a ⋯ menu for a new password
 // or switching them off.
@@ -50,12 +45,19 @@ export async function StaffList({ roles, empty }: { roles: StaffRole[]; empty: s
     [roles],
   );
   const inactive = staff.filter((m) => m.deactivated_at).length;
+  const t = await getT();
+  // What "handled" counts for each role: requests decided, authorised or paid.
+  const handledLabel: Record<StaffRole, string> = {
+    factory_manager: t("Ameamua maombi", "Requests decided"),
+    manager: t("Ameamua maombi", "Requests decided"),
+    accountant: t("Amelipa maombi", "Requests paid"),
+  };
 
   return (
     <section className="card p-0 sm:p-0">
       <h2 className="border-b border-line px-4 py-3 text-sm font-medium text-muted sm:px-5">
-        Wafanyakazi {staff.length}
-        {inactive > 0 && ` · ${inactive} wamezimwa`}
+        {t(`Wafanyakazi ${staff.length}`, `${staff.length} staff`)}
+        {inactive > 0 && t(` · ${inactive} wamezimwa`, ` · ${inactive} switched off`)}
       </h2>
       {staff.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted">{empty}</p>
@@ -80,23 +82,23 @@ export async function StaffList({ roles, empty }: { roles: StaffRole[]; empty: s
                   {m.name}
                   {roles.length > 1 && (
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${roleBadge[m.role]}`}>
-                      {staffLabel[m.role]}
+                      {staffLabel(m.role, t)}
                     </span>
                   )}
                   {m.deactivated_at && (
                     <span className="rounded-full bg-danger-soft px-2 py-0.5 text-xs font-medium text-danger">
-                      Amezimwa
+                      {t("Amezimwa", "Switched off")}
                     </span>
                   )}
                 </p>
                 <p className="truncate text-sm text-muted">
                   {m.email}
-                  {m.added_by && <span className="text-xs"> · ameongezwa na {m.added_by}</span>}
+                  {m.added_by && <span className="text-xs"> · {t(`ameongezwa na ${m.added_by}`, `added by ${m.added_by}`)}</span>}
                 </p>
                 <p className="text-xs text-muted">
                   {m.deactivated_at
-                    ? `Alizimwa ${formatDateTime(m.deactivated_at)}`
-                    : `${handledLabel[m.role]} ${m.handled}${m.last_active ? ` · mara ya mwisho ${formatDateTime(m.last_active)}` : ""}`}
+                    ? t(`Alizimwa ${formatDateTime(m.deactivated_at)}`, `Switched off ${formatDateTime(m.deactivated_at)}`)
+                    : `${handledLabel[m.role]} ${m.handled}${m.last_active ? t(` · mara ya mwisho ${formatDateTime(m.last_active)}`, ` · last active ${formatDateTime(m.last_active)}`) : ""}`}
                 </p>
               </div>
               <StaffMenu id={m.id} name={m.name} active={!m.deactivated_at} />

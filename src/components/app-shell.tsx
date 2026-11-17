@@ -1,14 +1,19 @@
 import { logout } from "@/app/actions/auth";
 import { COMPANY, COMPANY_SHORT } from "@/lib/company";
+import { getT } from "@/lib/lang";
 import { roleName, type User } from "@/lib/session";
 import Link from "next/link";
 import { BrandMark, Icon, type IconName } from "./icons";
 import { SideLinks, TabLinks } from "./nav-links";
 
 export type NavLink = { href: string; label: string; icon: IconName };
+// The nav files give each label in both languages; the shell picks one before the links reach the browser.
+export type NavItem = { href: string; label: [sw: string, en: string]; icon: IconName };
 
 // Desktop (lg and up): fixed sidebar. Phones and tablets: top bar with tabs.
-export function AppShell({ user, links, children }: { user: User; links: NavLink[]; children: React.ReactNode }) {
+export async function AppShell({ user, links: items, children }: { user: User; links: NavItem[]; children: React.ReactNode }) {
+  const t = await getT();
+  const links: NavLink[] = items.map((l) => ({ ...l, label: t(...l.label) }));
   const initials = user.name
     .split(/\s+/)
     .map((w) => w[0])
@@ -18,9 +23,9 @@ export function AppShell({ user, links, children }: { user: User; links: NavLink
 
   const logoutButton = (full: boolean) => (
     <form action={logout} className={full ? "w-full" : undefined}>
-      <button type="submit" className={`btn btn-ghost gap-2 ${full ? "w-full justify-start" : "max-sm:size-11 max-sm:p-0"}`} aria-label="Toka">
+      <button type="submit" className={`btn btn-ghost gap-2 ${full ? "w-full justify-start" : "max-sm:size-11 max-sm:p-0"}`} aria-label={t("Toka", "Sign out")}>
         <Icon name="logout" className="size-4" />
-        <span className={full ? undefined : "max-sm:sr-only"}>Toka</span>
+        <span className={full ? undefined : "max-sm:sr-only"}>{t("Toka", "Sign out")}</span>
       </button>
     </form>
   );
@@ -33,7 +38,7 @@ export function AppShell({ user, links, children }: { user: User; links: NavLink
           <BrandMark />
           <div className="min-w-0">
             <p className="text-sm font-semibold leading-tight">{COMPANY}</p>
-            <p className="text-xs text-muted">Usimamizi wa magari</p>
+            <p className="text-xs text-muted">{t("Usimamizi wa magari", "Fleet management")}</p>
           </div>
         </div>
         <div className="mt-8 flex-1">
@@ -43,14 +48,14 @@ export function AppShell({ user, links, children }: { user: User; links: NavLink
           <Link
             href="/account"
             className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-background"
-            title="Akaunti yangu"
+            title={t("Akaunti yangu", "My account")}
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
               {initials}
             </span>
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{user.name}</p>
-              <p className="text-xs text-muted">{roleName[user.role]} · Akaunti</p>
+              <p className="text-xs text-muted">{roleName(user.role, t)} · {t("Akaunti", "Account")}</p>
             </div>
           </Link>
           {logoutButton(true)}
@@ -65,10 +70,10 @@ export function AppShell({ user, links, children }: { user: User; links: NavLink
             {/* Wraps rather than cut off on the narrowest phones: the name is what a client looks for. */}
             <p className="leading-tight font-semibold">{COMPANY_SHORT}</p>
             <p className="truncate text-xs text-muted">
-              {user.name} · {roleName[user.role]}
+              {user.name} · {roleName(user.role, t)}
             </p>
           </div>
-          <Link href="/account" className="btn btn-ghost max-sm:size-11 max-sm:p-0" aria-label="Akaunti yangu">
+          <Link href="/account" className="btn btn-ghost max-sm:size-11 max-sm:p-0" aria-label={t("Akaunti yangu", "My account")}>
             <Icon name="account" className="size-4" />
           </Link>
           {logoutButton(false)}

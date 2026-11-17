@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useT } from "./lang-provider";
 import { Icon } from "./icons";
 
 // A native modal: centred on larger screens, a sheet from the bottom on phones. Escape, the close
@@ -18,6 +19,7 @@ export function Dialog({
   description?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const t = useT();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -39,7 +41,7 @@ export function Dialog({
             <h2 className="text-lg font-semibold">{title}</h2>
             {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
           </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost -mt-1 -mr-1 size-11 shrink-0 p-0 sm:size-9" aria-label="Funga">
+          <button type="button" onClick={onClose} className="btn btn-ghost -mt-1 -mr-1 size-11 shrink-0 p-0 sm:size-9" aria-label={t("Funga", "Close")}>
             <Icon name="close" className="size-4" />
           </button>
         </div>

@@ -1,16 +1,16 @@
-import type { NavLink } from "@/components/app-shell";
+import type { NavItem } from "@/components/app-shell";
 
-export const managerLinks: NavLink[] = [
-  { href: "/manager", label: "Dashibodi", icon: "dashboard" },
-  { href: "/manager/requests", label: "Maombi", icon: "inbox" },
-  { href: "/manager/ask", label: "Omba pesa", icon: "send" },
-  { href: "/manager/history", label: "Historia", icon: "history" },
-  { href: "/manager/vouchers", label: "Payment vouchers", icon: "pdf" },
-  { href: "/manager/income", label: "Mapato", icon: "money" },
-  { href: "/manager/invoices", label: "Invoice", icon: "receipt" },
-  { href: "/manager/fuel", label: "Mafuta", icon: "fuel" },
-  { href: "/manager/cars", label: "Magari", icon: "car" },
-  { href: "/manager/drivers", label: "Madereva", icon: "users" },
-  { href: "/manager/reports", label: "Ripoti", icon: "report" },
-  { href: "/manager/maoni", label: "Maoni", icon: "chat" },
+export const managerLinks: NavItem[] = [
+  { href: "/manager", label: ["Dashibodi", "Dashboard"], icon: "dashboard" },
+  { href: "/manager/requests", label: ["Maombi", "Requests"], icon: "inbox" },
+  { href: "/manager/ask", label: ["Omba pesa", "Ask for money"], icon: "send" },
+  { href: "/manager/history", label: ["Historia", "History"], icon: "history" },
+  { href: "/manager/vouchers", label: ["Payment vouchers", "Payment vouchers"], icon: "pdf" },
+  { href: "/manager/income", label: ["Mapato", "Income"], icon: "money" },
+  { href: "/manager/invoices", label: ["Invoice", "Invoice"], icon: "receipt" },
+  { href: "/manager/fuel", label: ["Mafuta", "Fuel"], icon: "fuel" },
+  { href: "/manager/cars", label: ["Magari", "Cars"], icon: "car" },
+  { href: "/manager/drivers", label: ["Madereva", "Drivers"], icon: "users" },
+  { href: "/manager/reports", label: ["Ripoti", "Reports"], icon: "report" },
+  { href: "/manager/maoni", label: ["Maoni", "Feedback"], icon: "chat" },
 ];

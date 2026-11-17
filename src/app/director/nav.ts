@@ -1,10 +1,10 @@
-import type { NavLink } from "@/components/app-shell";
+import type { NavItem } from "@/components/app-shell";
 
-export const directorLinks: NavLink[] = [
-  { href: "/director", label: "Dashibodi", icon: "dashboard" },
-  { href: "/director/vouchers", label: "Payment vouchers", icon: "pdf" },
-  { href: "/director/fuel", label: "Mafuta", icon: "fuel" },
-  { href: "/director/reports", label: "Ripoti", icon: "report" },
-  { href: "/director/managers", label: "Wafanyakazi", icon: "users" },
-  { href: "/director/maoni", label: "Maoni", icon: "chat" },
+export const directorLinks: NavItem[] = [
+  { href: "/director", label: ["Dashibodi", "Dashboard"], icon: "dashboard" },
+  { href: "/director/vouchers", label: ["Payment vouchers", "Payment vouchers"], icon: "pdf" },
+  { href: "/director/fuel", label: ["Mafuta", "Fuel"], icon: "fuel" },
+  { href: "/director/reports", label: ["Ripoti", "Reports"], icon: "report" },
+  { href: "/director/managers", label: ["Wafanyakazi", "Staff"], icon: "users" },
+  { href: "/director/maoni", label: ["Maoni", "Feedback"], icon: "chat" },
 ];

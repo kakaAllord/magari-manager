@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import type { RequestStatus } from "@/lib/requests";
 
 const styles: Record<RequestStatus, string> = {
@@ -8,15 +9,15 @@ const styles: Record<RequestStatus, string> = {
   issued: "bg-ok-soft text-ok",
 };
 
-const labels: Record<RequestStatus, string> = {
-  pending: "Linasubiri",
-  approved: "Limekubaliwa",
-  authorised: "Limeidhinishwa",
-  rejected: "Limekataliwa",
-  issued: "Limelipwa",
-};
-
-export function StatusBadge({ status }: { status: RequestStatus }) {
+export async function StatusBadge({ status }: { status: RequestStatus }) {
+  const t = await getT();
+  const labels: Record<RequestStatus, string> = {
+    pending: t("Linasubiri", "Pending"),
+    approved: t("Limekubaliwa", "Approved"),
+    authorised: t("Limeidhinishwa", "Authorised"),
+    rejected: t("Limekataliwa", "Declined"),
+    issued: t("Limelipwa", "Paid"),
+  };
   return (
     <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status]}`}>
       {labels[status]}

@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import Link from "next/link";
 import { CarProfit } from "@/components/car-profit";
 import type { FuelOverview } from "@/lib/fuel";
@@ -38,31 +39,33 @@ export function StatTile({
 }
 
 // A salio tile's line for when part of the month's income is still owed: the salio without it.
-export function NoDebtLine({ balance, owed }: { balance: number; owed: string }) {
+export async function NoDebtLine({ balance, owed }: { balance: number; owed: string }) {
   if (Number(owed) <= 0) return null;
+  const t = await getT();
   return (
     <>
       <br />
-      Bila deni {keepMinus(formatMoney(balance - Number(owed)))}
+      {t("Bila deni", "Without debts")} {keepMinus(formatMoney(balance - Number(owed)))}
     </>
   );
 }
 
 // This month's faida or hasara for every car, with its driver, from its income and spending.
-export function CarMoneyCard({ cars, reportHref }: { cars: CarMoney[]; reportHref: string }) {
+export async function CarMoneyCard({ cars, reportHref }: { cars: CarMoney[]; reportHref: string }) {
+  const t = await getT();
   return (
     <section className="card">
       <div className="mb-1 flex items-baseline justify-between gap-3">
-        <h2 className="font-semibold">Faida kwa gari, mwezi huu</h2>
+        <h2 className="font-semibold">{t("Faida kwa gari, mwezi huu", "Profit by car, this month")}</h2>
         <Link href={reportHref} className="text-sm font-medium text-accent underline">
-          Ripoti kamili →
+          {t("Ripoti kamili", "Full report")} →
         </Link>
       </div>
       <CarProfit
         rows={cars.map((c) => ({
           key: String(c.id ?? "none"),
           plate: c.plate,
-          sub: c.id === null ? null : [c.car, c.driver ?? "Hana dereva"].filter(Boolean).join(" · "),
+          sub: c.id === null ? null : [c.car, c.driver ?? t("Hana dereva", "No driver")].filter(Boolean).join(" · "),
           income: Number(c.income),
           spend: Number(c.spend),
         }))}
@@ -72,25 +75,26 @@ export function CarMoneyCard({ cars, reportHref }: { cars: CarMoney[]; reportHre
 }
 
 // The last 30 days of fuel: km per litre for each car.
-export function FuelCard({ fuel, href }: { fuel: FuelOverview; href: string }) {
+export async function FuelCard({ fuel, href }: { fuel: FuelOverview; href: string }) {
+  const t = await getT();
   return (
     <section className="card">
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <h2 className="font-semibold">Mafuta, siku 30</h2>
+        <h2 className="font-semibold">{t("Mafuta, siku 30", "Fuel, 30 days")}</h2>
         <Link href={href} className="text-sm font-medium text-accent underline">
-          Zaidi →
+          {t("Zaidi", "More")} →
         </Link>
       </div>
       <p className="text-sm text-muted">
-        Km {fuel.all.km.toLocaleString("en")} · wastani {formatRate(fuel.all.kmPerLitre)} km/L
-        {fuel.all.costPerKm !== null && ` · ${formatMoney(fuel.all.costPerKm)} kwa km`}
+        Km {fuel.all.km.toLocaleString("en")} · {t("wastani", "average")} {formatRate(fuel.all.kmPerLitre)} km/L
+        {fuel.all.costPerKm !== null && ` · ${formatMoney(fuel.all.costPerKm)} ${t("kwa km", "per km")}`}
       </p>
       <ul className="mt-2 divide-y divide-line">
         {fuel.cars.map((c) => (
           <li key={c.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
             <span className="min-w-0">
               <span className="plate">{c.plate}</span>
-              <span className="ml-2 text-muted">{c.driver ?? "Hana dereva"}</span>
+              <span className="ml-2 text-muted">{c.driver ?? t("Hana dereva", "No driver")}</span>
             </span>
             <span className="shrink-0 text-right tabular-nums">
               <span className="font-semibold">{formatRate(c.totals.kmPerLitre)}</span>

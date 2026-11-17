@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/components/lang-provider";
 import { useEffect, useRef, useState } from "react";
 import { EARLIEST_ENTRY_DATE } from "@/lib/validation";
 
@@ -18,6 +19,7 @@ export function EntryDate({
   pastHint: string;
   onPast?: (past: boolean) => void;
 }) {
+  const t = useT();
   const ref = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(defaultValue || today);
   const past = value !== "" && value < today;
@@ -34,7 +36,7 @@ export function EntryDate({
 
   return (
     <label className="block">
-      <span className="label">Tarehe</span>
+      <span className="label">{t("Tarehe", "Date")}</span>
       <input
         ref={ref}
         type="date"

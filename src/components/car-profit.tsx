@@ -1,3 +1,5 @@
+import type { Tr } from "@/lib/i18n";
+import { getT } from "@/lib/lang";
 import { formatMoney, keepMinus } from "@/lib/format";
 
 // `plate` is null for money booked without a car (office costs and the like).
@@ -8,7 +10,8 @@ const netTone = (net: number) => (net > 0 ? "text-ok" : net < 0 ? "text-danger" 
 // Whether each car pays for itself: its income and spending as two bars on one scale, and its faida
 // (green) or hasara (red). Best car first. Cars with neither income nor spending are only named, and
 // money with no car gets its own line so the total still matches the report.
-export function CarProfit({ rows }: { rows: ProfitRow[] }) {
+export async function CarProfit({ rows }: { rows: ProfitRow[] }) {
+  const t = await getT();
   const cars = rows.filter((r) => r.plate !== null);
   const noCar = rows.find((r) => r.plate === null && (r.income || r.spend));
   const net = (r: ProfitRow) => r.income - r.spend;
@@ -24,7 +27,7 @@ export function CarProfit({ rows }: { rows: ProfitRow[] }) {
   return (
     <div className="grid gap-3">
       {active.length === 0 ? (
-        <p className="py-4 text-center text-sm text-muted">Hakuna mapato wala matumizi ya gari lolote katika kipindi hiki.</p>
+        <p className="py-4 text-center text-sm text-muted">{t("Hakuna mapato wala matumizi ya gari lolote katika kipindi hiki.", "No car had income or spending in this period.")}</p>
       ) : (
         <ul className="divide-y divide-line">
           {active.map((c) => (
@@ -34,16 +37,16 @@ export function CarProfit({ rows }: { rows: ProfitRow[] }) {
                   <span className="plate">{c.plate}</span>
                   {c.sub && <span className="ml-2 text-xs text-muted">{c.sub}</span>}
                 </p>
-                <NetFigure net={net(c)} />
+                <NetFigure net={net(c)} t={t} />
               </div>
               <div className="mt-2 grid gap-1.5">
-                <Bar label="Mapato" value={c.income} max={max} fill="bg-ok" text="text-ok" />
-                <Bar label="Matumizi" value={c.spend} max={max} fill="bg-warn" text="text-foreground" />
+                <Bar label={t("Mapato", "Income")} value={c.income} max={max} fill="bg-ok" text="text-ok" />
+                <Bar label={t("Matumizi", "Spending")} value={c.spend} max={max} fill="bg-warn" text="text-foreground" />
               </div>
               <p className="mt-1.5 text-xs text-muted">
                 {c.income > 0
-                  ? `Matumizi ni ${Math.round((c.spend / c.income) * 100)}% ya mapato`
-                  : "Hakuna mapato katika kipindi hiki"}
+                  ? t(`Matumizi ni ${Math.round((c.spend / c.income) * 100)}% ya mapato`, `Spending is ${Math.round((c.spend / c.income) * 100)}% of income`)
+                  : t("Hakuna mapato katika kipindi hiki", "No income in this period")}
               </p>
             </li>
           ))}
@@ -51,24 +54,27 @@ export function CarProfit({ rows }: { rows: ProfitRow[] }) {
       )}
       {idle.length > 0 && (
         <p className="text-xs text-muted">
-          Bila mapato wala matumizi: {idle.map((c) => c.plate).join(", ")}
+          {t("Bila mapato wala matumizi", "No income or spending")}: {idle.map((c) => c.plate).join(", ")}
         </p>
       )}
       <dl className="grid gap-1 rounded-lg bg-background px-3 py-2.5 text-sm">
         <Line
-          label={`Magari: ${gaining} ${gaining === 1 ? "lina" : "yana"} faida · ${losing} ${losing === 1 ? "lina" : "yana"} hasara`}
+          label={t(
+            `Magari: ${gaining} ${gaining === 1 ? "lina" : "yana"} faida · ${losing} ${losing === 1 ? "lina" : "yana"} hasara`,
+            `Cars: ${gaining} in profit · ${losing} at a loss`,
+          )}
           value={carsNet}
         />
-        {noCar && <Line label="Bila gari (ofisi na mengineyo)" value={net(noCar)} />}
-        <Line strong label="Jumla" value={carsNet + (noCar ? net(noCar) : 0)} />
+        {noCar && <Line label={t("Bila gari (ofisi na mengineyo)", "No car (office and other)")} value={net(noCar)} />}
+        <Line strong label={t("Jumla", "Total")} value={carsNet + (noCar ? net(noCar) : 0)} />
       </dl>
     </div>
   );
 }
 
 // "Faida" or "Hasara" as a pill, with the amount under it; a loss shows as a red amount without a minus.
-function NetFigure({ net }: { net: number }) {
-  const label = net > 0 ? "Faida" : net < 0 ? "Hasara" : "Sawa";
+function NetFigure({ net, t }: { net: number; t: Tr }) {
+  const label = net > 0 ? t("Faida", "Profit") : net < 0 ? t("Hasara", "Loss") : t("Sawa", "Even");
   const pill = net > 0 ? "bg-ok-soft text-ok" : net < 0 ? "bg-danger-soft text-danger" : "bg-background text-muted";
   return (
     <span className="shrink-0 text-right">

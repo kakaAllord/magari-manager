@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/components/lang-provider";
 import { useEffect, useEffectEvent } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./icons";
@@ -37,6 +38,7 @@ export function Toast({
   link?: { href: string; label: string };
   onClose: () => void;
 }) {
+  const t = useT();
   const close = useEffectEvent(onClose);
   useEffect(() => {
     const timer = setTimeout(close, 8000);
@@ -59,7 +61,7 @@ export function Toast({
           </>
         )}
       </p>
-      <button type="button" onClick={onClose} aria-label="Funga" className="-m-1 shrink-0 rounded-md p-1 hover:bg-black/5">
+      <button type="button" onClick={onClose} aria-label={t("Funga", "Close")} className="-m-1 shrink-0 rounded-md p-1 hover:bg-black/5">
         <Icon name="close" className="size-4" />
       </button>
     </div>,

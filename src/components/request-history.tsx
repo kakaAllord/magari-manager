@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import Link from "next/link";
 import { EditRequest } from "@/components/edit-request";
 import { Pager, pageFrom } from "@/components/pager";
@@ -6,13 +7,6 @@ import { StatusBadge } from "@/components/status-badge";
 import { listCars, todayInTanzania } from "@/lib/reports";
 import { listHistory, PAGE_SIZE, type HistoryFilter } from "@/lib/requests";
 
-const filterLabels: Record<HistoryFilter, string> = {
-  all: "Yote",
-  approved: "Kwa meneja wa kiwanda",
-  authorised: "Kwa mhasibu",
-  issued: "Yamelipwa",
-  rejected: "Yamekataliwa",
-};
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -34,6 +28,14 @@ export async function RequestHistory({
   // The meneja's pages offer Badilisha on requests not yet paid and on typed-in history.
   editable?: boolean;
 }) {
+  const t = await getT();
+  const filterLabels: Record<HistoryFilter, string> = {
+    all: t("Yote", "All"),
+    approved: t("Kwa meneja wa kiwanda", "With the factory manager"),
+    authorised: t("Kwa mhasibu", "With the accountant"),
+    issued: t("Yamelipwa", "Paid"),
+    rejected: t("Yamekataliwa", "Declined"),
+  };
   const page = pageFrom(searchParams);
   const asked = String(searchParams.status ?? "") as HistoryFilter;
   const filter = filters.includes(asked) ? asked : filters[0];
@@ -67,10 +69,10 @@ export async function RequestHistory({
             <select
               name="car"
               defaultValue={carId ?? ""}
-              aria-label="Gari"
+              aria-label={t("Gari", "Car")}
               className="input w-auto min-w-0 flex-1 sm:flex-none"
             >
-              <option value="">Magari yote</option>
+              <option value="">{t("Magari yote", "All cars")}</option>
               {cars.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.plate}
@@ -78,14 +80,14 @@ export async function RequestHistory({
               ))}
             </select>
             <button type="submit" className="btn btn-ghost">
-              Chuja
+              {t("Chuja", "Filter")}
             </button>
           </>
         )}
       </form>
-      <p className="text-sm text-muted">{total === 1 ? "Ombi 1" : `Maombi ${total}`}</p>
+      <p className="text-sm text-muted">{total === 1 ? t("Ombi 1", "1 request") : t(`Maombi ${total}`, `${total} requests`)}</p>
       {rows.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted">Hakuna ombi hapa.</p>
+        <p className="py-6 text-center text-sm text-muted">{t("Hakuna ombi hapa.", "No requests here.")}</p>
       ) : (
         <ul className="divide-y divide-line">
           {rows.map((r) => (

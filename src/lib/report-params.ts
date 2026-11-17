@@ -1,4 +1,5 @@
 // Pure helpers for the reports filter, kept free of server imports for node --test.
+import { sw, type Tr } from "./i18n.ts";
 
 export type Grouping = "car" | "month" | "week";
 export type ReportParams = { carIds: number[]; from: string; to: string; group: Grouping };
@@ -52,21 +53,21 @@ export function periodStarts(from: string, to: string, group: "month" | "week"):
 const monthName = new Intl.DateTimeFormat("en-GB", { month: "2-digit", year: "numeric", timeZone: "UTC" });
 const dayName = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
 
-export const periodLabel = (start: string, group: "month" | "week") =>
-  group === "month" ? monthName.format(toDate(start)) : `Wiki ya ${dayName.format(toDate(start))}`;
+export const periodLabel = (start: string, group: "month" | "week", t: Tr = sw) =>
+  group === "month" ? monthName.format(toDate(start)) : t(`Wiki ya ${dayName.format(toDate(start))}`, `Week of ${dayName.format(toDate(start))}`);
 
 export const formatDay = (iso: string) => dayName.format(toDate(iso));
 
 // Quick ranges for the filter, relative to today's date in Tanzania.
-export function presets(today: string) {
-  const t = toDate(today);
-  const y = t.getUTCFullYear();
-  const m = t.getUTCMonth();
+export function presets(today: string, t: Tr = sw) {
+  const d = toDate(today);
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth();
   const iso = (yy: number, mm: number, dd: number) => toIso(new Date(Date.UTC(yy, mm, dd)));
   return [
-    { label: "Mwezi huu", from: iso(y, m, 1), to: today },
-    { label: "Mwezi uliopita", from: iso(y, m - 1, 1), to: iso(y, m, 0) },
-    { label: "Miezi 3", from: iso(y, m - 2, 1), to: today },
-    { label: "Mwaka huu", from: iso(y, 0, 1), to: today },
+    { label: t("Mwezi huu", "This month"), from: iso(y, m, 1), to: today },
+    { label: t("Mwezi uliopita", "Last month"), from: iso(y, m - 1, 1), to: iso(y, m, 0) },
+    { label: t("Miezi 3", "3 months"), from: iso(y, m - 2, 1), to: today },
+    { label: t("Mwaka huu", "This year"), from: iso(y, 0, 1), to: today },
   ];
 }

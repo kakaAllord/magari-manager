@@ -1,5 +1,6 @@
 "use server";
 
+import { getT } from "@/lib/lang";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -28,14 +29,15 @@ const refresh = () => {
 
 export async function createManager(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
   const { user, roles } = await staffRoles(staffAddedBy);
+  const t = await getT();
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const role = formData.get("role") as StaffRole;
 
-  if (!roles.includes(role)) return { ok: false, message: "Chagua nafasi yake." };
-  if (name.length < 2) return { ok: false, message: "Andika jina lake." };
-  const error = checkEmail(email) ?? checkNewPassword(password);
+  if (!roles.includes(role)) return { ok: false, message: t("Chagua nafasi yake.", "Pick their position.") };
+  if (name.length < 2) return { ok: false, message: t("Andika jina lake.", "Write their name.") };
+  const error = checkEmail(email, t) ?? checkNewPassword(password, t);
   if (error) return { ok: false, message: error };
 
   try {
@@ -48,7 +50,7 @@ export async function createManager(_prev: ManagerFormState, formData: FormData)
     ]);
   } catch (err) {
     if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
-      return { ok: false, message: `Barua pepe ${email} tayari inatumika.` };
+      return { ok: false, message: t(`Barua pepe ${email} tayari inatumika.`, `The email ${email} is already in use.`) };
     }
     throw err;
   }
@@ -56,18 +58,22 @@ export async function createManager(_prev: ManagerFormState, formData: FormData)
   await notify([MANAGERS_CHANNEL]);
   return {
     ok: true,
-    message: `${name} ameongezwa kama ${staffLabel[role].toLowerCase()}. Ataingia kwa ${email} na nenosiri ulilochagua.`,
+    message: t(
+      `${name} ameongezwa kama ${staffLabel(role, t).toLowerCase()}. Ataingia kwa ${email} na nenosiri ulilochagua.`,
+      `${name} was added as ${staffLabel(role, t).toLowerCase()}. They sign in with ${email} and the password you chose.`,
+    ),
   };
 }
 
 // Setting a new password also signs the person out everywhere.
 export async function setManagerPassword(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
   const { roles } = await staffRoles(staffManagedBy);
+  const t = await getT();
   const managerId = Number(formData.get("managerId"));
   const password = String(formData.get("password") ?? "");
-  const passwordError = checkNewPassword(password);
+  const passwordError = checkNewPassword(password, t);
   if (passwordError) return { ok: false, message: passwordError };
-  if (!Number.isInteger(managerId)) return { ok: false, message: "Mfanyakazi hajulikani." };
+  if (!Number.isInteger(managerId)) return { ok: false, message: t("Mfanyakazi hajulikani.", "Unknown staff member.") };
 
   const hash = await bcrypt.hash(password, 10);
   const updated = await transaction(async (client) => {
@@ -78,21 +84,22 @@ export async function setManagerPassword(_prev: ManagerFormState, formData: Form
     if (rowCount) await client.query("DELETE FROM sessions WHERE user_id = $1", [managerId]);
     return rowCount;
   });
-  if (!updated) return { ok: false, message: "Mfanyakazi hajulikani." };
-  return { ok: true, message: "Nenosiri jipya limehifadhiwa. Mpe mwenyewe." };
+  if (!updated) return { ok: false, message: t("Mfanyakazi hajulikani.", "Unknown staff member.") };
+  return { ok: true, message: t("Nenosiri jipya limehifadhiwa. Mpe mwenyewe.", "New password saved. Give it to them in person.") };
 }
 
 // Staff can no longer be switched off from the app. Anyone switched off before that can be switched back on,
 // with their old password; until then they can't sign in.
 export async function reactivateStaff(_prev: ManagerFormState, formData: FormData): Promise<ManagerFormState> {
   const { roles } = await staffRoles(staffManagedBy);
+  const t = await getT();
   const managerId = Number(formData.get("managerId"));
-  if (!Number.isInteger(managerId)) return { ok: false, message: "Mfanyakazi hajulikani." };
+  if (!Number.isInteger(managerId)) return { ok: false, message: t("Mfanyakazi hajulikani.", "Unknown staff member.") };
 
   const updated = await query("UPDATE users SET deactivated_at = NULL WHERE id = $1 AND role = ANY($2::text[]) RETURNING id", [
     managerId,
     roles,
   ]);
-  if (!updated.length) return { ok: false, message: "Mfanyakazi hajulikani." };
+  if (!updated.length) return { ok: false, message: t("Mfanyakazi hajulikani.", "Unknown staff member.") };
   refresh();
 }
