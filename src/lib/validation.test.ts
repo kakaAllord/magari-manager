@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  checkPlate,
   checkEmail,
   checkReceiptImage,
   checkOdometer,
@@ -26,6 +27,7 @@ import {
   parseExpenseItems,
   parsePayment,
 } from "./validation.ts";
+import { en } from "./i18n.ts";
 
 test("accepts whole shillings and trims the reason", () => {
   assert.deepEqual(parseMoneyRequest({ amount: " 40000 ", reason: "  Fuel  " }), {
@@ -375,4 +377,13 @@ test("paying needs a method, and a reference unless it is cash", () => {
   assert.ok(!noMethod.ok && noMethod.errors.method);
   const noRef = parsePayment({ method: "bank", reference: "", documents: [], other: "" });
   assert.ok(!noRef.ok && noRef.errors.reference);
+});
+
+test("messages come in English when asked, Swahili by default", () => {
+  assert.equal(checkPlate("T"), "Andika namba ya gari, mfano T103ABE.");
+  assert.equal(checkPlate("T", en), "Write the car's plate, e.g. T103ABE.");
+  const fuel = parseFuelPrice("200,000", en);
+  assert.ok("error" in fuel && fuel.error === "The price per litre is too high.");
+  const slip = parseFuelPrice("3", en);
+  assert.ok("error" in slip && slip.error.startsWith("The price per litre is too low"));
 });
