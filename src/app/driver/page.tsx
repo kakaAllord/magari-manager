@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import Link from "next/link";
 import { createRequest } from "@/app/actions/requests";
 import { Icon } from "@/components/icons";
@@ -15,6 +16,7 @@ import { requireUser } from "@/lib/session";
 // The form and what's still moving. Finished requests live on Historia.
 export default async function DriverPage() {
   const user = await requireUser("driver");
+  const t = await getT();
   const [cars, open, fuel] = await Promise.all([
     query<{ plate: string; name: string | null }>(
       "SELECT plate, name FROM cars WHERE driver_id = $1",
@@ -28,7 +30,10 @@ export default async function DriverPage() {
   return (
     <main className="page">
       <LiveUpdates channel={driverChannel(user.id)} />
-      <PageHeader title={`Habari, ${user.name.split(" ")[0]}`} description="Omba pesa na ufuatilie majibu hapa." />
+      <PageHeader
+        title={t(`Habari, ${user.name.split(" ")[0]}`, `Hello, ${user.name.split(" ")[0]}`)}
+        description={t("Omba pesa na ufuatilie majibu hapa.", "Ask for money and follow the answers here.")}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
         <div className="grid gap-6">
@@ -37,33 +42,41 @@ export default async function DriverPage() {
               <Icon name="car" className="size-6" />
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-medium tracking-wide text-muted uppercase">Gari lako</p>
+              <p className="text-xs font-medium tracking-wide text-muted uppercase">{t("Gari lako", "Your car")}</p>
               {car ? (
                 <p className="mt-0.5 flex flex-wrap items-center gap-2 font-semibold">
                   <span className="plate">{car.plate}</span>
                   {car.name}
                 </p>
               ) : (
-                <p className="mt-0.5 font-semibold">Bado hujapewa gari</p>
+                <p className="mt-0.5 font-semibold">{t("Bado hujapewa gari", "No car given to you yet")}</p>
               )}
             </div>
           </section>
 
           <section className="card">
-            <h2 className="mb-4 text-lg font-semibold">Omba pesa</h2>
+            <h2 className="mb-4 text-lg font-semibold">{t("Omba pesa", "Ask for money")}</h2>
             <RequestForm
               submit={createRequest}
               fuel={fuel}
-              sent="Ombi limetumwa. Utaona jibu la meneja hapa; meneja wa kiwanda akiidhinisha, mhasibu atakulipa."
+              sent={t(
+                "Ombi limetumwa. Utaona jibu la meneja hapa; meneja wa kiwanda akiidhinisha, mhasibu atakulipa.",
+                "Request sent. You will see the manager's answer here; once the factory manager authorises it, the accountant pays you.",
+              )}
             />
           </section>
         </div>
 
         <section className="card">
-          <h2 className="text-lg font-semibold">Yanayoendelea</h2>
-          <p className="mb-2 text-sm text-muted">Yanasubiri meneja, meneja wa kiwanda, mhasibu akulipe, au risiti yake.</p>
+          <h2 className="text-lg font-semibold">{t("Yanayoendelea", "In progress")}</h2>
+          <p className="mb-2 text-sm text-muted">
+            {t(
+              "Yanasubiri meneja, meneja wa kiwanda, mhasibu akulipe, au risiti yake.",
+              "Waiting for the manager, the factory manager, the accountant to pay you, or its receipt.",
+            )}
+          </p>
           {open.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted">Hakuna ombi linaloendelea.</p>
+            <p className="py-6 text-center text-sm text-muted">{t("Hakuna ombi linaloendelea.", "No request in progress.")}</p>
           ) : (
             <ul className="divide-y divide-line">
               {open.map((r) => (
@@ -76,7 +89,7 @@ export default async function DriverPage() {
           )}
           <p className="mt-3 text-sm">
             <Link href="/driver/history" className="font-medium text-accent underline">
-              Historia ya maombi yako →
+              {t("Historia ya maombi yako", "Your request history")} →
             </Link>
           </p>
         </section>

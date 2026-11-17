@@ -1,5 +1,6 @@
 "use server";
 
+import { getT } from "@/lib/lang";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { query } from "@/lib/db";
@@ -30,11 +31,12 @@ function findAccount(login: string) {
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const login = String(formData.get("login") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (!login || !password) return { error: "Andika namba ya gari (au barua pepe) na nenosiri.", login };
+  const t = await getT();
+  if (!login || !password) return { error: t("Andika namba ya gari (au barua pepe) na nenosiri.", "Write the car plate (or email) and the password."), login };
 
   const user = (await findAccount(login))[0];
   if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-    return { error: "Namba ya gari, barua pepe au nenosiri si sahihi.", login };
+    return { error: t("Namba ya gari, barua pepe au nenosiri si sahihi.", "The car plate, email or password is wrong."), login };
   }
 
   await createSession(user.id);

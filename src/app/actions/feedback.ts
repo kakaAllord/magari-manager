@@ -1,5 +1,6 @@
 "use server";
 
+import { getT } from "@/lib/lang";
 import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
 import { requireFeedbackReader } from "@/lib/feedback";
@@ -14,7 +15,7 @@ const READER_AREAS = ["/manager/maoni", "/factory/maoni", "/director/maoni"];
 export async function sendFeedback(_prev: FeedbackState, formData: FormData): Promise<FeedbackState> {
   const driver = await requireUser("driver");
   const body = String(formData.get("body") ?? "");
-  const parsed = parseFeedback(body);
+  const parsed = parseFeedback(body, await getT());
   if ("error" in parsed) return { ok: false, error: parsed.error, body };
 
   await query("INSERT INTO feedback (author_id, body) VALUES ($1, $2)", [driver.id, parsed.body]);

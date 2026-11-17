@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import { redirect } from "next/navigation";
 import { BrandMark } from "@/components/icons";
 import { COMPANY } from "@/lib/company";
@@ -10,13 +11,14 @@ const showDemo = () => process.env.DEMO_MODE === "1";
 export default async function LoginPage() {
   const user = await getCurrentUser();
   if (user) redirect(homeFor(user.role));
+  const t = await getT();
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           <BrandMark className="size-14" />
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">Karibu</h1>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight">{t("Karibu", "Welcome")}</h1>
           <p className="mt-1 text-sm font-medium text-muted">{COMPANY}</p>
         </div>
         <LoginForm demo={showDemo()} />
