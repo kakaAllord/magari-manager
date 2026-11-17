@@ -47,8 +47,8 @@ each later payment (with an optional reference) until the debt is cleared (`inco
 its PDF and Excel show each entry's client and what is still owed.
 Every shilling that goes out gets a payment voucher (hati ya malipo), numbered per year of payment
 (PV-2026-034) when Lipa is pressed, or as typed-in history is saved, and never reused
-(`payment_vouchers`, migrations 020 and 026; vouchers numbered before 026 keep their HM- numbers and
-the count carries on). The voucher follows the company's template, in English: A. details
+(`payment_vouchers`, migrations 020 and 026; the first vouchers were numbered HM- and were renamed PV-
+with the same digits in 027, before any had been printed). The voucher follows the company's template, in English: A. details
 (department, vehicle, payment method, reference, who was paid), B. particulars (purpose, amount in
 figures and English words), C. detailed expenditure, D. supporting documents ticked, E. review and
 authorisation filled from the app (requested by, checked by the meneja, approved by the meneja wa
