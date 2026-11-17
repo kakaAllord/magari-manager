@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/components/lang-provider";
 import { useActionState, useState } from "react";
 import { payRequest } from "@/app/actions/requests";
 import { Dialog } from "@/components/dialog";
@@ -12,6 +13,7 @@ const Err = ({ text }: { text?: string }) => (text ? <p className="mt-1 text-sm 
 // The Lipa button on an authorised request and its dialog: how it was paid, the reference (needed
 // unless it's cash) and the documents attached, for the payment voucher. Fuel suggests its receipt.
 export function PayRequest({ id, amount, summary, fuel }: { id: number; amount: string; summary: string; fuel: boolean }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [method, setMethod] = useState("cash");
   const [other, setOther] = useState(false);
@@ -22,13 +24,13 @@ export function PayRequest({ id, amount, summary, fuel }: { id: number; amount: 
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="btn btn-primary">
-        Lipa {formatMoney(amount)}
+        {t("Lipa", "Pay")} {formatMoney(amount)}
       </button>
-      <Dialog open={open} onClose={() => setOpen(false)} title={`Lipa ${formatMoney(amount)}`} description={summary}>
+      <Dialog open={open} onClose={() => setOpen(false)} title={`${t("Lipa", "Pay")} ${formatMoney(amount)}`} description={summary}>
         <form action={action} className="grid gap-4">
           <input type="hidden" name="id" value={id} />
           <fieldset>
-            <legend className="label">Njia ya malipo</legend>
+            <legend className="label">{t("Njia ya malipo", "Paid by")}</legend>
             <div className="grid grid-cols-2 gap-1 rounded-lg border border-line p-1 sm:grid-cols-4">
               {PAYMENT_METHODS.map((m) => (
                 <label
@@ -43,7 +45,7 @@ export function PayRequest({ id, amount, summary, fuel }: { id: number; amount: 
                     onChange={() => setMethod(m.key)}
                     className="sr-only"
                   />
-                  {m.key === "mobile" ? "Simu" : m.sw}
+                  {m.key === "mobile" ? t("Simu", "Mobile") : t<string>(m.sw, m.en)}
                 </label>
               ))}
             </div>
@@ -51,7 +53,8 @@ export function PayRequest({ id, amount, summary, fuel }: { id: number; amount: 
           </fieldset>
           <label className="block">
             <span className="label">
-              Namba ya kumbukumbu {method === "cash" && <span className="font-normal text-muted">(si lazima)</span>}
+              {t("Namba ya kumbukumbu", "Reference number")}{" "}
+              {method === "cash" && <span className="font-normal text-muted">{t("(si lazima)", "(optional)")}</span>}
             </span>
             <input
               name="reference"
@@ -59,7 +62,13 @@ export function PayRequest({ id, amount, summary, fuel }: { id: number; amount: 
               maxLength={MAX_ISSUE_NOTE_LENGTH}
               autoComplete="off"
               placeholder={
-                method === "mobile" ? "Mfano: QX12AB34CD (M-Pesa)" : method === "bank" ? "Namba ya muamala wa benki" : method === "cheque" ? "Namba ya hundi" : "Mfano: namba ya stakabadhi"
+                method === "mobile"
+                  ? t("Mfano: QX12AB34CD (M-Pesa)", "E.g. QX12AB34CD (M-Pesa)")
+                  : method === "bank"
+                    ? t("Namba ya muamala wa benki", "Bank transaction number")
+                    : method === "cheque"
+                      ? t("Namba ya hundi", "Cheque number")
+                      : t("Mfano: namba ya stakabadhi", "E.g. the slip number")
               }
               className="input"
             />
@@ -67,7 +76,7 @@ export function PayRequest({ id, amount, summary, fuel }: { id: number; amount: 
           </label>
           <fieldset>
             <legend className="label">
-              Viambatisho <span className="font-normal text-muted">(si lazima)</span>
+              {t("Viambatisho", "Attached")} <span className="font-normal text-muted">{t("(si lazima)", "(optional)")}</span>
             </legend>
             <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
               {SUPPORTING_DOCUMENTS.map((d) => (
@@ -80,7 +89,7 @@ export function PayRequest({ id, amount, summary, fuel }: { id: number; amount: 
                     onChange={d.key === "other" ? (e) => setOther(e.currentTarget.checked) : undefined}
                     className="size-4 accent-accent"
                   />
-                  {d.sw}
+                  {t<string>(d.sw, d.en)}
                 </label>
               ))}
             </div>
@@ -88,21 +97,26 @@ export function PayRequest({ id, amount, summary, fuel }: { id: number; amount: 
               <input
                 name="documentsOther"
                 maxLength={MAX_SUPPORTING_OTHER}
-                placeholder="Kiambatisho gani?"
-                aria-label="Kiambatisho kingine"
+                placeholder={t("Kiambatisho gani?", "What document?")}
+                aria-label={t("Kiambatisho kingine", "Other document")}
                 className="input mt-2"
               />
             )}
             <Err text={errors.other} />
           </fieldset>
           <Err text={errors.form} />
-          <p className="text-xs text-muted">Payment voucher inatengenezwa yenyewe ukithibitisha, na ombi linahamia Risiti.</p>
+          <p className="text-xs text-muted">
+            {t(
+              "Payment voucher inatengenezwa yenyewe ukithibitisha, na ombi linahamia Risiti.",
+              "The payment voucher is made by itself when you confirm, and the request moves to Receipts.",
+            )}
+          </p>
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost">
-              Ghairi
+              {t("Ghairi", "Cancel")}
             </button>
             <button type="submit" disabled={pending} className="btn btn-primary">
-              {pending ? "Inalipa…" : `Thibitisha malipo`}
+              {pending ? t("Inalipa…", "Paying…") : t("Thibitisha malipo", "Confirm payment")}
             </button>
           </div>
         </form>

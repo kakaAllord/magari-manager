@@ -1,3 +1,4 @@
+import { getT } from "@/lib/lang";
 import { BalanceCard } from "@/components/balance-card";
 import { IncomeBreakdown } from "@/components/income-breakdown";
 import { LiveUpdates } from "@/components/live-updates";
@@ -12,6 +13,7 @@ import { MoneyChart } from "@/app/manager/money-chart";
 // The accountant's view of the money: mapato, matumizi, madeni and the salio, read-only.
 export default async function AccountantDashboard() {
   await requireUser("accountant");
+  const t = await getT();
   const [o, income, debtors, monthly] = await Promise.all([
     getOverview(),
     getIncomeTotals(),
@@ -22,7 +24,7 @@ export default async function AccountantDashboard() {
   return (
     <main className="page">
       <LiveUpdates channel={MANAGERS_CHANNEL} />
-      <PageHeader title="Dashibodi" description={formatToday()} />
+      <PageHeader title={t("Dashibodi", "Dashboard")} description={formatToday(t)} />
 
       <BalanceCard
         month={{ income: income.this_month, spend: o.this_month, owed: income.this_month_owed }}
@@ -37,9 +39,12 @@ export default async function AccountantDashboard() {
       />
 
       <section className="card">
-        <h2 className="font-semibold">Mapato na matumizi kwa mwezi</h2>
+        <h2 className="font-semibold">{t("Mapato na matumizi kwa mwezi", "Income and spending by month")}</h2>
         <p className="mb-4 text-sm text-muted">
-          Miezi 6 iliyopita · tangu mwanzo mapato {formatMoney(income.all_time)}, matumizi {formatMoney(o.all_time)}
+          {t(
+            `Miezi 6 iliyopita · tangu mwanzo mapato ${formatMoney(income.all_time)}, matumizi ${formatMoney(o.all_time)}`,
+            `The last 6 months · since the start, income ${formatMoney(income.all_time)}, spending ${formatMoney(o.all_time)}`,
+          )}
         </p>
         <MoneyChart data={monthly.toReversed()} />
       </section>

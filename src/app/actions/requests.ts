@@ -1,5 +1,7 @@
 "use server";
 
+import type { Tr } from "@/lib/i18n";
+import { getT } from "@/lib/lang";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { query, transaction } from "@/lib/db";
@@ -62,9 +64,13 @@ export type RequestFormState =
   | { ok: false; errors: FormErrors; values: FormValues; duplicate?: DuplicateMatch }
   | undefined;
 
-const notReadyForDriver = (missing: string) => `Gari lako bado halina ${missing}. Mwombe meneja akamilishe kwanza.`;
-const notReadyForManager = (missing: string) =>
-  `Gari hili bado halina ${missing}. Kamilisha kwenye Magari (⋯ → Badilisha taarifa) kisha uombe mafuta.`;
+const notReadyForDriver = (missing: string, t: Tr) =>
+  t(`Gari lako bado halina ${missing}. Mwombe meneja akamilishe kwanza.`, `Your car doesn't have its ${missing} yet. Ask the manager to add it first.`);
+const notReadyForManager = (missing: string, t: Tr) =>
+  t(
+    `Gari hili bado halina ${missing}. Kamilisha kwenye Magari (⋯ → Badilisha taarifa) kisha uombe mafuta.`,
+    `This car doesn't have its ${missing} yet. Add it on Cars (⋯ → Edit details), then ask for fuel.`,
+  );
 
 // A fuel request may leave the reason empty; it then just says "Mafuta".
 const readKind = (formData: FormData) => (formData.get("kind") === "fuel" ? "fuel" : "other");
@@ -73,8 +79,8 @@ const reasonFor = (kind: string, reason: string) => (kind === "fuel" && !reason.
 // Fuel is asked for as a price per litre (it differs between stations) and a number of litres; the
 // amount is worked out here from the two, never taken from the form. Other requests give an amount.
 type FuelOrder = ReturnType<typeof parseFuelOrder>;
-const readFuelOrder = (kind: string, values: FormValues): FuelOrder | null =>
-  kind === "fuel" ? parseFuelOrder(values.fuelPrice ?? "", values.litres ?? "") : null;
+const readFuelOrder = (kind: string, values: FormValues, t: Tr): FuelOrder | null =>
+  kind === "fuel" ? parseFuelOrder(values.fuelPrice ?? "", values.litres ?? "", t) : null;
 // A fuel order with mistakes reports them itself, so its amount stands in as valid meanwhile.
 const amountFor = (values: FormValues, order: FuelOrder | null) =>
   order ? ("amount" in order ? String(order.amount) : "1") : values.amount;
@@ -90,8 +96,8 @@ const readItems = (formData: FormData): ExpenseItemInput[] => {
 
 // A breakdown, when given, sets the amount: the sum of its lines. Fuel never has one.
 type Items = ReturnType<typeof parseExpenseItems>;
-const readBreakdown = (kind: string, values: FormValues): Items =>
-  kind === "fuel" ? { ok: true, items: [], total: 0 } : parseExpenseItems(values.items ?? []);
+const readBreakdown = (kind: string, values: FormValues, t: Tr): Items =>
+  kind === "fuel" ? { ok: true, items: [], total: 0 } : parseExpenseItems(values.items ?? [], t);
 const breakdownErrors = (items: Items): Partial<FormErrors> =>
   items.ok ? {} : { ...(Object.keys(items.errors).length ? { items: items.errors } : {}), ...(items.message ? { itemsMessage: items.message } : {}) };
 const amountWithItems = (amount: string, items: Items) => (items.ok && items.items.length ? String(items.total) : amount);
@@ -138,6 +144,7 @@ export async function createRequest(
   formData: FormData,
 ): Promise<RequestFormState> {
   const driver = await requireUser("driver");
+  const t = await getT();
   const kind = readKind(formData);
   const values: FormValues = {
     kind,
@@ -149,10 +156,10 @@ export async function createRequest(
     gauge: String(formData.get("gauge") ?? ""),
     items: readItems(formData),
   };
-  const order = readFuelOrder(kind, values);
-  const items = readBreakdown(kind, values);
-  const parsed = parseMoneyRequest({ amount: amountWithItems(amountFor(values, order), items), reason: reasonFor(kind, values.reason) });
-  const reading = kind === "fuel" ? parseReading({ odometer: values.odometer!, gauge: values.gauge! }) : null;
+  const order = readFuelOrder(kind, values, t);
+  const items = readBreakdown(kind, values, t);
+  const parsed = parseMoneyRequest({ amount: amountWithItems(amountFor(values, order), items), reason: reasonFor(kind, values.reason) }, t);
+  const reading = kind === "fuel" ? parseReading({ odometer: values.odometer!, gauge: values.gauge! }, t) : null;
   if (!parsed.ok || (reading && !reading.ok) || (order && "errors" in order) || !items.ok) {
     return {
       ok: false,
@@ -194,23 +201,28 @@ export async function createRequest(
         [driver.id],
       );
       const carRow = car.rows[0];
-      if (!carRow) return { kind: "Bado hujapewa gari, kwa hiyo huwezi kuomba mafuta." };
+      if (!carRow) return { kind: t("Bado hujapewa gari, kwa hiyo huwezi kuomba mafuta.", "You have no car yet, so you can't ask for fuel.") };
       const open = await client.query(
         `SELECT 1 FROM money_requests WHERE car_id = $1 AND kind = 'fuel'
             AND (status = 'pending' OR (status = 'approved' AND issued_at IS NULL))`,
         [carRow.id],
       );
       if (open.rowCount) {
-        return { kind: "Gari lako lina ombi la mafuta ambalo bado halijalipwa. Subiri lilipwe au likataliwe." };
+        return {
+          kind: t(
+            "Gari lako lina ombi la mafuta ambalo bado halijalipwa. Subiri lilipwe au likataliwe.",
+            "Your car has a fuel request that isn't paid yet. Wait until it is paid or declined.",
+          ),
+        };
       }
       const last = await client.query<{ odometer_km: number }>(
         "SELECT odometer_km FROM fuel_readings WHERE car_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1",
         [carRow.id],
       );
       // Fuel is measured from the manager's starting reading, in litres of this car's tank.
-      const missing = missingForFuel({ fuelType: carRow.fuel_type, tank: carRow.tank_litres, measured: !!last.rows[0] });
-      if (missing || !last.rows[0]) return { kind: notReadyForDriver(missing) };
-      const odometerError = checkOdometer(reading.odometer, last.rows[0].odometer_km, true);
+      const missing = missingForFuel({ fuelType: carRow.fuel_type, tank: carRow.tank_litres, measured: !!last.rows[0] }, t);
+      if (missing || !last.rows[0]) return { kind: notReadyForDriver(missing, t) };
+      const odometerError = checkOdometer(reading.odometer, last.rows[0].odometer_km, true, t);
       if (odometerError) return { odometer: odometerError };
       const inserted = await client.query<{ id: number }>(
         `INSERT INTO money_requests (requester_id, car_id, amount, reason, kind, fuel_price, duplicate_of)
@@ -243,6 +255,7 @@ export async function createManagerRequest(
   formData: FormData,
 ): Promise<RequestFormState> {
   const manager = await requireUser("manager");
+  const t = await getT();
   const kind = readKind(formData);
   const values: FormValues = {
     kind,
@@ -257,12 +270,12 @@ export async function createManagerRequest(
     reference: String(formData.get("reference") ?? ""),
   };
   // Past fuel too: the price paid that day and the litres give its amount.
-  const order = readFuelOrder(kind, values);
-  const items = readBreakdown(kind, values);
-  const parsed = parseMoneyRequest({ amount: amountWithItems(amountFor(values, order), items), reason: reasonFor(kind, values.reason) });
-  let car = parseCarChoice(values.carId!);
-  if (kind === "fuel" && !("error" in car) && car.carId === null) car = { error: "Mafuta ni ya gari: chagua gari." };
-  const date = parseEntryDate(values.date!, todayInTanzania());
+  const order = readFuelOrder(kind, values, t);
+  const items = readBreakdown(kind, values, t);
+  const parsed = parseMoneyRequest({ amount: amountWithItems(amountFor(values, order), items), reason: reasonFor(kind, values.reason) }, t);
+  let car = parseCarChoice(values.carId!, t);
+  if (kind === "fuel" && !("error" in car) && car.carId === null) car = { error: t("Mafuta ni ya gari: chagua gari.", "Fuel is for a car: pick one.") };
+  const date = parseEntryDate(values.date!, todayInTanzania(), t);
   // History was paid already: how, for its voucher. A page from before 026 doesn't ask.
   const method = PAYMENT_METHODS.find((m) => m.key === values.paymentMethod)?.key ?? null;
   const methodMissing = !("error" in date) && date.date !== null && formData.has("paymentMethod") && !method;
@@ -276,7 +289,7 @@ export async function createManagerRequest(
         ...("error" in date ? { date: date.error } : {}),
         ...orderErrors(order),
         ...breakdownErrors(items),
-        ...(methodMissing ? { paymentMethod: "Chagua jinsi yalivyolipwa." } : {}),
+        ...(methodMissing ? { paymentMethod: t("Chagua jinsi yalivyolipwa.", "Pick how it was paid.") } : {}),
       },
       values,
     };
@@ -290,8 +303,8 @@ export async function createManagerRequest(
          FROM cars WHERE id = $1`,
       [car.carId],
     );
-    const missing = row ? missingForFuel({ fuelType: row.fuel_type, tank: row.tank_litres, measured: row.measured }) : "";
-    if (missing) return { ok: false, errors: { carId: notReadyForManager(missing) }, values };
+    const missing = row ? missingForFuel({ fuelType: row.fuel_type, tank: row.tank_litres, measured: row.measured }, t) : "";
+    if (missing) return { ok: false, errors: { carId: notReadyForManager(missing, t) }, values };
   }
 
   const check = await duplicateToConfirm(formData, {
@@ -345,7 +358,7 @@ export async function createManagerRequest(
     return [id];
   });
   if (inserted.length === 0) {
-    return { ok: false, errors: { carId: "Gari hilo halipo tena. Chagua jingine." }, values };
+    return { ok: false, errors: { carId: t("Gari hilo halipo tena. Chagua jingine.", "That car is gone. Pick another.") }, values };
   }
   revalidatePath("/manager", "layout");
   revalidatePath("/factory", "layout");
@@ -408,17 +421,18 @@ export type PayState = { ok: false; errors: PaymentErrors & { form?: string } } 
 // list, so the confirmation (with the voucher's link) is shown by the page from ?paid=.
 export async function payRequest(_prev: PayState, formData: FormData): Promise<PayState> {
   const accountant = await requireUser("accountant");
+  const t = await getT();
   const id = Number(formData.get("id"));
-  if (!Number.isInteger(id)) return { ok: false, errors: { form: "Ombi hilo halipo." } };
+  if (!Number.isInteger(id)) return { ok: false, errors: { form: t("Ombi hilo halipo.", "That request doesn't exist.") } };
   const payment = parsePayment({
     method: String(formData.get("method") ?? ""),
     reference: String(formData.get("reference") ?? ""),
     documents: formData.getAll("documents").map(String),
     other: String(formData.get("documentsOther") ?? ""),
-  });
+  }, t);
   if (!payment.ok) return { ok: false, errors: payment.errors };
   const paid = await pay(accountant.id, id, payment);
-  if (!paid) return { ok: false, errors: { form: "Ombi hili limeshalipwa, au halijaidhinishwa." } };
+  if (!paid) return { ok: false, errors: { form: t("Ombi hili limeshalipwa, au halijaidhinishwa.", "This request is paid already, or not authorised.") } };
   redirect(`/accountant?paid=${id}`);
 }
 
@@ -468,9 +482,10 @@ export async function addReceipt(_prev: ReceiptState, formData: FormData): Promi
   const id = Number(formData.get("id"));
   const file = formData.get("receipt");
   const note = String(formData.get("note") ?? "").trim().slice(0, MAX_ISSUE_NOTE_LENGTH) || null;
-  if (!Number.isInteger(id)) return { ok: false, message: "Ombi hilo halipo." };
+  const t = await getT();
+  if (!Number.isInteger(id)) return { ok: false, message: t("Ombi hilo halipo.", "That request doesn't exist.") };
   const bytes = file instanceof Blob ? new Uint8Array(await file.arrayBuffer()) : new Uint8Array();
-  const image = checkReceiptImage(bytes);
+  const image = checkReceiptImage(bytes, t);
   if ("error" in image) return { ok: false, message: image.error };
 
   const added = await query<{ requester_id: number }>(
@@ -481,14 +496,14 @@ export async function addReceipt(_prev: ReceiptState, formData: FormData): Promi
      SELECT r.requester_id FROM r JOIN ins ON ins.request_id = r.id`,
     [id, image.contentType, Buffer.from(bytes), note, accountant.id],
   );
-  if (!added[0]) return { ok: false, message: "Risiti ya malipo haya imeshawekwa, au malipo hayapo." };
+  if (!added[0]) return { ok: false, message: t("Risiti ya malipo haya imeshawekwa, au malipo hayapo.", "This payment's receipt is in already, or the payment doesn't exist.") };
   revalidatePath("/accountant", "layout");
   revalidatePath("/manager", "layout");
   revalidatePath("/factory", "layout");
   revalidatePath("/director", "layout");
   revalidatePath("/driver", "layout");
   await notify([driverChannel(added[0].requester_id), MANAGERS_CHANNEL]);
-  return { ok: true, message: "Risiti imewekwa." };
+  return { ok: true, message: t("Risiti imewekwa.", "Receipt added.") };
 }
 
 export type EditRequestState =
@@ -512,10 +527,11 @@ export type EditRequestState =
 // authorised a different sum. Rejected and paid requests are left alone.
 export async function updateRequest(_prev: EditRequestState, formData: FormData): Promise<EditRequestState> {
   const manager = await requireUser("manager");
+  const t = await getT();
   const id = Number(formData.get("id"));
-  if (!Number.isInteger(id)) return { ok: false, errors: { form: "Ombi hilo halipo." } };
+  if (!Number.isInteger(id)) return { ok: false, errors: { form: t("Ombi hilo halipo.", "That request doesn't exist.") } };
   const reason = String(formData.get("reason") ?? "");
-  const date = parseEntryDate(String(formData.get("date") ?? ""), todayInTanzania());
+  const date = parseEntryDate(String(formData.get("date") ?? ""), todayInTanzania(), t);
 
   let requesterId: number | null = null;
   const result = await transaction(async (client): Promise<EditRequestState> => {
@@ -528,23 +544,23 @@ export async function updateRequest(_prev: EditRequestState, formData: FormData)
       [id],
     );
     const r = found.rows[0];
-    if (!r) return { ok: false, errors: { form: "Ombi hilo halipo." } };
+    if (!r) return { ok: false, errors: { form: t("Ombi hilo halipo.", "That request doesn't exist.") } };
     requesterId = r.requester_id;
     const history = r.backfilled_at !== null;
     if (!history && (r.issued_at !== null || (r.status !== "pending" && r.status !== "approved"))) {
-      return { ok: false, errors: { form: "Ombi hili limeshalipwa au limekataliwa, haliwezi kubadilishwa tena." } };
+      return { ok: false, errors: { form: t("Ombi hili limeshalipwa au limekataliwa, haliwezi kubadilishwa tena.", "This request is paid or declined, so it can't be changed any more.") } };
     }
     // Fuel keeps its price per litre; requests saved before that was kept take a plain amount.
     const order = r.kind === "fuel" && r.fuel_price !== null
-      ? parseFuelOrder(String(formData.get("fuelPrice") ?? ""), String(formData.get("litres") ?? ""))
+      ? parseFuelOrder(String(formData.get("fuelPrice") ?? ""), String(formData.get("litres") ?? ""), t)
       : null;
     // The breakdown editor sends its lines (none left means no breakdown); a dialog from before 026 sends none.
     const editor = r.kind !== "fuel" && formData.has("itemDescription");
-    const items: Items = editor ? parseExpenseItems(readItems(formData)) : { ok: true, items: [], total: 0 };
+    const items: Items = editor ? parseExpenseItems(readItems(formData), t) : { ok: true, items: [], total: 0 };
     const parsed = parseMoneyRequest({
       amount: order ? ("amount" in order ? String(order.amount) : "1") : amountWithItems(String(formData.get("amount") ?? ""), items),
       reason: r.kind === "fuel" ? reasonFor("fuel", reason) : reason,
-    });
+    }, t);
     if (!parsed.ok || (order && "errors" in order) || "error" in date || (history && date.date === null) || !items.ok) {
       return {
         ok: false,
@@ -552,7 +568,7 @@ export async function updateRequest(_prev: EditRequestState, formData: FormData)
           ...(parsed.ok ? {} : parsed.errors),
           ...orderErrors(order),
           ...breakdownErrors(items),
-          ...("error" in date ? { date: date.error } : history && date.date === null ? { date: "Rekodi ya zamani lazima iwe na tarehe ya zamani." } : {}),
+          ...("error" in date ? { date: date.error } : history && date.date === null ? { date: t("Rekodi ya zamani lazima iwe na tarehe ya zamani.", "A past record needs a past date.") } : {}),
         },
       };
     }
@@ -581,7 +597,9 @@ export async function updateRequest(_prev: EditRequestState, formData: FormData)
     }
     return {
       ok: true,
-      message: resend ? "Ombi limebadilishwa na limerudi kwa meneja wa kiwanda kuidhinishwa tena." : "Ombi limebadilishwa.",
+      message: resend
+        ? t("Ombi limebadilishwa na limerudi kwa meneja wa kiwanda kuidhinishwa tena.", "Request changed and sent back to the factory manager to authorise again.")
+        : t("Ombi limebadilishwa.", "Request changed."),
     };
   });
   if (result?.ok && requesterId !== null) {
