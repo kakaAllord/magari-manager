@@ -13,6 +13,7 @@ import {
   parsePartPayment,
   parseCarChoice,
   parseEntryDate,
+  parseCancelReason,
   parseFeedback,
   parseIncome,
   parseInvoice,
@@ -386,4 +387,11 @@ test("messages come in English when asked, Swahili by default", () => {
   assert.ok("error" in fuel && fuel.error === "The price per litre is too high.");
   const slip = parseFuelPrice("3", en);
   assert.ok("error" in slip && slip.error.startsWith("The price per litre is too low"));
+});
+
+test("cancelling an invoice needs a reason of a sensible length", () => {
+  assert.deepEqual(parseCancelReason("  Mteja amesitisha safari  "), { reason: "Mteja amesitisha safari" });
+  assert.ok("error" in parseCancelReason(""));
+  assert.ok("error" in parseCancelReason("  a "));
+  assert.ok("error" in parseCancelReason("x".repeat(301)));
 });

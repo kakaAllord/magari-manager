@@ -341,6 +341,17 @@ export function parseFeedback(input: string, t: Tr = sw): { body: string } | { e
   return { body };
 }
 
+// Why an invoice is being cancelled: required, so whoever reads it later knows.
+export const MAX_CANCEL_REASON_LENGTH = 300;
+export function parseCancelReason(input: string, t: Tr = sw): { reason: string } | { error: string } {
+  const reason = input.trim();
+  if (reason.length < 3) return { error: t("Andika sababu ya kufuta invoice hii.", "Write why this invoice is being cancelled.") };
+  if (reason.length > MAX_CANCEL_REASON_LENGTH) {
+    return { error: t(`Sababu isizidi herufi ${MAX_CANCEL_REASON_LENGTH}.`, `The reason can be at most ${MAX_CANCEL_REASON_LENGTH} characters.`) };
+  }
+  return { reason };
+}
+
 // An invoice: the customer, its dates, the bank to pay into, and up to 20 trips, each priced per
 // tonne or per kilo. Lines left completely empty are skipped. Errors on a line are keyed by its index as sent.
 export const MAX_INVOICE_LINES = 20;
