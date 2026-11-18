@@ -1,7 +1,8 @@
-import { VoucherList } from "@/components/voucher-list";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
 
-export default async function DirectorVouchersPage({ searchParams }: PageProps<"/director/vouchers">) {
+// The director no longer sees payment vouchers; an old link or bookmark lands on the reports.
+export default async function DirectorVouchersPage() {
   await requireUser("director");
-  return <VoucherList searchParams={await searchParams} />;
+  redirect("/director/reports");
 }

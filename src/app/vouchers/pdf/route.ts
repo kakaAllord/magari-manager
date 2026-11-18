@@ -6,11 +6,12 @@ import { requireUser } from "@/lib/session";
 import { buildVouchersPdf } from "@/lib/voucher-pdf";
 
 // Every payment voucher paid between two days (?from=&to=, this month by default) in one PDF, one
-// page each and oldest first, to print and file. Staff only: a driver gets their own one by one.
+// page each and oldest first, to print and file. Not for drivers (they get their own one by one)
+// nor the director, who doesn't see vouchers.
 export async function GET(request: Request) {
   const user = await requireUser();
   const t = await getT();
-  if (user.role === "driver") return new Response(t("Haipo", "Not found"), { status: 404 });
+  if (user.role === "driver" || user.role === "director") return new Response(t("Haipo", "Not found"), { status: 404 });
   const sp = Object.fromEntries(new URL(request.url).searchParams);
   const { from, to } = parseReportParams(sp, todayInTanzania());
   const vouchers = await vouchersBetween(from, to);
