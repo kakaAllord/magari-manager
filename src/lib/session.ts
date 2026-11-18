@@ -11,11 +11,11 @@ const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 export type Role = "driver" | "manager" | "director" | "accountant" | "factory_manager";
 
-// "manager" is the vehicle manager; the factory manager authorises what they approve.
+// "manager" is the logistics manager (shown as that in both languages); the factory manager authorises what they approve.
 export const roleName = (role: Role, t: Tr): string =>
   ({
     driver: t("Dereva", "Driver"),
-    manager: t("Meneja", "Vehicle manager"),
+    manager: t("Logistics manager", "Logistics manager"),
     director: t("Mkurugenzi", "Director"),
     accountant: t("Mhasibu", "Accountant"),
     factory_manager: t("Meneja wa kiwanda", "Factory manager"),

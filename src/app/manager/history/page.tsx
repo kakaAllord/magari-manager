@@ -13,7 +13,7 @@ export default async function ManagerHistoryPage({ searchParams }: PageProps<"/m
       <LiveUpdates channel={MANAGERS_CHANNEL} />
       <PageHeader
         title={t("Historia", "History")}
-        description={t("Maombi yote yaliyoamuliwa, ya madereva na ya mameneja, mapya juu.", "Every decided request, from drivers and managers, newest first.")}
+        description={t("Maombi yote yaliyoamuliwa, ya madereva na ya logistics managers, mapya juu.", "Every decided request, from drivers and logistics managers, newest first.")}
       />
       <RequestHistory editable searchParams={await searchParams} filters={["all", "approved", "authorised", "issued", "rejected"]} />
     </main>

@@ -65,7 +65,7 @@ export type RequestFormState =
   | undefined;
 
 const notReadyForDriver = (missing: string, t: Tr) =>
-  t(`Gari lako bado halina ${missing}. Mwombe meneja akamilishe kwanza.`, `Your car doesn't have its ${missing} yet. Ask the manager to add it first.`);
+  t(`Gari lako bado halina ${missing}. Mwombe logistics manager akamilishe kwanza.`, `Your car doesn't have its ${missing} yet. Ask the logistics manager to add it first.`);
 const notReadyForManager = (missing: string, t: Tr) =>
   t(
     `Gari hili bado halina ${missing}. Kamilisha kwenye Magari (⋯ → Badilisha taarifa) kisha uombe mafuta.`,
@@ -247,7 +247,7 @@ export async function createRequest(
   return { ok: true };
 }
 
-// A vehicle manager's own request is approved as it's made and goes to the factory manager, then the
+// A logistics manager's own request is approved as it's made and goes to the factory manager, then the
 // mhasibu. With a past date it is history instead: entered as already paid on that day, with no
 // factory manager, mhasibu or receipt step.
 export async function createManagerRequest(
@@ -387,7 +387,7 @@ export async function reviewRequest(formData: FormData) {
   if (updated[0]) await notify([driverChannel(updated[0].requester_id), MANAGERS_CHANNEL]);
 }
 
-// The factory manager authorises what the vehicle manager approved, sending it on to the mhasibu,
+// The factory manager authorises what the logistics manager approved, sending it on to the mhasibu,
 // or declines it. Only approved requests not yet decided here match, so a double tap or a second
 // factory manager is a no-op.
 export async function authoriseRequest(formData: FormData) {

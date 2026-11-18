@@ -9,7 +9,7 @@ import { listAwaitingAuthorisation } from "@/lib/requests";
 import { requireUser } from "@/lib/session";
 import { getOverview } from "@/lib/stats";
 
-// Only what the vehicle manager approved and waits for the factory manager. Decided requests show in Ripoti.
+// Only what the logistics manager approved and waits for the factory manager. Decided requests show in Ripoti.
 export default async function FactoryRequestsPage() {
   await requireUser("factory_manager");
   const t = await getT();
@@ -63,8 +63,8 @@ export default async function FactoryRequestsPage() {
         {o.pending_count > 0 && (
           <p className="mt-3 text-sm text-muted">
             {t(
-              `${o.pending_count === 1 ? "Ombi 1 bado liko" : `Maombi ${o.pending_count} bado yako`} kwa meneja (${formatMoney(o.pending_total)}). Yakikubaliwa yatafika hapa.`,
-              `${o.pending_count === 1 ? "1 request is" : `${o.pending_count} requests are`} still with the vehicle manager (${formatMoney(o.pending_total)}). Once approved, they come here.`,
+              `${o.pending_count === 1 ? "Ombi 1 bado liko" : `Maombi ${o.pending_count} bado yako`} kwa logistics manager (${formatMoney(o.pending_total)}). Yakikubaliwa yatafika hapa.`,
+              `${o.pending_count === 1 ? "1 request is" : `${o.pending_count} requests are`} still with the logistics manager (${formatMoney(o.pending_total)}). Once approved, they come here.`,
             )}
           </p>
         )}

@@ -9,7 +9,7 @@ import { choiceLabel, paymentMethod } from "@/lib/voucher-fields";
 export async function RequestSummary({ request: r, mine = false }: { request: MoneyRequest; mine?: boolean }) {
   const t = await getT();
   const selfApproved = r.requester_role === "manager" && r.status !== "pending";
-  // Rejected by the factory manager, after the vehicle manager approved it.
+  // Rejected by the factory manager, after the logistics manager approved it.
   const declinedByFactory = r.status === "rejected" && r.factory_reviewed_at !== null;
   return (
     <div className="min-w-0 flex-1">
@@ -19,7 +19,7 @@ export async function RequestSummary({ request: r, mine = false }: { request: Mo
           <span className="font-normal text-muted">
             {" "}
             · {r.requester_name}
-            {r.requester_role === "manager" && t(" (meneja)", " (manager)")}
+            {r.requester_role === "manager" && t(" (logistics manager)", " (logistics manager)")}
           </span>
         )}
       </p>
@@ -67,8 +67,8 @@ export async function RequestSummary({ request: r, mine = false }: { request: Mo
           {r.car ?? t("Hakuna gari", "No car")}
           {" · "}<span className="font-medium text-warn">{t("Rekodi ya zamani", "Past record")}</span>{" "}
           {t(
-            `ya ${formatDate(r.issued_at)} · imeingizwa na ${r.reviewer_name ?? "meneja"} ${formatDateTime(r.backfilled_at)}`,
-            `of ${formatDate(r.issued_at)} · entered by ${r.reviewer_name ?? "the manager"} ${formatDateTime(r.backfilled_at)}`,
+            `ya ${formatDate(r.issued_at)} · imeingizwa na ${r.reviewer_name ?? "logistics manager"} ${formatDateTime(r.backfilled_at)}`,
+            `of ${formatDate(r.issued_at)} · entered by ${r.reviewer_name ?? "the logistics manager"} ${formatDateTime(r.backfilled_at)}`,
           )}
           {r.payment_method && ` · ${choiceLabel(paymentMethod(r.payment_method), t) ?? r.payment_method}`}
           {r.voucher_number && (
@@ -83,7 +83,7 @@ export async function RequestSummary({ request: r, mine = false }: { request: Mo
             <>
               {" · "}
               <span className="font-medium text-warn">{t("Imebadilishwa", "Edited")}</span>{" "}
-              {t(`na ${r.editor_name ?? "meneja"}`, `by ${r.editor_name ?? "the manager"}`)} {formatDateTime(r.edited_at)}
+              {t(`na ${r.editor_name ?? "logistics manager"}`, `by ${r.editor_name ?? "the logistics manager"}`)} {formatDateTime(r.edited_at)}
             </>
           )}
         </p>
@@ -94,15 +94,15 @@ export async function RequestSummary({ request: r, mine = false }: { request: Mo
           {t("Imetumwa", "Sent")} {formatDateTime(r.created_at)}
           {r.reviewed_at &&
             (selfApproved
-              ? t(" · Ombi la meneja, limekubaliwa moja kwa moja", " · The manager's own request, approved directly")
+              ? t(" · Ombi la logistics manager, limekubaliwa moja kwa moja", " · The logistics manager's own request, approved directly")
               : r.status === "rejected" && !declinedByFactory
                 ? t(
-                    ` · Imekataliwa na ${r.reviewer_name ?? "meneja"} ${formatDateTime(r.reviewed_at)}`,
-                    ` · Declined by ${r.reviewer_name ?? "the manager"} ${formatDateTime(r.reviewed_at)}`,
+                    ` · Imekataliwa na ${r.reviewer_name ?? "logistics manager"} ${formatDateTime(r.reviewed_at)}`,
+                    ` · Declined by ${r.reviewer_name ?? "the logistics manager"} ${formatDateTime(r.reviewed_at)}`,
                   )
                 : t(
-                    ` · Imekubaliwa na ${r.reviewer_name ?? "meneja"} ${formatDateTime(r.reviewed_at)}`,
-                    ` · Approved by ${r.reviewer_name ?? "the manager"} ${formatDateTime(r.reviewed_at)}`,
+                    ` · Imekubaliwa na ${r.reviewer_name ?? "logistics manager"} ${formatDateTime(r.reviewed_at)}`,
+                    ` · Approved by ${r.reviewer_name ?? "the logistics manager"} ${formatDateTime(r.reviewed_at)}`,
                   ))}
           {r.status === "approved" && t(" · Inasubiri meneja wa kiwanda", " · Awaiting the factory manager")}
           {/* Approvals from before the factory manager's step count as authorised and name nobody. */}
@@ -132,7 +132,7 @@ export async function RequestSummary({ request: r, mine = false }: { request: Mo
             <>
               {" · "}
               <span className="font-medium text-warn">{t("Imebadilishwa", "Edited")}</span>{" "}
-              {t(`na ${r.editor_name ?? "meneja"}`, `by ${r.editor_name ?? "the manager"}`)} {formatDateTime(r.edited_at)}
+              {t(`na ${r.editor_name ?? "logistics manager"}`, `by ${r.editor_name ?? "the logistics manager"}`)} {formatDateTime(r.edited_at)}
             </>
           )}
           {r.receipt === "due" &&

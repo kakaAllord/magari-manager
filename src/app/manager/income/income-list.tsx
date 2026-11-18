@@ -59,20 +59,20 @@ export async function IncomeList({
                 {i.backfilled_at ? (
                   <>
                     {formatDate(i.created_at)} · <span className="font-medium text-warn">{t("Rekodi ya zamani", "Past record")}</span>,{" "}
-                    {t(`imeingizwa na ${i.recorder_name ?? "meneja"}`, `entered by ${i.recorder_name ?? "the manager"}`)}{" "}
+                    {t(`imeingizwa na ${i.recorder_name ?? "logistics manager"}`, `entered by ${i.recorder_name ?? "the logistics manager"}`)}{" "}
                     {formatDateTime(i.backfilled_at)}
                   </>
                 ) : (
                   <>
                     {formatDateTime(i.created_at)} ·{" "}
-                    {t(`Imerekodiwa na ${i.recorder_name ?? "meneja"}`, `Recorded by ${i.recorder_name ?? "the manager"}`)}
+                    {t(`Imerekodiwa na ${i.recorder_name ?? "logistics manager"}`, `Recorded by ${i.recorder_name ?? "the logistics manager"}`)}
                   </>
                 )}
               </p>
               {i.edited_at && (
                 <p className="text-xs text-muted">
                   <span className="font-medium text-warn">{t("Imebadilishwa", "Edited")}</span>{" "}
-                  {t(`na ${i.editor_name ?? "meneja"}`, `by ${i.editor_name ?? "the manager"}`)} {formatDateTime(i.edited_at)}
+                  {t(`na ${i.editor_name ?? "logistics manager"}`, `by ${i.editor_name ?? "the logistics manager"}`)} {formatDateTime(i.edited_at)}
                 </p>
               )}
             </div>

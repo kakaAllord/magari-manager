@@ -55,15 +55,15 @@ function lines(r: MoneyRequest) {
   return [{ text: r.reason, qty: "1", price: figure(r.amount), amount: r.amount }];
 }
 
-// Review and authorisation as the request went through the app. A vehicle manager's own request
+// Review and authorisation as the request went through the app. A logistics manager's own request
 // checked itself; approvals from before the factory manager's step name nobody; history typed in
 // later was paid outside the app, so only who typed it in is known.
 function reviewRows(r: MoneyRequest) {
   const own = r.requester_role === "manager";
-  const role = own ? "Vehicle manager" : "Driver";
+  const role = own ? "Logistics manager" : "Driver";
   if (r.backfilled_at) {
     return [
-      { label: "Prepared by", name: r.reviewer_name ?? "", role: "Vehicle manager (typed in as history)", at: when(r.backfilled_at) },
+      { label: "Prepared by", name: r.reviewer_name ?? "", role: "Logistics manager (typed in as history)", at: when(r.backfilled_at) },
       { label: "Checked / verified by", name: "", role: "", at: "" },
       { label: "Approved by", name: "", role: "", at: "" },
       { label: "Paid", name: "Before it was recorded in the app", role: "", at: when(r.issued_at) },
@@ -71,7 +71,7 @@ function reviewRows(r: MoneyRequest) {
   }
   return [
     { label: "Requested by", name: r.requester_name, role, at: when(r.created_at) },
-    { label: "Checked / verified by", name: own ? r.requester_name : (r.reviewer_name ?? ""), role: "Vehicle manager", at: when(r.reviewed_at) },
+    { label: "Checked / verified by", name: own ? r.requester_name : (r.reviewer_name ?? ""), role: "Logistics manager", at: when(r.reviewed_at) },
     { label: "Approved by", name: r.factory_reviewer_name ?? "", role: "Factory manager", at: when(r.factory_reviewed_at) },
     { label: "Paid by", name: r.issuer_name ?? "", role: "Accountant", at: when(r.issued_at) },
   ];
@@ -91,7 +91,7 @@ function VoucherPage({ request: r }: { request: MoneyRequest }) {
     ["Vehicle reg. no.", plate ?? "No vehicle"],
     ["Payment method", method ?? "-"],
     ["Reference no.", r.issue_note ? pdfText(r.issue_note) : "-"],
-    ["Paid to", `${pdfText(r.requester_name)} (${r.requester_role === "manager" ? "Vehicle manager" : "Driver"})`],
+    ["Paid to", `${pdfText(r.requester_name)} (${r.requester_role === "manager" ? "Logistics manager" : "Driver"})`],
     ["Requested on", when(r.created_at)],
   ];
 

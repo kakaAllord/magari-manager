@@ -33,7 +33,7 @@ export function parseMoneyRequest(input: RequestInput, t: Tr = sw):
   if ("error" in amount) errors.amount = amount.error;
 
   const reason = input.reason.trim();
-  if (reason.length < 3) errors.reason = t("Mweleze meneja pesa ni za nini.", "Tell the manager what the money is for.");
+  if (reason.length < 3) errors.reason = t("Mweleze logistics manager pesa ni za nini.", "Tell the logistics manager what the money is for.");
   else if (reason.length > MAX_REASON_LENGTH) {
     errors.reason = t(`Sababu isizidi herufi ${MAX_REASON_LENGTH}.`, `The reason can be at most ${MAX_REASON_LENGTH} characters.`);
   }
@@ -163,7 +163,7 @@ export function checkOdometer(odometer: number, last: number | null, capJump: bo
     return t(`Kilomita haziwezi kuwa chini ya kipimo cha mwisho (${last.toLocaleString("en")}). Angalia tena.`, `The kilometres can't be below the last reading (${last.toLocaleString("en")}). Check again.`);
   }
   if (capJump && odometer - last > MAX_KM_BETWEEN_READINGS) {
-    return t(`Ni zaidi ya km ${MAX_KM_BETWEEN_READINGS.toLocaleString("en")} tangu kipimo cha mwisho (${last.toLocaleString("en")}). Hakikisha umeandika sawa, au mwambie meneja.`, `That is more than ${MAX_KM_BETWEEN_READINGS.toLocaleString("en")} km since the last reading (${last.toLocaleString("en")}). Make sure it's right, or tell the manager.`);
+    return t(`Ni zaidi ya km ${MAX_KM_BETWEEN_READINGS.toLocaleString("en")} tangu kipimo cha mwisho (${last.toLocaleString("en")}). Hakikisha umeandika sawa, au mwambie logistics manager.`, `That is more than ${MAX_KM_BETWEEN_READINGS.toLocaleString("en")} km since the last reading (${last.toLocaleString("en")}). Make sure it's right, or tell the logistics manager.`);
   }
 }
 

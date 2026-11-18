@@ -29,7 +29,7 @@ export default async function FactoryDashboard() {
   const waiting = o.awaiting_authorisation_count;
 
   const stages = [
-    { label: t("Kwa meneja", "With the vehicle manager"), count: o.pending_count, total: o.pending_total },
+    { label: t("Kwa logistics manager", "With the logistics manager"), count: o.pending_count, total: o.pending_total },
     { label: t("Kwa idhini yako", "For your authorisation"), count: waiting, total: o.awaiting_authorisation_total, href: "/factory/requests" },
     { label: t("Kwa mhasibu kulipa", "With the accountant to pay"), count: o.awaiting_issue_count, total: o.awaiting_issue_total },
     { label: t("Yamelipwa, risiti bado", "Paid, receipt to come"), count: o.awaiting_receipt_count },

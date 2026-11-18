@@ -98,7 +98,7 @@ const paged = (rows: (MoneyRequest & { total_count: number })[]): Page => ({
 export const listPending = () =>
   query<MoneyRequest>(`${SELECT} WHERE r.status = 'pending' ORDER BY r.created_at ASC`);
 
-// Approved by the vehicle manager and waiting for the factory manager, oldest approval first.
+// Approved by the logistics manager and waiting for the factory manager, oldest approval first.
 export const listAwaitingAuthorisation = () =>
   query<MoneyRequest>(
     `${SELECT} WHERE r.status = 'approved' AND r.factory_reviewed_at IS NULL ORDER BY r.reviewed_at ASC`,
@@ -136,7 +136,7 @@ export async function getVoucherRequest(id: number, requesterId: number | null) 
 
 export type HistoryFilter = "all" | "approved" | "authorised" | "issued" | "rejected";
 
-// Everything past the vehicle manager's decision (or everything one person asked for), newest first.
+// Everything past the logistics manager's decision (or everything one person asked for), newest first.
 // `byEntry` sorts by when each was entered, so history just typed in shows at the top.
 export async function listHistory(opts: {
   page: number;

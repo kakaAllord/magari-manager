@@ -27,7 +27,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps<"/
         title={invoice.number}
         description={
           <>
-            {t(`Imetengenezwa na ${invoice.created_by ?? "meneja"}`, `Made by ${invoice.created_by ?? "the manager"}`)}{" "}
+            {t(`Imetengenezwa na ${invoice.created_by ?? "logistics manager"}`, `Made by ${invoice.created_by ?? "the logistics manager"}`)}{" "}
             {formatDateTime(invoice.created_at)}
             {invoice.paid_at && ` · ${t("Imelipwa", "Paid")} ${formatDateTime(invoice.paid_at)}${invoice.paid_by ? ` (${invoice.paid_by})` : ""}`}
             {invoice.cancelled_at &&

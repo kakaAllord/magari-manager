@@ -8,6 +8,6 @@ export const factoryLinks: NavItem[] = [
   { href: "/factory/vouchers", label: ["Payment vouchers", "Payment vouchers"], icon: "pdf" },
   { href: "/factory/fuel", label: ["Mafuta", "Fuel"], icon: "fuel", tab: true },
   { href: "/factory/reports", label: ["Ripoti", "Reports"], icon: "report", group: manage, tab: true },
-  { href: "/factory/managers", label: ["Mameneja", "Managers"], icon: "users", group: manage },
+  { href: "/factory/managers", label: ["Logistics managers", "Logistics managers"], icon: "users", group: manage },
   { href: "/factory/maoni", label: ["Maoni", "Feedback"], icon: "chat", group: manage },
 ];

@@ -134,14 +134,14 @@ function CarsTable({ data, manage, t }: { data: Overview; manage: boolean; t: Tr
                         {t("Weka ukubwa wa tanki ili kupima", "Set the tank size to measure")}
                       </a>
                     ) : (
-                      t("Meneja hajaweka ukubwa wa tanki", "The manager hasn't set the tank size")
+                      t("Logistics manager hajaweka ukubwa wa tanki", "The logistics manager hasn't set the tank size")
                     )}
                   </p>
                 )}
                 {c.last ? (
                   <div className="mt-1 text-xs text-muted">
                     {t("Mwisho", "Last")}: km {formatKm(c.last.odometer)} · {gaugeLabel(c.last.eighths, t)} · {formatDateTime(c.last.at)}
-                    {c.last.by && ` · ${c.last.by}${c.last.byManager ? t(" (meneja)", " (manager)") : ""}`}
+                    {c.last.by && ` · ${c.last.by}${c.last.byManager ? t(" (logistics manager)", " (logistics manager)") : ""}`}
                     {c.litresSinceLast > 0 &&
                       t(` · lita ${formatLitres(c.litresSinceLast)} zimelipiwa tangu hapo`, ` · ${formatLitres(c.litresSinceLast)} litres paid for since then`)}
                     {manage && (

@@ -23,8 +23,8 @@ function Message({ state }: { state: { ok: boolean; message: string } | undefine
 const roleHint = (role: StaffRole, t: Tr) =>
   ({
     factory_manager: t(
-      "Anaidhinisha maombi yaliyokubaliwa na meneja kabla mhasibu hajalipa, na anaongeza mameneja.",
-      "Authorises what the vehicle manager approved before the accountant pays, and adds the managers.",
+      "Anaidhinisha maombi yaliyokubaliwa na logistics manager kabla mhasibu hajalipa, na anaongeza logistics managers.",
+      "Authorises what the logistics manager approved before the accountant pays, and adds the logistics managers.",
     ),
     manager: t(
       "Anakubali maombi ya madereva, anatengeneza invoice (mapato), anasimamia magari, madereva na mafuta.",

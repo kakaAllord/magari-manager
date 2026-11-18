@@ -123,8 +123,8 @@ export function RequestForm({
         {notReady && (
           <p className="mt-1 text-xs text-muted">
             {t(
-              `Gari lako bado halina ${notReady}. Meneja akishakamilisha, utaomba mafuta.`,
-              `Your car doesn't have its ${notReady} yet. Once the manager adds it, you can ask for fuel.`,
+              `Gari lako bado halina ${notReady}. Logistics manager akishakamilisha, utaomba mafuta.`,
+              `Your car doesn't have its ${notReady} yet. Once the logistics manager adds it, you can ask for fuel.`,
             )}
           </p>
         )}

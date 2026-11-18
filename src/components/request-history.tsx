@@ -10,7 +10,7 @@ import { listHistory, PAGE_SIZE, type HistoryFilter } from "@/lib/requests";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-// A paged list of requests past the vehicle manager's decision, filterable by status and car.
+// A paged list of requests past the logistics manager's decision, filterable by status and car.
 // `filters` lists the status chips to offer; with one, that status is fixed and no chips show.
 export async function RequestHistory({
   searchParams,
