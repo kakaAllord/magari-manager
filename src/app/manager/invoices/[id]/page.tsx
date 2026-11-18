@@ -32,6 +32,11 @@ export default async function InvoicePage({ params, searchParams }: PageProps<"/
             {invoice.paid_at && ` · ${t("Imelipwa", "Paid")} ${formatDateTime(invoice.paid_at)}${invoice.paid_by ? ` (${invoice.paid_by})` : ""}`}
             {invoice.cancelled_at &&
               ` · ${t("Imefutwa", "Cancelled")} ${formatDateTime(invoice.cancelled_at)}${invoice.cancelled_by ? ` (${invoice.cancelled_by})` : ""}`}
+            {invoice.cancel_reason && (
+              <span className="mt-1 block break-words">
+                {t("Sababu ya kufuta", "Reason for cancelling")}: {invoice.cancel_reason}
+              </span>
+            )}
           </>
         }
         action={

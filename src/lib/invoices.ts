@@ -13,6 +13,8 @@ export type InvoiceSummary = {
   due_on: string | null;
   total: string;
   status: InvoiceStatus;
+  // Why it was cancelled; empty unless cancelled since 029.
+  cancel_reason: string | null;
 };
 
 export type InvoiceDetail = InvoiceSummary & {
@@ -48,7 +50,7 @@ export async function listInvoices(page: number, search = "") {
   const term = search.trim().slice(0, 80).replace(/[\\%_]/g, "\\$&");
   const rows = await query<InvoiceSummary & { total_count: number }>(
     `SELECT i.id, i.number, i.customer_name, to_char(i.issued_on, 'YYYY-MM-DD') AS issued_on,
-            to_char(i.due_on, 'YYYY-MM-DD') AS due_on, i.total, ${STATUS} AS status,
+            to_char(i.due_on, 'YYYY-MM-DD') AS due_on, i.total, ${STATUS} AS status, i.cancel_reason,
             count(*) OVER ()::int AS total_count
        FROM invoices i
       WHERE $3 = '' OR i.number ILIKE '%' || $3 || '%' OR i.customer_name ILIKE '%' || $3 || '%'
@@ -65,7 +67,7 @@ export async function listInvoices(page: number, search = "") {
 export async function getInvoice(id: number): Promise<InvoiceDetail | null> {
   const [invoice] = await query<Omit<InvoiceDetail, "lines">>(
     `SELECT i.id, i.number, i.customer_name, i.customer_contact, to_char(i.issued_on, 'YYYY-MM-DD') AS issued_on,
-            to_char(i.due_on, 'YYYY-MM-DD') AS due_on, i.payment_details, i.total, ${STATUS} AS status,
+            to_char(i.due_on, 'YYYY-MM-DD') AS due_on, i.payment_details, i.total, ${STATUS} AS status, i.cancel_reason,
             i.bank_name, i.bank_account_number, i.bank_account_name, i.bank_swift, i.payment_purpose,
             c.name AS created_by, i.created_at, i.paid_at, p.name AS paid_by, i.cancelled_at, x.name AS cancelled_by,
             EXISTS (SELECT 1 FROM incomes WHERE invoice_id = i.id) AS in_income,

@@ -70,6 +70,7 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/manager
                       {i.number} · {formatWallDate(i.issued_on)}
                       {i.due_on && i.status === "open" && ` · ${t("mwisho", "due")} ${formatWallDate(i.due_on)}`}
                     </p>
+                    {i.cancel_reason && <p className="text-xs break-words text-muted italic">{i.cancel_reason}</p>}
                   </div>
                   <div className="grid shrink-0 justify-items-end gap-1">
                     <p className={`font-semibold tabular-nums ${i.status === "cancelled" ? "text-muted line-through" : ""}`}>
