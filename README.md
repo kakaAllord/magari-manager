@@ -1,6 +1,7 @@
 # Magari
 
-A Next.js + Postgres app for running Zuraja Transport and Logistics's fleet, in Swahili. Drivers sign in
+A Next.js + Postgres app for running Zuraja Transport and Logistics's fleet, in Swahili or English (Swahili by default; a globe button in the
+header, the sidebar and on the sign-in page switches the device's language). Drivers sign in
 with their car's plate number and request money: fuel (with the car's odometer and fuel
 gauge, the price per litre at the station, typed each time since it differs between
 stations, and the litres needed; the amount is worked out from the two) or anything else with a reason. Vehicle managers (meneja) sign in
@@ -48,7 +49,7 @@ its PDF and Excel show each entry's client and what is still owed.
 Every shilling that goes out gets a payment voucher, numbered per year of payment
 (PV-2026-034) when Lipa is pressed, or as typed-in history is saved, and never reused
 (`payment_vouchers`, migrations 020 and 026; the first vouchers were numbered HM- and were renamed PV-
-with the same digits in 027, before any had been printed). "Payment voucher" and "Invoice" stay in English throughout the Swahili app. The voucher follows the company's template, in English: A. details
+with the same digits in 027, before any had been printed). "Payment voucher" and "Invoice" stay in English in both languages. The voucher follows the company's template, in English: A. details
 (vehicle, payment method, reference, who was paid), B. particulars (purpose, amount in
 figures and English words), C. detailed expenditure, D. supporting documents ticked, E. review and
 authorisation filled from the app (requested by, checked by the meneja, approved by the meneja wa
@@ -195,6 +196,10 @@ directors, factory managers and the mhasibu join `private-managers` and each dri
 - `db/migrations/`: plain SQL schema for `users` (driver, manager, factory_manager, director or accountant), `cars`,
   `sessions`, `money_requests`, `incomes`, `fuel_readings`, `fuel_prices` (no longer edited: only a fallback for old fuel requests saved
   without a price) and `receipts`.
+- `src/lib/i18n.ts`, `src/lib/lang.ts`, `src/components/lang-provider.tsx`: Swahili/English. Text is
+  written inline as `t(sw, en)` pairs; server code gets `t` from `getT()` (the `lang` cookie, Swahili
+  when unset), browser components from `useT()`, and pure helpers take `t` with Swahili as the default.
+  `src/components/lang-switch.tsx` sets the cookie through `src/app/actions/lang.ts`.
 - `src/lib/session.ts`: cookie sessions stored hashed in Postgres; `requireUser(role)`
   guards every page, layout and server action.
 - `src/app/actions/`: server actions for login, requests, cars, drivers, income,

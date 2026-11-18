@@ -22,8 +22,11 @@ staff, cars, requests, income, fuel and receipts on Neon. Every change has to re
   (`npm run create-…` or in the app), as 013 does.
 - **Never seed demo data, wipe tables or run one-off fixes on Neon.** Demo data needs `DEMO_MODE=1`,
   which production doesn't set. Real accounts are added by migration (`010`, `013`) or in the app.
-- New UI is Swahili-only and light-only, like the rest. The one exception is the install card
-  (`install-prompt.tsx`), which is in English.
+- New UI is bilingual and light-only, like the rest. Write every string as a `t(sw, en)` pair, Swahili
+  first (server: `const t = await getT()`; browser: `const t = useT()`; pure libs take `t: Tr = sw`).
+  Swahili is the default; the `lang` cookie picks English per device. "Invoice" and "Payment voucher"
+  stay English in both languages, and so do the voucher PDF and the install card (`install-prompt.tsx`).
+  Don't translate stored values (e.g. an income's source "Bila gari"); translate them where shown.
 
 # Who does what
 
