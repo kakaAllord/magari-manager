@@ -4,19 +4,21 @@ import { COMPANY } from "@/lib/company";
 import { cargoSum } from "@/lib/format";
 import type { ReportParams } from "@/lib/report-params";
 import { sw, type Tr } from "@/lib/i18n";
-import { expenseCar, incomeCar, kindLabel, periodOfRow, type ReportData } from "@/lib/report-data";
+import { expenseCar, incomeCar, periodOfRow, type ReportData } from "@/lib/report-data";
 import { addCharts, type ChartSpec } from "@/lib/xlsx-charts";
 import { sourceLabel } from "@/lib/reports";
 
 // The Excel report, in the reader's language. Totals on Muhtasari are formulas over the Matumizi and
 // Mapato sheets, so editing or filtering the data there flows into the summary and its charts. The
-// labels the formulas match (car, period, kind, Faida/Hasara) come from the same translations on
-// both sides, so they line up in either language.
+// labels the formulas match (car, period, Faida/Hasara) come from the same translations on both
+// sides, so they line up in either language. Matumizi keeps only date, car, PV number and amount, so
+// its per-period sums match on dates and spending by kind is plain numbers.
 
 const MONEY = '"TSh" #,##0';
 const NUMBER = "#,##0";
 const DECIMAL = "#,##0.0";
 const DATE = "dd/mm/yyyy hh:mm";
+const DAY = "dd/mm/yyyy";
 
 const COLOR = {
   ink: "FF14201D",
@@ -85,31 +87,15 @@ export async function buildWorkbook(data: ReportData) {
   return addCharts(Buffer.from(file), [...summaryCharts, ...fuelCharts]);
 }
 
-type DataRange = { sheet: string; rows: number; amountCol: string; carCol: string; periodCol: string; kindCol?: string };
+// A sheet's data columns. Per-period sums match `periodCol` (a label) or, without one, `dateCol`.
+type DataRange = { sheet: string; rows: number; amountCol: string; carCol: string } & ({ periodCol: string } | { dateCol: string });
 
-// Every paid request, as a filterable Excel table.
+// Every paid request, as a filterable Excel table: date, car, PV number and amount, nothing else.
 function addSpendSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
   const { t } = data;
   const name = sheetNames(t).spend;
   const s = wb.addWorksheet(name, { views: [{ state: "frozen", ySplit: 1 }], properties: { tabColor: { argb: COLOR.out } } });
-  const periodGroup = data.params.group === "week" ? "week" : "month";
-  const rows = data.expenses.map((x, i) => [
-    excelDate(x.issued_at),
-    periodOfRow(x, periodGroup, t),
-    expenseCar(x, t),
-    x.car ?? "",
-    kindLabel(x.kind, t),
-    x.requester,
-    x.reason,
-    Number(x.amount),
-    x.approved_by ?? "",
-    x.authorised_by ?? "",
-    x.issued_by ?? "",
-    x.issue_note ?? "",
-    excelDate(x.requested_at),
-    x.fuel_price ?? "",
-    x.fuel_price ? { formula: `IF(N${i + 2}>0,H${i + 2}/N${i + 2},"")`, result: Number(x.amount) / x.fuel_price } : "",
-  ]);
+  const rows = data.expenses.map((x) => [excelDate(x.issued_at), expenseCar(x, t), x.voucher_number ?? "", Number(x.amount)]);
   s.addTable({
     name,
     ref: "A1",
@@ -117,39 +103,23 @@ function addSpendSheet(wb: ExcelJS.Workbook, data: ReportData): DataRange {
     totalsRow: true,
     style: { theme: "TableStyleMedium7", showRowStripes: true },
     columns: [
-      { name: t("Imetolewa", "Paid"), filterButton: true, totalsRowLabel: t("Jumla", "Total") },
-      { name: data.periodName, filterButton: true },
-      { name: t("Namba", "Plate"), filterButton: true },
-      { name: t("Gari", "Vehicle"), filterButton: true },
-      { name: t("Aina", "Kind"), filterButton: true },
-      { name: t("Aliyeomba", "Asked by"), filterButton: true },
-      { name: t("Sababu", "Reason"), filterButton: true },
+      { name: t("Tarehe", "Date"), filterButton: true, totalsRowLabel: t("Jumla", "Total") },
+      { name: t("Gari", "Car"), filterButton: true },
+      { name: t("Namba ya PV", "PV number"), filterButton: true },
       { name: t("Kiasi", "Amount"), filterButton: true, totalsRowFunction: "sum" },
-      { name: t("Imekubaliwa na", "Approved by"), filterButton: true },
-      { name: t("Imeidhinishwa na", "Authorised by"), filterButton: true },
-      { name: t("Imetolewa na", "Paid by"), filterButton: true },
-      { name: t("Kumbukumbu", "Reference"), filterButton: true },
-      { name: t("Iliombwa", "Asked on"), filterButton: true },
-      { name: t("Bei kwa lita", "Price per litre"), filterButton: true },
-      { name: t("Lita", "Litres"), filterButton: true },
     ],
-    rows: rows.length
-      ? rows
-      : [[null, "", "", "", "", "", t("Hakuna matumizi katika kipindi hiki", "No spending in this period"), 0, "", "", "", "", null, "", ""]],
+    rows: rows.length ? rows : [[null, t("Hakuna matumizi katika kipindi hiki", "No spending in this period"), "", 0]],
   });
-  [18, 14, 12, 20, 12, 20, 40, 16, 20, 20, 20, 24, 18, 14, 10].forEach((w, i) => (s.getColumn(i + 1).width = w));
-  s.getColumn(1).numFmt = DATE;
-  s.getColumn(13).numFmt = DATE;
-  s.getColumn(8).numFmt = MONEY;
-  s.getColumn(14).numFmt = MONEY;
-  s.getColumn(15).numFmt = DECIMAL;
+  [14, 16, 18, 18].forEach((w, i) => (s.getColumn(i + 1).width = w));
+  s.getColumn(1).numFmt = DAY;
+  s.getColumn(4).numFmt = MONEY;
   const n = Math.max(rows.length, 1);
   s.addConditionalFormatting({
-    ref: `H2:H${n + 1}`,
+    ref: `D2:D${n + 1}`,
     rules: [{ type: "dataBar", priority: 1, minLength: 0, maxLength: 100, cfvo: [{ type: "min" }, { type: "max" }], color: { argb: "FFF2C27A" } } as ExcelJS.DataBarRuleType],
   });
   setupPrint(s);
-  return { sheet: name, rows: n, amountCol: "H", carCol: "C", periodCol: "B", kindCol: "E" };
+  return { sheet: name, rows: n, amountCol: "D", carCol: "B", dateCol: "A" };
 }
 
 // Every income entry, as a filterable Excel table.
@@ -220,6 +190,12 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
   const range = (r: DataRange, c: string) => `${quote(r.sheet)}!$${c}$2:$${c}$${r.rows + 1}`;
   const spendAmounts = range(spend, spend.amountCol);
   const incomeAmounts = range(income, income.amountCol);
+  // A period's total on one data sheet: by its label, or by the dates from its first day to the next's.
+  const day = (d: string) => `DATE(${d.split("-").map(Number).join(",")})`;
+  const sumPeriod = (r: DataRange, amounts: string, row: number, p: ReportData["periods"][number]) =>
+    "periodCol" in r
+      ? `SUMIFS(${amounts},${range(r, r.periodCol)},A${row})`
+      : `SUMIFS(${amounts},${range(r, r.dateCol)},">="&${day(p.start)}${p.next ? `,${range(r, r.dateCol)},"<"&${day(p.next)}` : ""})`;
 
   s.getCell("A1").value = COMPANY;
   s.getCell("A1").font = { bold: true, size: 16, color: { argb: COLOR.accent } };
@@ -319,8 +295,8 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
     const row = pStart + i;
     s.getRow(row).values = [
       p.label,
-      { formula: `SUMIFS(${incomeAmounts},${range(income, income.periodCol)},A${row})`, result: p.income },
-      { formula: `SUMIFS(${spendAmounts},${range(spend, spend.periodCol)},A${row})`, result: p.spend },
+      { formula: sumPeriod(income, incomeAmounts, row, p), result: p.income },
+      { formula: sumPeriod(spend, spendAmounts, row, p), result: p.spend },
       { formula: `B${row}-C${row}`, result: p.income - p.spend },
     ];
   });
@@ -337,7 +313,7 @@ function fillSummarySheet(s: ExcelJS.Worksheet, data: ReportData, spend: DataRan
     const row = kStart + i;
     s.getRow(row).values = [
       k.label,
-      { formula: `SUMIFS(${spendAmounts},${range(spend, spend.kindCol!)},A${row})`, result: k.total },
+      k.total,
       { formula: `IFERROR(B${row}/B${kStart + data.byKind.length},0)`, result: kindTotal ? k.total / kindTotal : 0 },
     ];
   });
