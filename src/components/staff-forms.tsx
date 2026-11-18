@@ -27,8 +27,8 @@ const roleHint = (role: StaffRole, t: Tr) =>
       "Authorises what the vehicle manager approved before the accountant pays, and adds the managers.",
     ),
     manager: t(
-      "Anakubali maombi ya madereva, anarekodi mapato, magari, madereva na mafuta.",
-      "Approves drivers' requests and records income, cars, drivers and fuel.",
+      "Anakubali maombi ya madereva, anatengeneza invoice (mapato), anasimamia magari, madereva na mafuta.",
+      "Approves drivers' requests, makes invoices (income) and runs cars, drivers and fuel.",
     ),
     accountant: t(
       "Analipa maombi yaliyoidhinishwa na meneja wa kiwanda, na kuweka risiti.",

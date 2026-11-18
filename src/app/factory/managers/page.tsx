@@ -13,7 +13,7 @@ export default async function FactoryManagersPage() {
     <main className="page">
       <PageHeader
         title={t("Mameneja", "Managers")}
-        description={t("Wanakubali maombi ya madereva, wanarekodi mapato na kusimamia magari.", "They approve drivers' requests, record income and run the cars.")}
+        description={t("Wanakubali maombi ya madereva, wanatengeneza invoice (mapato) na kusimamia magari.", "They approve drivers' requests, make invoices (income) and run the cars.")}
         action={<AddStaff roles={staffAddedBy.factory_manager!} label={t("Ongeza meneja", "Add manager")} />}
       />
       <StaffList roles={staffAddedBy.factory_manager!} empty={t("Bado hakuna meneja. Bonyeza “Ongeza meneja”.", "No managers yet. Press “Add manager”.")} />
