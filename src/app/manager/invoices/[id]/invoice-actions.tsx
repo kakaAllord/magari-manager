@@ -8,6 +8,7 @@ import { Dialog } from "@/components/dialog";
 import { Icon } from "@/components/icons";
 import { Toast } from "@/components/toast";
 import { formatMoney } from "@/lib/format";
+import { MAX_CANCEL_REASON_LENGTH } from "@/lib/validation";
 
 // Download, and for an invoice still open, mark it paid or cancel it. Both ask first, since
 // neither can be undone. `saved` shows the toast after the invoice was just created.
@@ -105,6 +106,20 @@ export function InvoiceActions({
           className="flex flex-wrap justify-end gap-2"
         >
           <input type="hidden" name="id" value={id} />
+          {ask === "cancel" && (
+            <label className="block w-full">
+              <span className="label">{t("Sababu ya kufuta", "Reason for cancelling")}</span>
+              <textarea
+                name="reason"
+                required
+                minLength={3}
+                rows={2}
+                maxLength={MAX_CANCEL_REASON_LENGTH}
+                placeholder={t("Mfano: mteja amesitisha safari", "E.g. the client called off the trip")}
+                className="input"
+              />
+            </label>
+          )}
           <button
             type="button"
             onClick={() => {

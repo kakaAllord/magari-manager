@@ -8,7 +8,7 @@ import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { todayInTanzania, WITHOUT_CAR } from "@/lib/reports";
 import { requireUser } from "@/lib/session";
 import { TIME_ZONE } from "@/lib/time";
-import { cargoUnit, parseInvoice, type InvoiceErrors, type InvoiceInput } from "@/lib/validation";
+import { cargoUnit, parseCancelReason, parseInvoice, type InvoiceErrors, type InvoiceInput } from "@/lib/validation";
 
 export type InvoiceFormState = { ok: false; errors: InvoiceErrors; values: InvoiceInput } | undefined;
 
@@ -142,13 +142,16 @@ export async function markInvoicePaid(formData: FormData) {
 
 export type CancelInvoiceResult = { ok: true } | { ok: false; error: string };
 
-// A cancelled invoice keeps its number, marked "Imefutwa", so the numbering has no gaps to explain.
-// Its entries leave Mapato with it. Once the client has paid any of it on Madeni, it stays.
+// A cancelled invoice keeps its number, marked "Imefutwa", so the numbering has no gaps to explain,
+// and the reason the manager gave. Its entries leave Mapato with it. Once the client has paid any of
+// it on Madeni, it stays. A page opened before reasons were asked sends none and is told to write one.
 export async function cancelInvoice(formData: FormData): Promise<CancelInvoiceResult> {
   const manager = await requireUser("manager");
   const t = await getT();
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return { ok: false, error: t("Invoice haijulikani.", "Unknown invoice.") };
+  const why = parseCancelReason(String(formData.get("reason") ?? ""), t);
+  if ("error" in why) return { ok: false, error: why.error };
   const result = await transaction(async (client) => {
     const incomes = await client.query<{ amount_paid: string }>(
       "SELECT amount_paid FROM incomes WHERE invoice_id = $1 AND deleted_at IS NULL ORDER BY id FOR UPDATE",
@@ -164,8 +167,9 @@ export async function cancelInvoice(formData: FormData): Promise<CancelInvoiceRe
       };
     }
     const cancelled = await client.query(
-      "UPDATE invoices SET cancelled_at = now(), cancelled_by = $2 WHERE id = $1 AND paid_at IS NULL AND cancelled_at IS NULL",
-      [id, manager.id],
+      `UPDATE invoices SET cancelled_at = now(), cancelled_by = $2, cancel_reason = $3
+        WHERE id = $1 AND paid_at IS NULL AND cancelled_at IS NULL`,
+      [id, manager.id, why.reason],
     );
     if (cancelled.rowCount === 0) return { ok: false as const, error: t("Invoice hii imeshalipwa au kufutwa.", "This invoice is paid or cancelled already.") };
     await client.query(
