@@ -6,10 +6,9 @@ with their car's plate number and request money: fuel (with the car's odometer a
 gauge, the price per litre at the station, typed each time since it differs between
 stations, and the litres needed; the amount is worked out from the two) or anything else with a reason. Vehicle managers (meneja) sign in
 with email, approve or reject requests, ask for money themselves (approved as they ask, for a
-car or none), record income (the car it came from, and for cargo the price and the weight, by the
-tonne or by the kilo and either with decimals, and an optional destination, the amount worked out
-from the two; other income is a plain amount;
-optional description; the recorder can delete an entry within 24 hours), manage cars and
+car or none), make invoices, which are now the only way income comes in (each trip lands in Mapato
+by itself; the old Rekodi mapato form was removed in November 2026, and entries typed in before
+then stay, editable, with the recorder able to delete one within 24 hours), manage cars and
 drivers, watch income and spending on a dashboard, and see reports with separate
 each car's faida or hasara (income against spending, as bars), spend and income on tabs plus
 every entry with its date (the spending list, its PDF table and the Excel Matumizi sheet show only
@@ -34,13 +33,14 @@ database, not the code, migration 025), downloaded as a PDF with the total also 
 (up to trillions). Zuraja's address prints under its name (`src/lib/company.ts`). Numbers run per year
 (INV-2026-001; invoices made before November 2026 kept their ANK- numbers) and are never
 reused; a mistaken invoice is cancelled ("Imefutwa"), not edited (`invoices`, `invoice_lines`,
-migration 019). Saving an invoice puts each trip in Mapato as cargo income on the invoice's date,
+migration 019), and cancelling asks for a reason, shown on the invoice and in the list
+(`invoices.cancel_reason`, migration 029; earlier cancellations have none). Saving an invoice puts each trip in Mapato as cargo income on the invoice's date,
 nothing paid yet, so the client owes it on Madeni. Marking the invoice "Imelipwa" pays off those
 entries; paying them off with "Pokea malipo" marks the invoice paid; cancelling it removes them,
 unless the client has already paid part (`incomes.invoice_id`, migration 022). Invoices made before
-022 stay documents only, and their income is recorded on Mapato by hand.
-Income is paid in full by default. When a client pays only part of a job, or nothing yet, the
-meneja picks "Amelipa sehemu / deni", names the client and types what they paid now (0 means it is
+022 stay documents only; their income was typed in on Mapato while it still had a form.
+Income typed in by hand was paid in full by default; for part of a job, or nothing yet, the
+meneja picked "Amelipa sehemu / deni", named the client and typed what they paid now (0 meant it was
 all owed). Mapato still counts the job's full value on its date, so totals, reports and each car's
 faida read as before; what clients still owe is shown beside it ("Wateja wanadaiwa") on every
 dashboard. The Mapato page's Madeni tab lists open debts, oldest first, and "Pokea malipo" records
@@ -237,8 +237,8 @@ directors, factory managers and the mhasibu join `private-managers` and each dri
 A request goes pending → approved or rejected (by a manager; a manager's own request is
 approved on creation) → paid by the mhasibu (`issued_at`, `issued_by`, `issue_note`) → receipt added (`receipts`).
 Paying sets `receipt_due`; payments from before receipts existed have it false and never wait.
-Managers can type in history: Mapato and Omba pesa have a date that defaults to today. A past
-date stores the entry on that day at 12:00 Tanzanian time (`incomes.created_at`, or an expense's
+Managers can type in history: Omba pesa has a date that defaults to today, and so does an invoice
+(Mapato did too, before its form went). A past date stores the entry on that day at 12:00 Tanzanian time (`incomes.created_at`, or an expense's
 `created_at`, `reviewed_at` and `issued_at`) and sets `backfilled_at` to when it was typed in, so
 totals and reports place it in its month. A past expense is saved already paid, with no mhasibu
 step or receipt. Lists label these entries "Rekodi ya zamani".
