@@ -40,6 +40,11 @@ staff, cars, requests, income, fuel and receipts on Neon. Every change has to re
   cars, drivers and fuel.
 - **Mhasibu** (role `accountant`, `/accountant`): pays authorised requests and adds their receipts.
 - **Dereva** (driver, `/driver`): signs in with the car's plate and asks for money.
+- **Dev** (role `dev`, `/dev`): the owner's hidden account. It lists every user and can silently view
+  the app as any of them (sets `sessions.impersonating_user_id`; `getCurrentUser` then returns that
+  user everywhere — no banner, log or notification, the target's own sessions untouched). `/dev` is
+  404 for everyone else. Keep it hidden: never add it to a staff list, the demo box or a walkthrough,
+  and never surface impersonation in the normal UI. Password set with `npm run create-dev`.
 
 Request flow: pending → logistics manager approves → meneja wa kiwanda authorises → mhasibu pays →
 receipt.
