@@ -12,7 +12,8 @@ from the two; other income is a plain amount;
 optional description; the recorder can delete an entry within 24 hours), manage cars and
 drivers, watch income and spending on a dashboard, and see reports with separate
 each car's faida or hasara (income against spending, as bars), spend and income on tabs plus
-every entry with its date, downloadable as a PDF or an Excel
+every entry with its date (the spending list, its PDF table and the Excel Matumizi sheet show only
+the date, car, PV number and amount), downloadable as a PDF or an Excel
 workbook (formulas, tables and native charts) per car, month or week. On Mafuta they record each
 car's first reading, set tank sizes, and see km, litres, km per litre and TSh
 per km by car and by driver (measured between readings; the stretches themselves aren't shown).
@@ -60,9 +61,10 @@ Lipa dialog asks the **njia ya malipo** (Taslimu, Simu, Benki, Hundi), a referen
 unless cash) and the **viambatisho** attached; typed-in history asks how it was paid
 (`money_requests.payment_method`, `supporting_documents`, `money_request_items`,
 migration 026; choices in `src/lib/voucher-fields.ts`). "Payment voucher" beside a payment opens its
-PDF; the **Payment vouchers** tab (mhasibu, meneja, meneja wa kiwanda, mkurugenzi) lists a period's
+PDF; the **Payment vouchers** tab (mhasibu, meneja, meneja wa kiwanda; not the mkurugenzi, whose old
+`/director/vouchers` link lands on Ripoti) lists a period's
 vouchers with a download each and **Pakua zote** for all of them in one PDF (`/vouchers/pdf?from=&to=`,
-up to 400 a file). Staff open every voucher; a driver only their own. The company's name and the lines printed
+up to 400 a file). Staff other than the mkurugenzi open every voucher; a driver only their own. The company's name and the lines printed
 under it on invoices and vouchers live in `src/lib/company.ts` (`COMPANY_DETAILS`); for now that
 is the postal address, phone, email and TIN.
 Drivers have a Maoni tab, a suggestion box. The meneja, meneja wa kiwanda and mkurugenzi read the
