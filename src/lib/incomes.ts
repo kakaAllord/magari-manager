@@ -1,6 +1,7 @@
 import "server-only";
 import { query } from "@/lib/db";
 import { TIME_ZONE } from "@/lib/time";
+import type { UnpaidJob } from "@/lib/debtor-report";
 
 // How long after recording an entry its manager may still delete it.
 export const DELETE_WINDOW_HOURS = 24;
@@ -135,4 +136,22 @@ export function listDebtors() {
       ORDER BY owed DESC, days DESC`,
     [TIME_ZONE],
   );
+}
+
+// Every job a client still owes on, for the debtors report: oldest first, narrowed to the picked cars
+// (none means all) and, with a range, to jobs dated in it (Tanzanian time). Amounts come back as numbers.
+export async function listUnpaidJobs(opts: { carIds: number[]; range?: { from: string; to: string } }): Promise<UnpaidJob[]> {
+  const rows = await query<Omit<UnpaidJob, "amount" | "paid"> & { amount: string; paid: string }>(
+    `SELECT i.id, to_char(i.created_at AT TIME ZONE $1, 'YYYY-MM-DD') AS at, i.customer_name AS customer,
+            c.plate, c.name AS car, inv.number AS invoice_number, i.description, i.rate_per_tonne, i.tonnes, i.unit,
+            i.destination, i.amount, i.amount_paid AS paid,
+            ((now() AT TIME ZONE $1)::date - (i.created_at AT TIME ZONE $1)::date) AS days
+       FROM incomes i LEFT JOIN cars c ON c.id = i.car_id LEFT JOIN invoices inv ON inv.id = i.invoice_id
+      WHERE i.deleted_at IS NULL AND i.amount_paid < i.amount
+        AND (cardinality($2::int[]) = 0 OR i.car_id = ANY($2::int[]))
+        AND ($3::date IS NULL OR (i.created_at AT TIME ZONE $1)::date BETWEEN $3::date AND $4::date)
+      ORDER BY i.created_at, i.id`,
+    [TIME_ZONE, opts.carIds, opts.range?.from ?? null, opts.range?.to ?? null],
+  );
+  return rows.map((r) => ({ ...r, amount: Number(r.amount), paid: Number(r.paid) }));
 }
