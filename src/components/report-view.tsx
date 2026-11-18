@@ -6,6 +6,9 @@ import { ReportToolbar } from "@/components/report-filters";
 import { cargoLine, formatMoney, formatWallDate, formatWallTime, keepMinus } from "@/lib/format";
 import { parseReportParams, presets, toSearch } from "@/lib/report-params";
 import { CarProfit } from "@/components/car-profit";
+import { DebtorsPanel } from "@/components/debtors-panel";
+import { getDebtorReport } from "@/lib/debtor-data";
+import { debtScopeParam } from "@/lib/debtor-report";
 import { getExpenses, getIncomes, listCars, moneyByCar, sourceLabel, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
 
 // The reports page, shared by both managers, the mhasibu and directors. `base` is the page's own path.
@@ -19,16 +22,18 @@ export async function ReportView({
   const t = await getT();
   const today = todayInTanzania();
   const params = parseReportParams(searchParams, today);
-  const [cars, expenses, incomes] = await Promise.all([listCars(), getExpenses(params), getIncomes(params)]);
+  const [cars, expenses, incomes, debts] = await Promise.all([listCars(), getExpenses(params), getIncomes(params), getDebtorReport(searchParams)]);
   const summary = summarise(expenses, cars, params, t);
   const income = summariseIncome(incomes, params, t);
   const balance = income.total - summary.grandTotal;
   const chosen = params.carIds.length ? cars.filter((c) => params.carIds.includes(c.id)) : cars;
   const byCar = moneyByCar(chosen, expenses, incomes, t);
   const search = toSearch(params);
-  // Spending and income share one card; the tab lives in the URL so filtering keeps it.
-  const tab = searchParams.tab === "mapato" ? "mapato" : "matumizi";
-  const tabSearch = (key: string) => (key === "mapato" ? `${search}&tab=mapato` : search);
+  // Spending, income and debts share one card; the tab lives in the URL so filtering keeps it.
+  const tab = searchParams.tab === "mapato" || searchParams.tab === "madeni" ? searchParams.tab : "matumizi";
+  const scope = debtScopeParam(debts.scope);
+  const tabSearch = (key: string) => (key === "matumizi" ? search : key === "madeni" ? `${search}&tab=madeni${scope}` : `${search}&tab=${key}`);
+  const debtorsPdf = `${base}/export?${search}&format=debtors${scope}`;
 
   return (
       <main className="page">
@@ -46,9 +51,11 @@ export async function ReportView({
           cars={cars}
           today={today}
           tab={tab}
+          keep={debts.scope === "period" ? { madeni: "kipindi" } : {}}
           downloads={[
             { label: "PDF", hint: t("Tayari kuchapisha au kutuma", "Ready to print or send"), href: `${base}/export?${search}&format=pdf`, icon: "pdf" },
             { label: "Excel", hint: t("Fomula, chati na majedwali ya kuchuja", "Formulas, charts and filterable tables"), href: `${base}/export?${search}`, icon: "sheet" },
+            { label: t("Madeni (PDF)", "Debtors (PDF)"), hint: debts.scopeLabel, href: debtorsPdf, icon: "wallet" },
           ]}
         />
 
@@ -92,11 +99,12 @@ export async function ReportView({
         </section>
 
         <section className="card grid gap-4">
-          <nav className="-mx-4 -mt-4 flex border-b border-line sm:-mx-5 sm:-mt-5" aria-label={t("Matumizi au mapato", "Spending or income")}>
+          <nav className="-mx-4 -mt-4 flex border-b border-line sm:-mx-5 sm:-mt-5" aria-label={t("Matumizi, mapato au madeni", "Spending, income or debts")}>
             {(
               [
                 { key: "matumizi", label: t("Matumizi", "Spending"), count: summary.count },
                 { key: "mapato", label: t("Mapato", "Income"), count: income.count },
+                { key: "madeni", label: t("Madeni", "Debts"), count: debts.debtors.length },
               ] as const
             ).map((x) => (
               <Link
@@ -104,7 +112,7 @@ export async function ReportView({
                 href={`?${tabSearch(x.key)}`}
                 scroll={false}
                 aria-current={tab === x.key ? "page" : undefined}
-                className="flex flex-1 items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted hover:text-foreground aria-[current=page]:border-accent aria-[current=page]:text-foreground"
+                className="flex flex-1 items-center justify-center gap-1.5 border-b-2 border-transparent px-2 py-3 sm:gap-2 sm:px-4 text-sm font-medium text-muted hover:text-foreground aria-[current=page]:border-accent aria-[current=page]:text-foreground"
               >
                 {x.label}
                 <span className="rounded-full bg-background px-2 text-xs tabular-nums">{x.count}</span>
@@ -112,7 +120,14 @@ export async function ReportView({
             ))}
           </nav>
 
-          {tab === "matumizi" ? (
+          {tab === "madeni" ? (
+            <DebtorsPanel
+              report={debts}
+              pdfHref={debtorsPdf}
+              allHref={`?${search}&tab=madeni`}
+              periodHref={`?${search}&tab=madeni&madeni=kipindi`}
+            />
+          ) : tab === "matumizi" ? (
             <>
               <p className="text-sm text-muted">
                 {t(`Maombi ${summary.count}`, `${summary.count} requests`)} ·{" "}

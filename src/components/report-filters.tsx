@@ -29,6 +29,7 @@ export function ReportToolbar({
   cars,
   today,
   tab,
+  keep = {},
   downloads,
 }: {
   presets: Preset[];
@@ -36,6 +37,8 @@ export function ReportToolbar({
   cars: CarOption[];
   today: string;
   tab: string;
+  // Other URL values the filter must carry over, such as the Madeni tab's scope.
+  keep?: Record<string, string>;
   downloads: Download[];
 }) {
   const t = useT();
@@ -72,7 +75,7 @@ export function ReportToolbar({
       <DownloadMenu downloads={downloads} />
 
       <Dialog open={open} onClose={() => setOpen(false)} title={t("Chuja ripoti", "Filter the report")}>
-        <FilterForm presets={presets} params={params} cars={cars} today={today} tab={tab} match={match} />
+        <FilterForm presets={presets} params={params} cars={cars} today={today} tab={tab} keep={keep} match={match} />
       </Dialog>
     </div>
   );
@@ -84,6 +87,7 @@ function FilterForm({
   cars,
   today,
   tab,
+  keep,
   match,
 }: {
   presets: Preset[];
@@ -91,6 +95,7 @@ function FilterForm({
   cars: CarOption[];
   today: string;
   tab: string;
+  keep: Record<string, string>;
   match: Preset | undefined;
 }) {
   const t = useT();
@@ -101,6 +106,9 @@ function FilterForm({
   return (
     <form method="get" className="grid gap-5">
       {tab !== "matumizi" && <input type="hidden" name="tab" value={tab} />}
+      {Object.entries(keep).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
       <div className="grid gap-3">
         <label className="block">
           <span className="label">{t("Kipindi", "Period")}</span>
