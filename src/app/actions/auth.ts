@@ -16,7 +16,7 @@ type Candidate = { id: number; password_hash: string; role: Role };
 function findAccount(login: string) {
   if (login.includes("@")) {
     return query<Candidate>(
-      "SELECT id, password_hash, role FROM users WHERE email = $1 AND role IN ('manager', 'director', 'accountant', 'factory_manager') AND deactivated_at IS NULL",
+      "SELECT id, password_hash, role FROM users WHERE email = $1 AND role IN ('manager', 'director', 'accountant', 'factory_manager', 'dev') AND deactivated_at IS NULL",
       [login.toLowerCase()],
     );
   }
