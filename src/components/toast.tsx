@@ -17,7 +17,7 @@ function toastRoot() {
     root = document.createElement("div");
     root.id = "toasts";
     root.className =
-      "pointer-events-none fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 flex flex-col gap-2 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-96";
+      "pointer-events-none fixed inset-x-4 bottom-[calc(1rem+var(--bar-h,0px)+env(safe-area-inset-bottom,0px))] z-40 flex flex-col gap-2 sm:inset-x-auto sm:right-6 sm:bottom-[calc(1.5rem+var(--bar-h,0px))] sm:w-96";
     document.body.append(root);
   }
   return root;

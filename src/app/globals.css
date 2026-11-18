@@ -126,3 +126,10 @@ body {
   background-color: var(--accent-soft);
   color: var(--accent);
 }
+
+/* Below lg the app shell puts a tab bar along the bottom; toasts and the install card sit above it. */
+@media (width < 64rem) {
+  body:has([data-bottom-bar]) {
+    --bar-h: 4rem;
+  }
+}

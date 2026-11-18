@@ -70,7 +70,7 @@ export function InstallPrompt() {
     <div
       role="dialog"
       aria-labelledby="install-title"
-      className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-30 rounded-xl border border-line bg-surface p-4 shadow-lg sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-96"
+      className="fixed inset-x-4 bottom-[calc(1rem+var(--bar-h,0px)+env(safe-area-inset-bottom,0px))] z-30 rounded-xl border border-line bg-surface p-4 shadow-lg sm:inset-x-auto sm:right-6 sm:bottom-[calc(1.5rem+var(--bar-h,0px))] sm:w-96"
     >
       <div className="flex items-start gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element -- a fixed 40px icon needs no optimising */}
