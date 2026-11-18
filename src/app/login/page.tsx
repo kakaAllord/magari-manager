@@ -24,7 +24,7 @@ export default async function LoginPage() {
         </div>
         <LoginForm demo={showDemo()} />
         <div className="mt-6 flex justify-center">
-          <LangSwitch variant="link" />
+          <LangSwitch />
         </div>
       </div>
     </main>

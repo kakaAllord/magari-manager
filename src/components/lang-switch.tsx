@@ -1,33 +1,53 @@
 import { setLang } from "@/app/actions/lang";
 import { getLang } from "@/lib/lang";
+import type { Lang } from "@/lib/i18n";
 import { Icon } from "./icons";
 
-// Offers the other language, named in that language, so it can be found by someone who can't read
-// the current one. A plain form: it works before the page's scripts load.
-export async function LangSwitch({ variant }: { variant: "full" | "compact" | "link" }) {
-  const other = (await getLang()) === "en" ? "sw" : "en";
-  const name = other === "en" ? "English" : "Kiswahili";
-  const code = other === "en" ? "EN" : "SW";
-  const classes = {
-    full: "btn btn-ghost w-full justify-start gap-2",
-    compact: "btn btn-ghost gap-1.5 max-sm:h-11 max-sm:px-2.5",
-    link: "inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-foreground",
-  }[variant];
+const options: { lang: Lang; code: string; name: string }[] = [
+  { lang: "sw", code: "SW", name: "Kiswahili" },
+  { lang: "en", code: "EN", name: "English" },
+];
 
-  return (
-    <form action={setLang} className={variant === "full" ? "w-full" : undefined}>
-      <input type="hidden" name="lang" value={other} />
-      <button type="submit" className={classes} lang={other} aria-label={name} title={name}>
-        <Icon name="globe" className="size-4" />
-        {variant === "compact" ? (
-          <>
-            <span className="sm:hidden">{code}</span>
-            <span className="max-sm:hidden">{name}</span>
-          </>
-        ) : (
-          <span>{name}</span>
-        )}
-      </button>
+// A two-part SW | EN pill with the current language filled in, so it says both what's on and what
+// else there is. Each half names its language in that language (title and screen readers), for
+// someone who can't read the current one. A plain form: it works before the page's scripts load.
+// `row` puts a globe and "Lugha / Language" in front of it, for menus.
+export async function LangSwitch({ variant = "pill" }: { variant?: "pill" | "row" }) {
+  const current = await getLang();
+
+  const pill = (
+    <form action={setLang} className="inline-flex shrink-0 rounded-full border border-line bg-background p-0.5" role="group" aria-label="Lugha / Language">
+      {options.map((o) => {
+        const on = o.lang === current;
+        return (
+          <button
+            key={o.lang}
+            type="submit"
+            name="lang"
+            value={o.lang}
+            lang={o.lang}
+            title={o.name}
+            aria-label={o.name}
+            aria-pressed={on}
+            className={`min-h-9 min-w-11 rounded-full px-3 text-xs font-semibold tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent sm:min-h-7 sm:min-w-10 ${
+              on ? "bg-accent text-accent-fg shadow-sm" : "text-muted hover:text-foreground"
+            }`}
+          >
+            {o.code}
+          </button>
+        );
+      })}
     </form>
+  );
+
+  if (variant === "pill") return pill;
+  return (
+    <div className="flex items-center justify-between gap-3 px-3 py-1.5">
+      <span className="flex items-center gap-2.5 text-sm">
+        <Icon name="globe" className="size-4 text-muted" />
+        {current === "en" ? "Language" : "Lugha"}
+      </span>
+      {pill}
+    </div>
   );
 }
