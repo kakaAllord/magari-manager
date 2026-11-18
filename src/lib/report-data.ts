@@ -43,7 +43,8 @@ export type ReportData = {
   byKind: { label: string; total: number }[];
   // Months, or weeks when the report is grouped by week.
   periodName: string;
-  periods: { label: string; income: number; spend: number }[];
+  // `start` and `next` (the following period's first day) are "YYYY-MM-DD"; the last has no `next`.
+  periods: { label: string; start: string; next: string | null; income: number; spend: number }[];
   fuel: FuelOverview;
 };
 
@@ -73,10 +74,13 @@ export async function getReportData(searchParams: Record<string, string | string
   const byCar = moneyByCar(chosen, expenses, incomes, t);
 
   const periodGroup = params.group === "week" ? "week" : "month";
-  const periods = periodStarts(params.from, params.to, periodGroup).map((start) => {
+  const starts = periodStarts(params.from, params.to, periodGroup);
+  const periods = starts.map((start, i) => {
     const label = periodLabel(start, periodGroup, t);
     return {
       label,
+      start,
+      next: starts[i + 1] ?? null,
       income: sum(incomes.filter((i) => periodOfRow(i, periodGroup, t) === label)),
       spend: sum(expenses.filter((e) => periodOfRow(e, periodGroup, t) === label)),
     };

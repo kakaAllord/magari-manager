@@ -196,35 +196,36 @@ export async function ReportView({
               {expenses.length > 0 && (
                 <details>
                   <summary className="cursor-pointer text-sm font-medium">{t("Kila ombi na tarehe yake", "Every request and its date")} ({expenses.length})</summary>
-                  <ul className="mt-2 divide-y divide-line">
-                    {expenses.map((e, i) => (
-                      <li key={i} className="flex items-start justify-between gap-4 py-3">
-                        <div className="min-w-0">
-                          <p className="break-words">
-                            <span className="plate">{e.plate ?? t("Hakuna gari", "No car")}</span> {e.reason}
-                          </p>
-                          <p className="mt-1 text-xs text-muted">
-                            {e.backfilled ? (
-                              <>
-                                {formatWallDate(e.issued_at)} · <span className="font-medium text-warn">{t("Rekodi ya zamani", "Past record")}</span> ·{" "}
-                                {e.requester}
-                              </>
-                            ) : (
-                              <>
-                                {t("Imetolewa", "Paid")} {formatWallTime(e.issued_at)}
-                                {e.issued_by && t(` na ${e.issued_by}`, ` by ${e.issued_by}`)}
-                                {e.authorised_by && t(` · imeidhinishwa na ${e.authorised_by}`, ` · authorised by ${e.authorised_by}`)} ·{" "}
-                                {t("imekubaliwa", "approved")} {formatWallTime(e.approved_at)} · {t("iliombwa", "asked")}{" "}
-                                {formatWallTime(e.requested_at)} · {e.requester}
-                                {e.issue_note && ` · ${e.issue_note}`}
-                              </>
-                            )}
-                          </p>
-                        </div>
-                        <p className="shrink-0 font-medium tabular-nums">{formatMoney(e.amount)}</p>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>{t("Tarehe", "Date")}</th>
+                          <th>{t("Gari", "Car")}</th>
+                          <th>{t("Namba ya PV", "PV number")}</th>
+                          <th className="num">{t("Kiasi", "Amount")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {expenses.map((e, i) => (
+                          <tr key={i}>
+                            <td className="whitespace-nowrap">{formatWallDate(e.issued_at)}</td>
+                            <td>
+                              <span className="plate">{e.plate ?? t("Hakuna gari", "No car")}</span>
+                            </td>
+                            <td className={`whitespace-nowrap ${e.voucher_number ? "" : "text-muted"}`}>{e.voucher_number ?? "–"}</td>
+                            <td className="num font-medium">{formatMoney(e.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={3}>{t("Jumla", "Total")}</td>
+                          <td className="num">{formatMoney(summary.grandTotal)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 </details>
               )}
             </>

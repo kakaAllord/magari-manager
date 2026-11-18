@@ -1,9 +1,9 @@
 import "server-only";
 import { Circle, Document, Page, Path, renderToBuffer, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import { COMPANY } from "@/lib/company";
-import { cargoLine, formatKm, formatLitres, formatMoney, formatRate, formatWallTime } from "@/lib/format";
+import { cargoLine, formatKm, formatLitres, formatMoney, formatRate, formatWallDate, formatWallTime } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
-import { expenseCar, incomeCar, kindLabel, type ReportData } from "@/lib/report-data";
+import { expenseCar, incomeCar, type ReportData } from "@/lib/report-data";
 import { sourceLabel, type IncomeRow } from "@/lib/reports";
 
 // The PDF report: headline numbers and charts first, then the tables (flowing on from the charts), then every entry.
@@ -419,15 +419,13 @@ function ReportPdf({ data }: { data: ReportData }) {
         </Text>
         <Table
           columns={[
-            { label: t("Imetolewa", "Paid"), width: 17, value: (e) => formatWallTime(e.issued_at) },
-            { label: t("Gari", "Car"), width: 11, value: (e) => expenseCar(e, t) },
-            { label: t("Aina", "Kind"), width: 10, value: (e) => kindLabel(e.kind, t) },
-            { label: t("Aliyeomba", "Asked by"), width: 15, value: (e) => e.requester },
-            { label: t("Sababu", "Reason"), width: 31, value: (e) => e.reason },
-            { label: t("Kiasi", "Amount"), width: 16, num: true, value: (e) => money(Number(e.amount)) },
+            { label: t("Tarehe", "Date"), width: 22, value: (e) => formatWallDate(e.issued_at) },
+            { label: t("Gari", "Car"), width: 24, value: (e) => expenseCar(e, t) },
+            { label: t("Namba ya PV", "PV number"), width: 28, value: (e) => e.voucher_number ?? "-" },
+            { label: t("Kiasi", "Amount"), width: 26, num: true, value: (e) => money(Number(e.amount)) },
           ]}
           rows={data.expenses}
-          total={[t("Jumla", "Total"), "", "", "", "", money(totals.spend)]}
+          total={[t("Jumla", "Total"), "", "", money(totals.spend)]}
         />
 
         <View style={s.section}>

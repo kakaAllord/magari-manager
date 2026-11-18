@@ -25,6 +25,8 @@ export type ExpenseRow = {
   kind: "fuel" | "other";
   fuel_price: number | null;
   backfilled: boolean;
+  // PV-2026-034. Empty for history typed in before vouchers were given to it.
+  voucher_number: string | null;
 };
 
 // `fuelReady`: the car has its fuel type, tank size and a reading, so fuel can be asked for it.
@@ -46,13 +48,14 @@ export function getExpenses(p: ReportParams) {
             to_char(date_trunc('week', r.issued_at AT TIME ZONE $1), 'YYYY-MM-DD') AS week_start,
             c.id AS car_id, c.plate, c.name AS car,
             d.name AS requester, r.reason, r.amount, m.name AS approved_by, f.name AS authorised_by, a.name AS issued_by, r.issue_note,
-            r.kind, r.fuel_price, r.backfilled_at IS NOT NULL AS backfilled
+            r.kind, r.fuel_price, r.backfilled_at IS NOT NULL AS backfilled, v.number AS voucher_number
        FROM money_requests r
        JOIN users d ON d.id = r.requester_id
        LEFT JOIN users m ON m.id = r.reviewed_by
        LEFT JOIN users f ON f.id = r.factory_reviewed_by
        LEFT JOIN users a ON a.id = r.issued_by
        LEFT JOIN cars c ON c.id = r.car_id
+       LEFT JOIN payment_vouchers v ON v.request_id = r.id
       WHERE r.issued_at IS NOT NULL
         AND (r.issued_at AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date
         AND (cardinality($4::int[]) = 0 OR r.car_id = ANY($4::int[]))
