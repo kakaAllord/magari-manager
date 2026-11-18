@@ -9,7 +9,7 @@ import { sourceLabel, type IncomeRow } from "@/lib/reports";
 // The PDF report: headline numbers and charts first, then the tables (flowing on from the charts), then every entry.
 // Built-in Helvetica only covers Western European characters, so the text avoids symbols like ⚠.
 
-const C = {
+export const C = {
   ink: "#14201d",
   muted: "#5f6673",
   line: "#e1e6e4",
@@ -27,7 +27,7 @@ const C = {
 };
 const PALETTE = ["#1d4ed8", "#d08a1a", "#0f7b6c", "#c22f2f", "#7a4fb5", "#1f7a45", "#8a6d3b", "#4a90a4", "#b5487a", "#5f6673"];
 
-const s = StyleSheet.create({
+export const s = StyleSheet.create({
   page: { paddingTop: 36, paddingBottom: 48, paddingHorizontal: 36, fontSize: 9, fontFamily: "Helvetica", color: C.ink },
   company: { fontSize: 15, fontFamily: "Helvetica-Bold", color: C.accent },
   title: { fontSize: 12, fontFamily: "Helvetica-Bold", marginTop: 2 },
@@ -47,9 +47,9 @@ const s = StyleSheet.create({
   footer: { position: "absolute", bottom: 20, left: 36, right: 36, flexDirection: "row", justifyContent: "space-between", fontSize: 8, color: C.muted },
 });
 
-type Column<T> = { label: string; width: number; num?: boolean; value: (row: T) => string; color?: (row: T) => string | undefined };
+export type Column<T> = { label: string; width: number; num?: boolean; value: (row: T) => string; color?: (row: T) => string | undefined };
 
-function Table<T>({ columns, rows, total }: { columns: Column<T>[]; rows: T[]; total?: string[] }) {
+export function Table<T>({ columns, rows, total }: { columns: Column<T>[]; rows: T[]; total?: string[] }) {
   return (
     <View>
       <View style={s.th} fixed>
@@ -81,7 +81,7 @@ function Table<T>({ columns, rows, total }: { columns: Column<T>[]; rows: T[]; t
   );
 }
 
-function Kpi({ label, value, color, soft, note }: { label: string; value: number; color: string; soft: string; note: string }) {
+export function Kpi({ label, value, color, soft, note }: { label: string; value: number; color: string; soft: string; note: string }) {
   return (
     <View style={[s.card, { backgroundColor: soft, borderColor: soft }]}>
       <Text style={[s.cardLabel, { color }]}>{label}</Text>
@@ -91,7 +91,7 @@ function Kpi({ label, value, color, soft, note }: { label: string; value: number
   );
 }
 
-const compact = (n: number) => new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
+export const compact = (n: number) => new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 
 // Side-by-side columns per period, drawn with boxes so no font or SVG text is needed.
 function ColumnChart({ items, height = 130, t }: { items: { label: string; income: number; spend: number }[]; height?: number; t: Tr }) {
