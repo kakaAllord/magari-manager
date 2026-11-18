@@ -4,7 +4,7 @@ A Next.js + Postgres app for running Zuraja Transport and Logistics's fleet, in 
 header, the sidebar and on the sign-in page switches the device's language). Drivers sign in
 with their car's plate number and request money: fuel (with the car's odometer and fuel
 gauge, the price per litre at the station, typed each time since it differs between
-stations, and the litres needed; the amount is worked out from the two) or anything else with a reason. Vehicle managers (meneja) sign in
+stations, and the litres needed; the amount is worked out from the two) or anything else with a reason. Logistics managers sign in
 with email, approve or reject requests, ask for money themselves (approved as they ask, for a
 car or none), make invoices, which are now the only way income comes in (each trip lands in Mapato
 by itself; the old Rekodi mapato form was removed in November 2026, and entries typed in before
@@ -17,8 +17,8 @@ workbook (formulas, tables and native charts) per car, month or week. On Mafuta 
 car's first reading, set tank sizes, and see km, litres, km per litre and TSh
 per km by car and by driver (measured between readings; the stretches themselves aren't shown).
 A factory manager (meneja wa kiwanda) then authorises or declines every approved request, the
-vehicle manager's own included, and sees the month's money, where each request is, each car's faida or hasara
-with its driver, fuel and the reports (no Historia page); the factory manager also adds the vehicle managers.
+logistics manager's own included, and sees the month's money, where each request is, each car's faida or hasara
+with its driver, fuel and the reports (no Historia page); the factory manager also adds the logistics managers.
 A mhasibu (accountant) signs in with email and pays out authorised requests, with an optional
 note such as an M-Pesa reference. Each payment then waits on Kulipa's Risiti tab until the
 mhasibu adds a photo of its receipt; everyone who can see the request can open it. A director signs in with email, adds factory managers and the mhasibu,
@@ -26,7 +26,7 @@ gives any staff member a new password (nobody can be switched off from the app; 
 switched off earlier can be switched back on), reads the same reports and Mafuta, and sees an overview of income,
 spending, the balance, each car's faida or hasara and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
-The meneja makes invoices on the Invoice tab: a customer, a due date, trips priced as tani × bei kwa
+The logistics manager makes invoices on the Invoice tab: a customer, a due date, trips priced as tani × bei kwa
 tani or kilo × bei kwa kilo (picked per trip), and the bank to pay into (bank, account number and
 name, SWIFT code, what the payment is for; each starts from the last invoice's, and they live in the
 database, not the code, migration 025), downloaded as a PDF with the total also written out in English words
@@ -40,7 +40,7 @@ entries; paying them off with "Pokea malipo" marks the invoice paid; cancelling 
 unless the client has already paid part (`incomes.invoice_id`, migration 022). Invoices made before
 022 stay documents only; their income was typed in on Mapato while it still had a form.
 Income typed in by hand was paid in full by default; for part of a job, or nothing yet, the
-meneja picked "Amelipa sehemu / deni", named the client and typed what they paid now (0 meant it was
+logistics manager picked "Amelipa sehemu / deni", named the client and typed what they paid now (0 meant it was
 all owed). Mapato still counts the job's full value on its date, so totals, reports and each car's
 faida read as before; what clients still owe is shown beside it ("Wateja wanadaiwa") on every
 dashboard. The Mapato page's Madeni tab lists open debts, oldest first, and "Pokea malipo" records
@@ -53,7 +53,7 @@ Every shilling that goes out gets a payment voucher, numbered per year of paymen
 with the same digits in 027, before any had been printed). "Payment voucher" and "Invoice" stay in English in both languages. The voucher follows the company's template, in English: A. details
 (vehicle, payment method, reference, who was paid), B. particulars (purpose, amount in
 figures and English words), C. detailed expenditure, D. supporting documents ticked, E. review and
-authorisation filled from the app (requested by, checked by the meneja, approved by the meneja wa
+authorisation filled from the app (requested by, checked by the logistics manager, approved by the meneja wa
 kiwanda, paid by the mhasibu) with a line for each to sign; there is no recipient section. What it
 needs is asked where it is known: anyone asking for money can add an optional **mchanganuo** (lines of item ×
 quantity × unit price, whose total becomes the amount; fuel prints as litres × price); the mhasibu's
@@ -140,11 +140,11 @@ DATABASE_URL='postgres://…' npm run create-factory-manager -- "Meneja wa Kiwan
 
 or by the director on Wafanyakazi (⋯ → Badilisha nenosiri). Each person then changes their own
 password on Akaunti. The director adds factory managers and the mhasibu on Wafanyakazi;
-the factory manager adds vehicle managers on Mameneja (emails `@zuraja.com`); vehicle managers add
+the factory manager adds logistics managers on Logistics managers (emails `@zuraja.com`); logistics managers add
 cars and drivers. Migration 014 records who added each staff member (`users.added_by`) and moved
-the vehicle managers the director had added under the factory manager.
+the logistics managers the director had added under the factory manager.
 
-Requests go: pending → the vehicle manager approves → the factory manager authorises → the mhasibu
+Requests go: pending → the logistics manager approves → the factory manager authorises → the mhasibu
 pays → the receipt. Requests approved before migration 013 count as authorised, so they stayed with
 the mhasibu. The database refuses a payment that wasn't authorised.
 
@@ -188,7 +188,7 @@ directors, factory managers and the mhasibu join `private-managers` and each dri
 | `npm run db:migrate` | Apply new files in `db/migrations/` in order   |
 | `npm run db:seed`    | Insert demo users, cars and history (safe to re-run) |
 | `npm run create-director -- "Name" email password` | Create a director or reset their password |
-| `npm run create-manager -- "Name" email password` | Create a vehicle manager or reset their password |
+| `npm run create-manager -- "Name" email password` | Create a logistics manager or reset their password |
 | `npm run create-factory-manager -- "Name" email password` | Create a factory manager or reset their password |
 | `npm test`           | Unit tests (Node test runner)                  |
 | `npm run build`      | Production build                               |

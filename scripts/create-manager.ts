@@ -1,4 +1,4 @@
-// Creates a vehicle manager (or, with --director, a director; with --factory, a factory manager)
+// Creates a logistics manager (or, with --director, a director; with --factory, a factory manager)
 // account, or sets a new password if the email already exists.
 // Usage: npm run create-manager -- "Grace Mollel" grace@example.com 'a-strong-password'
 //        npm run create-director -- "Baraka Mushi" baraka@example.com 'a-strong-password'

@@ -27,7 +27,7 @@ if (process.env.DEMO_MODE !== "1") {
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 try {
-  // The director adds the factory manager and the mhasibu; the factory manager adds the vehicle managers.
+  // The director adds the factory manager and the mhasibu; the factory manager adds the logistics managers.
   for (const [user, role, addedBy] of [
     [director, "director", null],
     [factory, "factory_manager", director.email],

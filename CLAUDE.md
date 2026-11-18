@@ -33,13 +33,13 @@ staff, cars, requests, income, fuel and receipts on Neon. Every change has to re
 - **Mkurugenzi** (director, `/director`): overview, reports, fuel (no payment vouchers); adds the **meneja wa kiwanda**
   and the **mhasibu**, and can give any staff member a new password. Nobody can be switched off
   from the app (removed on purpose); anyone switched off earlier can only be switched back on.
-- **Meneja wa kiwanda** (role `factory_manager`, `/factory`): authorises or declines what the vehicle
-  manager approved; sees the fleet's money, cars, fuel and reports; adds the vehicle managers.
-- **Meneja** (role `manager`, `/manager`): approves drivers' requests, asks for money
-  themselves, makes invoices (the only way income is recorded; cancelling one needs a reason), runs
+- **Meneja wa kiwanda** (role `factory_manager`, `/factory`): authorises or declines what the logistics
+  manager approved; sees the fleet's money, cars, fuel and reports; adds the logistics managers.
+- **Logistics manager** (role `manager`, `/manager`; called "Logistics manager" in both languages,
+  never "meneja" or "vehicle manager"): approves drivers' requests, asks for money themselves, makes invoices (the only way income is recorded; cancelling one needs a reason), runs
   cars, drivers and fuel.
 - **Mhasibu** (role `accountant`, `/accountant`): pays authorised requests and adds their receipts.
 - **Dereva** (driver, `/driver`): signs in with the car's plate and asks for money.
 
-Request flow: pending → meneja approves → meneja wa kiwanda authorises → mhasibu pays →
+Request flow: pending → logistics manager approves → meneja wa kiwanda authorises → mhasibu pays →
 receipt.
