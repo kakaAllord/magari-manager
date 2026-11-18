@@ -38,21 +38,3 @@ export async function findRequestDuplicate(r: {
   );
   return withMatch(rows, r.amount);
 }
-
-// Income for the same car, not deleted, close in amount and date.
-export async function findIncomeDuplicate(i: { carId: number; amount: number; date: string | null }): Promise<DuplicateMatch | null> {
-  const rows = await query<Omit<DuplicateMatch, "likeness">>(
-    `WITH at AS ${entryTime("$3", "$6")}
-     SELECT i.id, i.amount, i.created_at AS at, u.name AS who, c.plate,
-            nullif(concat_ws(' · ', i.destination, i.description), '') AS text,
-            i.backfilled_at IS NOT NULL AS backfilled
-       FROM incomes i LEFT JOIN users u ON u.id = i.recorded_by LEFT JOIN cars c ON c.id = i.car_id, at
-      WHERE i.deleted_at IS NULL AND i.car_id = $1
-        AND abs(i.amount - $2) <= $4 * greatest(i.amount, $2)
-        AND i.created_at BETWEEN at.t - make_interval(days => $5) AND at.t + make_interval(days => $5)
-      ORDER BY abs(i.amount - $2), abs(extract(epoch FROM i.created_at - at.t))
-      LIMIT 1`,
-    [i.carId, i.amount, i.date, DUPLICATE_AMOUNT_SHARE, DUPLICATE_DAYS.income, TIME_ZONE],
-  );
-  return withMatch(rows, i.amount);
-}

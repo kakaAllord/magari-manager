@@ -9,12 +9,11 @@ import { MANAGERS_CHANNEL } from "@/lib/realtime";
 import { listCars, todayInTanzania } from "@/lib/reports";
 import { requireUser } from "@/lib/session";
 import { DebtPayment, DebtToasts } from "./debt-payment";
-import { IncomeForm } from "./income-form";
 import { IncomeList } from "./income-list";
 
 const RECENT = 5;
 
-// The form, then one card with the last few entries and the clients' debts as tabs. Everything else
+// A pointer to invoices (the only way income comes in), then one card with the last few entries and the clients' debts as tabs. Everything else
 // lives on the history page. The tab lives in the URL so live refreshes keep it.
 export default async function IncomePage({ searchParams }: PageProps<"/manager/income">) {
   const manager = await requireUser("manager");
@@ -40,19 +39,19 @@ export default async function IncomePage({ searchParams }: PageProps<"/manager/i
         }
       />
 
-      <section className="card">
-        <h2 className="mb-4 text-lg font-semibold">{t("Rekodi mapato", "Record income")}</h2>
-        {cars.length === 0 ? (
+      <section className="card flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="font-semibold">{t("Mapato yanatoka kwenye invoice", "Income comes from invoices")}</h2>
           <p className="text-sm text-muted">
-            {t("Mapato yanarekodiwa kwa gari.", "Income is recorded per car.")}{" "}
-            <Link href="/manager/cars" className="font-medium text-accent underline">
-              {t("Ongeza gari", "Add a car")}
-            </Link>{" "}
-            {t("kwanza.", "first.")}
+            {t(
+              "Tengeneza invoice kwa kila kazi: safari zake zinaingia hapa zenyewe, kama deni la mteja hadi alipe.",
+              "Make an invoice for each job: its trips land here by themselves, as the client's debt until they pay.",
+            )}
           </p>
-        ) : (
-          <IncomeForm cars={cars} today={todayInTanzania()} />
-        )}
+        </div>
+        <Link href="/manager/invoices/new" className="btn btn-primary">
+          {t("Tengeneza invoice", "Make an invoice")}
+        </Link>
       </section>
 
       <section className="card grid gap-3">
@@ -84,7 +83,7 @@ export default async function IncomePage({ searchParams }: PageProps<"/manager/i
                 `A mistake? Press Edit to correct the income, or delete it within ${DELETE_WINDOW_HOURS} hours. The director sees what was deleted and changed.`,
               )}
             </p>
-            <IncomeList incomes={recent.rows} empty={t("Bado hakuna mapato. Rekodi ya kwanza hapo juu.", "No income yet. Record the first above.")} edit={{ cars, today: todayInTanzania() }} />
+            <IncomeList incomes={recent.rows} empty={t("Bado hakuna mapato. Tengeneza invoice ya kwanza.", "No income yet. Make the first invoice.")} edit={{ cars, today: todayInTanzania() }} />
             {recent.total > RECENT && (
               <p className="text-sm">
                 <Link href="/manager/income/history" className="font-medium text-accent underline">
