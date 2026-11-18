@@ -7,14 +7,22 @@ import { BrandMark, Icon, type IconName } from "./icons";
 import { LangSwitch } from "./lang-switch";
 import { SideLinks, TabLinks } from "./nav-links";
 
-export type NavLink = { href: string; label: string; icon: IconName };
+type Pair = [sw: string, en: string];
+export type NavLink = { href: string; label: string; icon: IconName; group?: string; tab?: boolean; short?: string };
 // The nav files give each label in both languages; the shell picks one before the links reach the browser.
-export type NavItem = { href: string; label: [sw: string, en: string]; icon: IconName };
+// `group` heads a run of links in the sidebar and the phone's Zaidi sheet; `tab` puts a link on the phone's
+// bottom bar (four at most), under `short` if the full label is too long for it.
+export type NavItem = { href: string; label: Pair; icon: IconName; group?: Pair; tab?: boolean; short?: Pair };
 
 // Desktop (lg and up): fixed sidebar. Phones and tablets: top bar with tabs.
 export async function AppShell({ user, links: items, children }: { user: User; links: NavItem[]; children: React.ReactNode }) {
   const t = await getT();
-  const links: NavLink[] = items.map((l) => ({ ...l, label: t(...l.label) }));
+  const links: NavLink[] = items.map((l) => ({
+    ...l,
+    label: t(...l.label),
+    group: l.group && t(...l.group),
+    short: l.short && t(...l.short),
+  }));
   const initials = user.name
     .split(/\s+/)
     .map((w) => w[0])
