@@ -46,7 +46,10 @@ faida read as before; what clients still owe is shown beside it ("Wateja wanadai
 dashboard. The Mapato page's Madeni tab lists open debts, oldest first, and "Pokea malipo" records
 each later payment (with an optional reference) until the debt is cleared (`incomes.amount_paid`,
 `customer_name` and `income_payments`, migration 021; earlier income counts as paid in full). Ripoti,
-its PDF and Excel show each entry's client and what is still owed.
+its PDF and Excel show each entry's client and what is still owed. Ripoti's Madeni tab lists every
+client who owes (oldest debts amber past 30 days, red past 60) and prints the debtors report
+(Ripoti ya madeni PDF: total owed, age bands 0–30 / 31–60 / 61–90 / 90+ days, each client and their
+unpaid jobs): by default everything owed today, or only jobs dated in the chosen period.
 Every shilling that goes out gets a payment voucher, numbered per year of payment
 (PV-2026-034) when Lipa is pressed, or as typed-in history is saved, and never reused
 (`payment_vouchers`, migrations 020 and 026; the first vouchers were numbered HM- and were renamed PV-
@@ -214,7 +217,9 @@ directors, factory managers and the mhasibu join `private-managers` and each dri
   with charts added by `src/lib/xlsx-charts.ts`, since ExcelJS can't write them) and
   `src/lib/report-pdf.tsx` (PDF via @react-pdf/renderer). `src/components/report-view.tsx` and
   `src/lib/report-export.ts` serve them to managers, the mhasibu and directors
-  (`?format=pdf` for the PDF). `src/lib/incomes.ts`: income totals.
+  (`?format=pdf` for the PDF, `?format=debtors` for the debtors PDF from `src/lib/debtors-pdf.tsx`,
+  `src/lib/debtor-data.ts` and the pure, tested `src/lib/debtor-report.ts`). `src/lib/incomes.ts`:
+  income totals.
 - `src/lib/fuel-calc.ts` (pure, unit tested) works out stretches between readings: km, litres
   used (`tank × gauge/8` at the first reading + litres paid for in between − at the second;
   litres = amount ÷ the request's price per litre), km per litre and flags. `src/lib/fuel.ts`
