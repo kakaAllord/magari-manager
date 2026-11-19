@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { claimDriverlessReading, transaction } from "@/lib/db";
 import { missingForFuel } from "@/lib/fuel-ready";
 import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
-import { requireUser } from "@/lib/session";
+import { requireWriter } from "@/lib/session";
 import { checkPlate, normalizePlate, parseStartingReading, parseTankLitres, type ReadingErrors } from "@/lib/validation";
 
 type CarValues = { plate: string; name: string; fuelType: string; tank: string; odometer: string; gauge: string };
@@ -68,7 +68,7 @@ const refreshCars = async () => {
 // A new car needs only its plate. A starting reading taken now has no driver yet; the first driver
 // the car is given to takes it over.
 export async function createCar(_prev: CarFormState, formData: FormData): Promise<CarFormState> {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const t = await getT();
   const values = readValues(formData);
   const plate = normalizePlate(values.plate);
@@ -105,7 +105,7 @@ export async function createCar(_prev: CarFormState, formData: FormData): Promis
 // car has none; later readings go on Mafuta, where they are checked against the last one. The plate
 // stays, since the driver signs in with it.
 export async function updateCar(_prev: CarFormState, formData: FormData): Promise<CarFormState> {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const t = await getT();
   const carId = Number(formData.get("carId"));
   const values = readValues(formData);
@@ -154,7 +154,7 @@ const FOREIGN_KEY_VIOLATION = "23503";
 // to it (deleted income counts too), so spending can't be hidden by removing a car; the database
 // refuses as well. Its fuel readings go with it, and a driver who had it is signed out.
 export async function deleteCar(_prev: DeleteCarState, formData: FormData): Promise<DeleteCarState> {
-  await requireUser("manager");
+  await requireWriter("manager");
   const t = await getT();
   const carId = Number(formData.get("carId"));
   if (!Number.isInteger(carId)) return { message: t("Gari hilo halipo tena.", "That car is gone.") };
@@ -185,7 +185,7 @@ export async function deleteCar(_prev: DeleteCarState, formData: FormData): Prom
 // Assigning a driver who already has a car moves them to this one. The driver who
 // loses this car is signed out, since their plate no longer signs them in.
 export async function assignDriver(formData: FormData) {
-  await requireUser("manager");
+  await requireWriter("manager");
   const carId = Number(formData.get("carId"));
   const raw = String(formData.get("driverId") ?? "");
   const driverId = raw === "" ? null : Number(raw);

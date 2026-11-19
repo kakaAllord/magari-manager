@@ -99,6 +99,14 @@ export async function requireUser(role?: Role): Promise<User> {
   return user;
 }
 
+// Every server action that changes data starts with this instead of requireUser. While a dev is
+// viewing as someone the app is read-only: nothing is written (not even "marked as read"), and the dev
+// is sent back to /dev with a note. For everyone else it is exactly requireUser.
+export async function requireWriter(role?: Role): Promise<User> {
+  if ((await loadSession())?.impersonating) redirect("/dev?blocked=1");
+  return requireUser(role);
+}
+
 const homes: Record<Role, string> = {
   driver: "/driver",
   manager: "/manager",

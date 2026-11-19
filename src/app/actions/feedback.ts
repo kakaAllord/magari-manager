@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
 import { requireFeedbackReader } from "@/lib/feedback";
 import { driverChannel, MANAGERS_CHANNEL, notify } from "@/lib/realtime";
-import { requireUser } from "@/lib/session";
+import { requireWriter } from "@/lib/session";
 import { parseFeedback } from "@/lib/validation";
 
 export type FeedbackState = { ok: true } | { ok: false; error: string; body: string } | undefined;
@@ -13,7 +13,7 @@ export type FeedbackState = { ok: true } | { ok: false; error: string; body: str
 const READER_AREAS = ["/manager/maoni", "/factory/maoni", "/director/maoni"];
 
 export async function sendFeedback(_prev: FeedbackState, formData: FormData): Promise<FeedbackState> {
-  const driver = await requireUser("driver");
+  const driver = await requireWriter("driver");
   const body = String(formData.get("body") ?? "");
   const parsed = parseFeedback(body, await getT());
   if ("error" in parsed) return { ok: false, error: parsed.error, body };
@@ -28,6 +28,7 @@ export async function sendFeedback(_prev: FeedbackState, formData: FormData): Pr
 // Marks one note read for this reader only. The author's id never leaves the server: it is used
 // just to tell that driver's page that their note has been read.
 export async function markFeedbackRead(formData: FormData) {
+  await requireWriter();
   const reader = await requireFeedbackReader();
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return;

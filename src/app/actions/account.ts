@@ -3,14 +3,14 @@
 import { getT } from "@/lib/lang";
 import bcrypt from "bcryptjs";
 import { query } from "@/lib/db";
-import { deleteOtherSessions, requireUser } from "@/lib/session";
+import { deleteOtherSessions, requireWriter } from "@/lib/session";
 import { checkNewPassword } from "@/lib/validation";
 
 export type PasswordFormState = { ok: boolean; message: string } | undefined;
 
 // Anyone signed in can change their own password with their current one; other devices are signed out.
 export async function changeOwnPassword(_prev: PasswordFormState, formData: FormData): Promise<PasswordFormState> {
-  const user = await requireUser();
+  const user = await requireWriter();
   const t = await getT();
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("password") ?? "");

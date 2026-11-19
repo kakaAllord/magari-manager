@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { query, transaction } from "@/lib/db";
 import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
-import { homeFor, requireUser } from "@/lib/session";
+import { homeFor, requireWriter } from "@/lib/session";
 import { staffAddedBy, staffLabel, staffManagedBy, type StaffRole } from "@/lib/staff";
 import { checkEmail, checkNewPassword } from "@/lib/validation";
 
@@ -16,7 +16,7 @@ const UNIQUE_VIOLATION = "23505";
 
 // The signed-in person and the roles they may add (or manage); anyone else is sent home.
 async function staffRoles(table: typeof staffAddedBy) {
-  const user = await requireUser();
+  const user = await requireWriter();
   const roles = table[user.role];
   if (!roles) redirect(homeFor(user.role));
   return { user, roles };

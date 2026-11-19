@@ -4,7 +4,7 @@ import { getT } from "@/lib/lang";
 import { revalidatePath } from "next/cache";
 import { query, transaction } from "@/lib/db";
 import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
-import { requireUser } from "@/lib/session";
+import { requireWriter } from "@/lib/session";
 import {
   checkOdometer,
   parseReading,
@@ -28,7 +28,7 @@ const refresh = async () => {
 // car now, so give the car to its new driver first. Managers may record any odometer at or above
 // the last one, without the driver's limit on how far it jumps.
 export async function recordReading(_prev: ReadingFormState, formData: FormData): Promise<ReadingFormState> {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const t = await getT();
   const values = {
     carId: String(formData.get("carId") ?? ""),
@@ -70,7 +70,7 @@ export async function recordReading(_prev: ReadingFormState, formData: FormData)
 
 // Only a car's latest reading can go, so a typo can be fixed without rewriting history.
 export async function deleteLatestReading(formData: FormData) {
-  await requireUser("manager");
+  await requireWriter("manager");
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return;
   await query(
@@ -86,7 +86,7 @@ export async function deleteLatestReading(formData: FormData) {
 export type SettingsState = { ok: boolean; message: string } | undefined;
 
 export async function saveTank(_prev: SettingsState, formData: FormData): Promise<SettingsState> {
-  await requireUser("manager");
+  await requireWriter("manager");
   const t = await getT();
   const carId = Number(formData.get("carId"));
   const fuelType = formData.get("fuelType");

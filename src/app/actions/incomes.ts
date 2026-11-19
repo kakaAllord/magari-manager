@@ -7,7 +7,7 @@ import { formatMoney } from "@/lib/format";
 import { DELETE_WINDOW_HOURS } from "@/lib/incomes";
 import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { todayInTanzania } from "@/lib/reports";
-import { requireUser } from "@/lib/session";
+import { requireWriter } from "@/lib/session";
 import { TIME_ZONE } from "@/lib/time";
 import {
   MAX_ISSUE_NOTE_LENGTH,
@@ -26,7 +26,7 @@ export type DebtPaymentState = { ok: true; message: string } | { ok: false; erro
 // A client pays some or all of what they still owe on an entry. Any manager may take it. The row is
 // locked while it's checked, so two payments at once can't take it past its total.
 export async function recordDebtPayment(_prev: DebtPaymentState, formData: FormData): Promise<DebtPaymentState> {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const t = await getT();
   const incomeId = Number(formData.get("incomeId"));
   if (!Number.isInteger(incomeId)) return { ok: false, error: t("Mapato hayajulikani.", "Unknown income.") };
@@ -85,7 +85,7 @@ export type DeleteIncomeState = { ok: false; message: string } | undefined;
 // typed in (for history, after it was entered, not its date). The row is kept and marked deleted.
 // Trips from an invoice go only by cancelling the invoice, so the two never disagree.
 export async function deleteIncome(_prev: DeleteIncomeState, formData: FormData): Promise<DeleteIncomeState> {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const t = await getT();
   const incomeId = Number(formData.get("incomeId"));
   if (!Number.isInteger(incomeId)) return { ok: false, message: t("Mapato hayajulikani.", "Unknown income.") };
@@ -121,7 +121,7 @@ export type EditIncomeState =
 // Money still owed stays owed: the amount can't go below what the client already paid. An entry paid
 // in full at once stays paid in full at its new amount.
 export async function updateIncome(_prev: EditIncomeState, formData: FormData): Promise<EditIncomeState> {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const t = await getT();
   const incomeId = Number(formData.get("incomeId"));
   if (!Number.isInteger(incomeId)) return { ok: false, errors: { form: t("Mapato hayajulikani.", "Unknown income.") } };

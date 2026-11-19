@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { transaction } from "@/lib/db";
 import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { todayInTanzania, WITHOUT_CAR } from "@/lib/reports";
-import { requireUser } from "@/lib/session";
+import { requireWriter } from "@/lib/session";
 import { TIME_ZONE } from "@/lib/time";
 import { cargoUnit, parseCancelReason, parseInvoice, type InvoiceErrors, type InvoiceInput } from "@/lib/validation";
 
@@ -19,7 +19,7 @@ const text = (formData: FormData, name: string) => String(formData.get(name) ?? 
 // Each trip also goes into Mapato as cargo income on the invoice's date, nothing paid yet, so the
 // client owes it on Madeni until the invoice is paid. A past date is history, as on Mapato.
 export async function createInvoice(_prev: InvoiceFormState, formData: FormData): Promise<InvoiceFormState> {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const column = (name: string) => formData.getAll(name).map(String);
   const descriptions = column("description");
   const plates = column("plate");
@@ -109,7 +109,7 @@ function revalidateMoney() {
 // entries in Mapato are locked before the invoice, the order a payment on Madeni takes too.
 // Marking it paid pays off what is still owed on them, so it moves from deni to money in.
 export async function markInvoicePaid(formData: FormData) {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return;
   const paid = await transaction(async (client) => {
@@ -146,7 +146,7 @@ export type CancelInvoiceResult = { ok: true } | { ok: false; error: string };
 // and the reason the manager gave. Its entries leave Mapato with it. Once the client has paid any of
 // it on Madeni, it stays. A page opened before reasons were asked sends none and is told to write one.
 export async function cancelInvoice(formData: FormData): Promise<CancelInvoiceResult> {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const t = await getT();
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return { ok: false, error: t("Invoice haijulikani.", "Unknown invoice.") };

@@ -10,7 +10,7 @@ import { findRequestDuplicate } from "@/lib/duplicates";
 import { missingForFuel } from "@/lib/fuel-ready";
 import { driverChannel, MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { todayInTanzania } from "@/lib/reports";
-import { requireUser } from "@/lib/session";
+import { requireWriter } from "@/lib/session";
 import { TIME_ZONE } from "@/lib/time";
 import type { PoolClient } from "pg";
 import {
@@ -143,7 +143,7 @@ export async function createRequest(
   _prev: RequestFormState,
   formData: FormData,
 ): Promise<RequestFormState> {
-  const driver = await requireUser("driver");
+  const driver = await requireWriter("driver");
   const t = await getT();
   const kind = readKind(formData);
   const values: FormValues = {
@@ -254,7 +254,7 @@ export async function createManagerRequest(
   _prev: RequestFormState,
   formData: FormData,
 ): Promise<RequestFormState> {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const t = await getT();
   const kind = readKind(formData);
   const values: FormValues = {
@@ -369,7 +369,7 @@ export async function createManagerRequest(
 }
 
 export async function reviewRequest(formData: FormData) {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const id = Number(formData.get("id"));
   const decision = formData.get("decision");
   if (!Number.isInteger(id) || (decision !== "approved" && decision !== "rejected")) return;
@@ -391,7 +391,7 @@ export async function reviewRequest(formData: FormData) {
 // or declines it. Only approved requests not yet decided here match, so a double tap or a second
 // factory manager is a no-op.
 export async function authoriseRequest(formData: FormData) {
-  const factoryManager = await requireUser("factory_manager");
+  const factoryManager = await requireWriter("factory_manager");
   const id = Number(formData.get("id"));
   const decision = formData.get("decision");
   if (!Number.isInteger(id) || (decision !== "authorised" && decision !== "rejected")) return;
@@ -420,7 +420,7 @@ export type PayState = { ok: false; errors: PaymentErrors & { form?: string } } 
 // The payment then waits for its receipt, and gets its payment voucher. The paid row leaves the
 // list, so the confirmation (with the voucher's link) is shown by the page from ?paid=.
 export async function payRequest(_prev: PayState, formData: FormData): Promise<PayState> {
-  const accountant = await requireUser("accountant");
+  const accountant = await requireWriter("accountant");
   const t = await getT();
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return { ok: false, errors: { form: t("Ombi hilo halipo.", "That request doesn't exist.") } };
@@ -438,7 +438,7 @@ export async function payRequest(_prev: PayState, formData: FormData): Promise<P
 
 // The old Lipa button, for a page opened before 026: a free-text note and no method.
 export async function issueRequest(formData: FormData) {
-  const accountant = await requireUser("accountant");
+  const accountant = await requireWriter("accountant");
   const id = Number(formData.get("id"));
   const note = String(formData.get("note") ?? "").trim().slice(0, MAX_ISSUE_NOTE_LENGTH) || null;
   if (!Number.isInteger(id)) return;
@@ -478,7 +478,7 @@ export type ReceiptState = { ok: boolean; message: string } | undefined;
 // After the purchase, the mhasibu adds the receipt photo of a paid request, with an optional note
 // such as the receipt number. The first receipt wins, so a double tap is a no-op.
 export async function addReceipt(_prev: ReceiptState, formData: FormData): Promise<ReceiptState> {
-  const accountant = await requireUser("accountant");
+  const accountant = await requireWriter("accountant");
   const id = Number(formData.get("id"));
   const file = formData.get("receipt");
   const note = String(formData.get("note") ?? "").trim().slice(0, MAX_ISSUE_NOTE_LENGTH) || null;
@@ -526,7 +526,7 @@ export type EditRequestState =
 // If the factory manager had already authorised it, a new amount sends it back to them: they
 // authorised a different sum. Rejected and paid requests are left alone.
 export async function updateRequest(_prev: EditRequestState, formData: FormData): Promise<EditRequestState> {
-  const manager = await requireUser("manager");
+  const manager = await requireWriter("manager");
   const t = await getT();
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return { ok: false, errors: { form: t("Ombi hilo halipo.", "That request doesn't exist.") } };

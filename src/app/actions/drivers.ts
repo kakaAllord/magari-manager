@@ -4,13 +4,13 @@ import { getT } from "@/lib/lang";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { claimDriverlessReading, transaction } from "@/lib/db";
-import { requireUser } from "@/lib/session";
+import { requireWriter } from "@/lib/session";
 import { checkNewPassword } from "@/lib/validation";
 
 export type DriverFormState = { ok: boolean; message: string } | undefined;
 
 export async function createDriver(_prev: DriverFormState, formData: FormData): Promise<DriverFormState> {
-  await requireUser("manager");
+  await requireWriter("manager");
   const t = await getT();
   const name = String(formData.get("name") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -56,7 +56,7 @@ class CarTakenError extends Error {}
 
 // Setting a new password also signs the driver out everywhere.
 export async function setDriverPassword(_prev: DriverFormState, formData: FormData): Promise<DriverFormState> {
-  await requireUser("manager");
+  await requireWriter("manager");
   const t = await getT();
   const driverId = Number(formData.get("driverId"));
   const password = String(formData.get("password") ?? "");
