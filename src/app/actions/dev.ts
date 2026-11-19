@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { query } from "@/lib/db";
+import { readLogs, type LogEntry } from "@/lib/dev-logs";
 import { homeFor, requireDev, setImpersonation, type Role } from "@/lib/session";
 
 // Start viewing the app as another user. Only a dev gets this far (requireDev), and the target must
@@ -22,4 +23,10 @@ export async function stopImpersonating() {
   await requireDev();
   await setImpersonation(null);
   redirect("/dev");
+}
+
+// The log lines newer than `after`, for the console's live terminal.
+export async function fetchLogs(after?: string): Promise<LogEntry[]> {
+  await requireDev();
+  return readLogs({ after, limit: 200 });
 }
