@@ -8,15 +8,14 @@ import { checkNewPassword } from "@/lib/validation";
 
 export type PasswordFormState = { ok: boolean; message: string } | undefined;
 
-// Anyone signed in can change their own password; other devices are signed out.
+// Anyone signed in can change their own password with their current one; other devices are signed out.
 export async function changeOwnPassword(_prev: PasswordFormState, formData: FormData): Promise<PasswordFormState> {
   const user = await requireUser();
   const t = await getT();
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("password") ?? "");
-  const repeat = String(formData.get("repeat") ?? "");
 
-  const error = checkNewPassword(next, t) ?? (next !== repeat ? t("Nenosiri jipya na la kurudia hayafanani.", "The new password and its repeat don't match.") : undefined);
+  const error = checkNewPassword(next, t);
   if (error) return { ok: false, message: error };
 
   const [row] = await query<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = $1", [user.id]);
