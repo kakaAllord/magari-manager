@@ -42,8 +42,12 @@ staff, cars, requests, income, fuel and receipts on Neon. Every change has to re
 - **Dereva** (driver, `/driver`): signs in with the car's plate and asks for money.
 - **Dev** (role `dev`, `/dev`): the owner's hidden account. It lists every user and can silently view
   the app as any of them (sets `sessions.impersonating_user_id`; `getCurrentUser` then returns that
-  user everywhere — no banner, log or notification, the target's own sessions untouched). `/dev` is
-  404 for everyone else. Keep it hidden: never add it to a staff list, the demo box or a walkthrough,
+  user everywhere — no banner, log or notification, the target's own sessions untouched). Viewing is
+  **read-only**: every server action that changes data starts with `requireWriter` (not
+  `requireUser`), which sends the dev back to `/dev?blocked=1`; `src/app/actions/read-only.test.ts`
+  fails if a new action forgets it. `/dev/logs` is a live terminal of sign-ins (`auth_events`, 031)
+  plus events read from the existing timestamps (`src/lib/dev-logs.ts`); impersonation is never
+  logged and maoni stay anonymous there. `/dev` is 404 for everyone else. Keep it hidden: never add it to a staff list, the demo box or a walkthrough,
   and never surface impersonation in the normal UI. Its credentials live in the gitignored `.env`
   (`DEV_NAME`, `DEV_EMAIL`, `DEV_PASSWORD`); `npm run create-dev` applies them (on Neon:
   `DATABASE_URL='…' npm run create-dev`).
