@@ -1,79 +1,54 @@
-import Link from "next/link";
-import { impersonate, stopImpersonating } from "@/app/actions/dev";
-import { listAllUsers, type DevUser } from "@/lib/dev";
-import { en } from "@/lib/i18n";
-import { homeFor, requireDev, roleName } from "@/lib/session";
+import { listAllUsers } from "@/lib/dev";
+import { requireDev } from "@/lib/session";
+import { UserList } from "./user-list";
 
 export const dynamic = "force-dynamic";
 
-const label = (u: DevUser) => (u.role === "driver" ? (u.plate ?? "no car") : (u.email ?? "—"));
-
-export default async function DevConsole() {
+export default async function DevConsole({ searchParams }: PageProps<"/dev">) {
   const session = await requireDev();
   const users = await listAllUsers();
-  const viewing = session.impersonating ? session.user : null;
+  const blocked = (await searchParams).blocked === "1";
+  const viewingId = session.impersonating ? session.user.id : null;
+
+  const staff = users.filter((u) => u.role !== "driver" && u.role !== "dev").length;
+  const drivers = users.filter((u) => u.role === "driver").length;
+  const active = users.filter((u) => u.signed_in_secs_ago !== null && u.signed_in_secs_ago < 86400).length;
 
   return (
     <div className="space-y-6">
-      {viewing ? (
-        <section className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-4">
-          <p className="text-xs tracking-wide text-amber-200/80 uppercase">Currently viewing as</p>
-          <p className="mt-1 text-lg font-semibold">
-            {viewing.name} <span className="font-normal text-background/60">· {roleName(viewing.role, en)}</span>
-          </p>
-          <p className="mt-1 text-sm text-background/60">
-            The app shows this person&apos;s own view. They are not told and cannot tell. Anything you do is recorded as them.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link href={homeFor(viewing.role)} className="rounded-lg bg-background px-3 py-2 text-sm font-medium text-foreground">
-              Open their view
-            </Link>
-            <form action={stopImpersonating}>
-              <button type="submit" className="rounded-lg border border-white/20 px-3 py-2 text-sm font-medium hover:bg-white/10">
-                Stop
-              </button>
-            </form>
-          </div>
-        </section>
-      ) : (
-        <section>
-          <h1 className="text-lg font-semibold">All users</h1>
-          <p className="mt-1 text-sm text-background/60">Pick a person to view the app exactly as they see it. Switching is silent.</p>
-        </section>
+      {blocked && (
+        <p role="alert" className="rounded-lg border border-[#ff7b72]/30 bg-[#ff7b72]/[0.07] px-4 py-3 text-sm text-[#ffa198]">
+          <span className="font-semibold text-[#ff7b72]">✗ write blocked</span> — viewing as someone is read-only, so nothing was saved.
+          Stop viewing to act as yourself.
+        </p>
       )}
 
-      <section className="overflow-hidden rounded-xl border border-white/10">
-        <table className="w-full text-sm">
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="border-b border-white/10 last:border-0">
-                <td className="px-4 py-3">
-                  <p className="font-medium">
-                    {u.name}
-                    {u.off && <span className="ml-2 rounded bg-white/10 px-1.5 py-px text-xs text-background/60">off</span>}
-                    {viewing?.id === u.id && <span className="ml-2 rounded bg-amber-400/20 px-1.5 py-px text-xs text-amber-200">viewing</span>}
-                  </p>
-                  <p className="font-mono text-xs text-background/50">
-                    {roleName(u.role, en)} · {label(u)}
-                  </p>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {u.role === "dev" ? (
-                    <span className="font-mono text-xs text-background/40">you</span>
-                  ) : (
-                    <form action={impersonate}>
-                      <input type="hidden" name="userId" value={u.id} />
-                      <button type="submit" className="rounded-lg bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:opacity-90">
-                        View as
-                      </button>
-                    </form>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <section>
+        <p className="text-xs text-[#6e7681]">
+          <span className="text-[#7ee787]">$</span> select * from users
+        </p>
+        <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#e6edf3]">Everyone in the app</h1>
+        <p className="mt-1 max-w-2xl text-sm text-[#8b949e]">
+          Pick a person to see the app exactly as they do. Switching is silent and read-only: you can look anywhere, but nothing you press is
+          saved.
+        </p>
       </section>
+
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "accounts", value: users.length, tone: "text-[#e6edf3]" },
+          { label: "staff", value: staff, tone: "text-[#79c0ff]" },
+          { label: "drivers", value: drivers, tone: "text-[#d2a8ff]" },
+          { label: "signed in · 24h", value: active, tone: "text-[#7ee787]" },
+        ].map((s) => (
+          <div key={s.label} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+            <dt className="text-[11px] tracking-wide text-[#6e7681] uppercase">{s.label}</dt>
+            <dd className={`mt-1 text-2xl font-semibold tabular-nums ${s.tone}`}>{s.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <UserList viewingId={viewingId} users={users} />
     </div>
   );
 }

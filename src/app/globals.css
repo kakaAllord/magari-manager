@@ -133,3 +133,23 @@ body {
     --bar-h: 4rem;
   }
 }
+
+/* The hidden dev console: a blinking block cursor, cards that rise in, log lines that fade in. */
+@keyframes dev-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes dev-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes dev-glow {
+  from { opacity: 0; text-shadow: 0 0 8px rgba(126, 231, 135, 0.6); }
+  to { opacity: 1; text-shadow: none; }
+}
+.dev-cursor { animation: dev-blink 1.05s step-end infinite; }
+.dev-rise { animation: dev-rise 0.35s ease-out both; }
+.dev-line { animation: dev-glow 0.4s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .dev-cursor, .dev-rise, .dev-line { animation: none; }
+}
