@@ -44,7 +44,9 @@ staff, cars, requests, income, fuel and receipts on Neon. Every change has to re
   the app as any of them (sets `sessions.impersonating_user_id`; `getCurrentUser` then returns that
   user everywhere — no banner, log or notification, the target's own sessions untouched). `/dev` is
   404 for everyone else. Keep it hidden: never add it to a staff list, the demo box or a walkthrough,
-  and never surface impersonation in the normal UI. Password set with `npm run create-dev`.
+  and never surface impersonation in the normal UI. Its credentials live in the gitignored `.env`
+  (`DEV_NAME`, `DEV_EMAIL`, `DEV_PASSWORD`); `npm run create-dev` applies them (on Neon:
+  `DATABASE_URL='…' npm run create-dev`).
 
 Request flow: pending → logistics manager approves → meneja wa kiwanda authorises → mhasibu pays →
 receipt.
