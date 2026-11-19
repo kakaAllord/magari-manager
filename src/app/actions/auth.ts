@@ -4,7 +4,8 @@ import { getT } from "@/lib/lang";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { query } from "@/lib/db";
-import { createSession, deleteSession, homeFor, type Role } from "@/lib/session";
+import { logAuthEvent } from "@/lib/auth-log";
+import { createSession, deleteSession, getSessionOwner, homeFor, type Role } from "@/lib/session";
 import { normalizePlate } from "@/lib/validation";
 
 export type LoginState = { error?: string; login?: string } | undefined;
@@ -36,14 +37,18 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
 
   const user = (await findAccount(login))[0];
   if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+    await logAuthEvent("sign_in_failed", user?.id ?? null, login);
     return { error: t("Namba ya gari, barua pepe au nenosiri si sahihi.", "The car plate, email or password is wrong."), login };
   }
 
   await createSession(user.id);
+  await logAuthEvent("sign_in", user.id);
   redirect(homeFor(user.role));
 }
 
 export async function logout() {
+  const session = await getSessionOwner();
+  if (session) await logAuthEvent("sign_out", session.owner.id);
   await deleteSession();
   redirect("/login");
 }
