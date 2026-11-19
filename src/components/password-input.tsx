@@ -5,8 +5,9 @@ import { useState } from "react";
 import { Icon } from "./icons";
 import { MIN_PASSWORD_LENGTH } from "@/lib/validation";
 
-// A new password the director hands over in person, so it can be shown to read it out. Shown as text,
-// phone keyboards would capitalise or correct it, saving a password other than the one typed.
+// A new password field with a show/hide eye: the director can read out one they hand over, and someone
+// changing their own can check it instead of typing it twice. Shown as text, phone keyboards would
+// capitalise or correct it, saving a password other than the one typed.
 export function PasswordInput({ label, name = "password" }: { label: string; name?: string }) {
   const t = useT();
   const [shown, setShown] = useState(false);

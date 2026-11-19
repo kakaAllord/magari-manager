@@ -3,7 +3,7 @@
 import { useT } from "@/components/lang-provider";
 import { useActionState } from "react";
 import { changeOwnPassword } from "@/app/actions/account";
-import { MIN_PASSWORD_LENGTH } from "@/lib/validation";
+import { PasswordInput } from "@/components/password-input";
 
 export function PasswordForm() {
   const t = useT();
@@ -15,29 +15,7 @@ export function PasswordForm() {
         <span className="label">{t("Nenosiri la sasa", "Current password")}</span>
         <input name="current" type="password" required autoComplete="current-password" className="input" />
       </label>
-      <label>
-        <span className="label">{t("Nenosiri jipya", "New password")}</span>
-        <input
-          name="password"
-          type="password"
-          required
-          minLength={MIN_PASSWORD_LENGTH}
-          autoComplete="new-password"
-          className="input"
-        />
-        <span className="mt-1 block text-xs text-muted">{t(`Herufi ${MIN_PASSWORD_LENGTH} au zaidi.`, `${MIN_PASSWORD_LENGTH} or more characters.`)}</span>
-      </label>
-      <label>
-        <span className="label">{t("Rudia nenosiri jipya", "Repeat the new password")}</span>
-        <input
-          name="repeat"
-          type="password"
-          required
-          minLength={MIN_PASSWORD_LENGTH}
-          autoComplete="new-password"
-          className="input"
-        />
-      </label>
+      <PasswordInput label={t("Nenosiri jipya", "New password")} />
       <div>
         <button type="submit" disabled={pending} className="btn btn-primary w-full sm:w-auto">
           {pending ? t("Inahifadhi…", "Saving…") : t("Hifadhi nenosiri", "Save password")}
