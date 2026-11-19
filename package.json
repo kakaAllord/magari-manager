@@ -20,7 +20,7 @@
     "create-manager": "node --env-file-if-exists=.env.local scripts/create-manager.ts",
     "create-director": "node --env-file-if-exists=.env.local scripts/create-manager.ts --director",
     "create-factory-manager": "node --env-file-if-exists=.env.local scripts/create-manager.ts --factory",
-    "create-dev": "node --env-file-if-exists=.env.local scripts/create-manager.ts --dev"
+    "create-dev": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/create-manager.ts --dev"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",
