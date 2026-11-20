@@ -1,9 +1,20 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { en } from "./i18n.ts";
-import { ageBand, groupDebtors, owedByAge, parseDebtScope, type UnpaidJob } from "./debtor-report.ts";
+import {
+  ageBand,
+  clientKey,
+  clientOptions,
+  debtFilterSearch,
+  fileSlug,
+  groupDebtors,
+  owedByAge,
+  parseDebtFilters,
+  parseDebtScope,
+  type ClientJob,
+} from "./debtor-report.ts";
 
-const job = (id: number, customer: string | null, amount: number, paid: number, days: number, at = "2026-11-01"): UnpaidJob => ({
+const job = (id: number, customer: string | null, amount: number, paid: number, days: number, at = "2026-11-01"): ClientJob => ({
   id,
   at,
   customer,
@@ -51,4 +62,38 @@ test("reads the scope from the URL", () => {
   assert.equal(parseDebtScope("kipindi"), "period");
   assert.equal(parseDebtScope(undefined), "all");
   assert.equal(parseDebtScope("anything"), "all");
+});
+
+test("leaves paid jobs out of the age bands and the days owed", () => {
+  const d = groupDebtors([job(1, "A", 500, 500, 80), job(2, "A", 200, 50, 10), job(3, "B", 300, 300, 40)]);
+  assert.deepEqual(d.map((x) => [x.customer, x.owed, x.days]), [["A", 150, 10], ["B", 0, 0]]);
+  assert.deepEqual(owedByAge([job(1, "A", 500, 500, 80), job(2, "A", 200, 50, 10)]), [150, 0, 0, 0]);
+});
+
+test("puts clients who have paid everything after those who owe, biggest first", () => {
+  const d = groupDebtors([job(1, "Small", 100, 100, 1), job(2, "Big", 900, 900, 1), job(3, "Owes", 50, 0, 1)]);
+  assert.deepEqual(d.map((x) => x.customer), ["Owes", "Big", "Small"]);
+});
+
+test("matches client names ignoring case and spaces", () => {
+  assert.equal(clientKey("  Kagera   SUGAR "), "kagera sugar");
+  assert.equal(clientKey(null), "");
+  assert.deepEqual(clientOptions(["Kagera Sugar", "kagera  sugar", "Bakhresa", " "]), [
+    { key: "bakhresa", name: "Bakhresa" },
+    { key: "kagera sugar", name: "Kagera Sugar" },
+  ]);
+});
+
+test("reads the debt filters from the URL and writes back only what differs", () => {
+  assert.deepEqual(parseDebtFilters({}), { scope: "all", client: null, withPaid: false });
+  const f = parseDebtFilters({ madeni: "kipindi", mteja: " Kagera Sugar ", hali: "zote" });
+  assert.deepEqual(f, { scope: "period", client: "kagera sugar", withPaid: true });
+  assert.equal(debtFilterSearch(f), "&madeni=kipindi&mteja=kagera%20sugar&hali=zote");
+  assert.equal(debtFilterSearch(parseDebtFilters({ hali: "nyingine", mteja: "  " })), "");
+});
+
+test("turns a client name into a filename part", () => {
+  assert.equal(fileSlug("Kagera Sugar Ltd."), "kagera_sugar_ltd");
+  assert.equal(fileSlug("Mama Ñaña & Sons"), "mama_nana_sons");
+  assert.equal(fileSlug("!!!"), "mteja");
 });
