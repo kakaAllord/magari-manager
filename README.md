@@ -159,7 +159,8 @@ the mhasibu. The database refuses a payment that wasn't authorised.
 ## Deploy to Vercel
 
 1. Import the GitHub repo in Vercel. No build settings need changing: Vercel runs
-   `npm run vercel-build`, which applies database migrations before building.
+   `npm run vercel-build`, which applies database migrations before building. It never seeds
+   demo data, whatever `DEMO_MODE` says; `npm run db:seed` is for a local copy only.
 2. Add a Postgres database (Storage → Neon). This sets `DATABASE_URL`.
    Otherwise set `DATABASE_URL` yourself (use the pooled URL with `?sslmode=require`).
 3. Choose one:

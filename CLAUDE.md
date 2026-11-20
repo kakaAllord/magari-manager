@@ -20,8 +20,9 @@ staff, cars, requests, income, fuel and receipts on Neon. Every change has to re
 - **The GitHub repo is public.** Never commit a real password, a hash of one, or the Neon URL. A
   real account added by migration gets the unusable hash `'!'` and a password set afterwards
   (`npm run create-…` or in the app), as 013 does.
-- **Never seed demo data, wipe tables or run one-off fixes on Neon.** Demo data needs `DEMO_MODE=1`,
-  which production doesn't set. Real accounts are added by migration (`010`, `013`) or in the app.
+- **Never seed demo data, wipe tables or run one-off fixes on Neon.** The Vercel build only runs
+  migrations, never the seed (`scripts/vercel-build.ts`); demo data needs `DEMO_MODE=1` and
+  `npm run db:seed` by hand on a local copy. Real accounts are added by migration (`010`, `013`) or in the app.
 - New UI is bilingual and light-only, like the rest. Write every string as a `t(sw, en)` pair, Swahili
   first (server: `const t = await getT()`; browser: `const t = useT()`; pure libs take `t: Tr = sw`).
   Swahili is the default; the `lang` cookie picks English per device. "Invoice" and "Payment voucher"
