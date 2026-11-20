@@ -48,8 +48,12 @@ each later payment (with an optional reference) until the debt is cleared (`inco
 `customer_name` and `income_payments`, migration 021; earlier income counts as paid in full). Ripoti,
 its PDF and Excel show each entry's client and what is still owed. Ripoti's Madeni tab lists every
 client who owes (oldest debts amber past 30 days, red past 60) and prints the debtors report
-(Ripoti ya madeni PDF: total owed, age bands 0–30 / 31–60 / 61–90 / 90+ days, each client and their
-unpaid jobs): by default everything owed today, or only jobs dated in the chosen period.
+(Ripoti ya madeni PDF: value of the jobs, paid and still owed, age bands 0–30 / 31–60 / 61–90 / 90+
+days, each client and their unpaid jobs). The Chuja dialog on that tab narrows it to one client
+(`mteja`, names matched ignoring case and spaces), adds the jobs already paid in full ("Zote, pamoja
+na zilizolipwa", `hali=zote`, which turns it into the clients' accounts: Hesabu ya wateja) and picks
+everything up to today or only jobs dated in the chosen period (`madeni=kipindi`). Each client in the
+list opens to their jobs, "Mteja huyu tu" and a PDF of their own, a statement to send them.
 Every shilling that goes out gets a payment voucher, numbered per year of payment
 (PV-2026-034) when Lipa is pressed, or as typed-in history is saved, and never reused
 (`payment_vouchers`, migrations 020 and 026; the first vouchers were numbered HM- and were renamed PV-
@@ -217,7 +221,7 @@ directors, factory managers and the mhasibu join `private-managers` and each dri
   with charts added by `src/lib/xlsx-charts.ts`, since ExcelJS can't write them) and
   `src/lib/report-pdf.tsx` (PDF via @react-pdf/renderer). `src/components/report-view.tsx` and
   `src/lib/report-export.ts` serve them to managers, the mhasibu and directors
-  (`?format=pdf` for the PDF, `?format=debtors` for the debtors PDF from `src/lib/debtors-pdf.tsx`,
+  (`?format=pdf` for the PDF, `?format=debtors` (with `mteja`, `hali`, `madeni`) for the debtors PDF from `src/lib/debtors-pdf.tsx`,
   `src/lib/debtor-data.ts` and the pure, tested `src/lib/debtor-report.ts`). `src/lib/incomes.ts`:
   income totals.
 - `src/lib/fuel-calc.ts` (pure, unit tested) works out stretches between readings: km, litres
