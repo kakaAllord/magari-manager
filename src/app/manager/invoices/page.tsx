@@ -67,7 +67,8 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/manager
                   <div className="min-w-0 flex-1">
                     <p className="font-medium break-words">{i.customer_name}</p>
                     <p className="text-xs text-muted">
-                      {i.number} · {formatWallDate(i.issued_on)}
+                      {i.number}
+                      {i.former_number && ` (${t("zamani", "formerly")} ${i.former_number})`} · {formatWallDate(i.issued_on)}
                       {i.due_on && i.status === "open" && ` · ${t("mwisho", "due")} ${formatWallDate(i.due_on)}`}
                     </p>
                     {i.cancel_reason && <p className="text-xs break-words text-muted italic">{i.cancel_reason}</p>}

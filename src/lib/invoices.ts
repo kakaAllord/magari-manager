@@ -15,6 +15,8 @@ export type InvoiceSummary = {
   status: InvoiceStatus;
   // Why it was cancelled; empty unless cancelled since 029.
   cancel_reason: string | null;
+  // The ANK- number it had before 032 renamed it INV-; null for invoices made since 17 Nov 2026.
+  former_number: string | null;
 };
 
 export type InvoiceDetail = InvoiceSummary & {
@@ -44,16 +46,18 @@ const STATUS = `CASE WHEN i.cancelled_at IS NOT NULL THEN 'cancelled' WHEN i.pai
 
 export const INVOICE_PAGE_SIZE = 25;
 
-// Newest first. Dates come back as plain days, as typed. `search` matches the number, the customer's
-// name or contact, and the plate or description of any trip on it, ignoring case.
+// Newest first. Dates come back as plain days, as typed. `search` matches the number (or the ANK- one
+// it had before, as on a client's paper copy), the customer's name or contact, and the plate or
+// description of any trip on it, ignoring case.
 export async function listInvoices(page: number, search = "") {
   const term = search.trim().slice(0, 80).replace(/[\\%_]/g, "\\$&");
   const rows = await query<InvoiceSummary & { total_count: number }>(
     `SELECT i.id, i.number, i.customer_name, to_char(i.issued_on, 'YYYY-MM-DD') AS issued_on,
-            to_char(i.due_on, 'YYYY-MM-DD') AS due_on, i.total, ${STATUS} AS status, i.cancel_reason,
+            to_char(i.due_on, 'YYYY-MM-DD') AS due_on, i.total, ${STATUS} AS status, i.cancel_reason, i.former_number,
             count(*) OVER ()::int AS total_count
        FROM invoices i
-      WHERE $3 = '' OR i.number ILIKE '%' || $3 || '%' OR i.customer_name ILIKE '%' || $3 || '%'
+      WHERE $3 = '' OR i.number ILIKE '%' || $3 || '%' OR i.former_number ILIKE '%' || $3 || '%'
+         OR i.customer_name ILIKE '%' || $3 || '%'
          OR i.customer_contact ILIKE '%' || $3 || '%'
          OR EXISTS (SELECT 1 FROM invoice_lines l WHERE l.invoice_id = i.id
                      AND (l.plate ILIKE '%' || $3 || '%' OR l.description ILIKE '%' || $3 || '%'))
@@ -68,7 +72,7 @@ export async function getInvoice(id: number): Promise<InvoiceDetail | null> {
   const [invoice] = await query<Omit<InvoiceDetail, "lines">>(
     `SELECT i.id, i.number, i.customer_name, i.customer_contact, to_char(i.issued_on, 'YYYY-MM-DD') AS issued_on,
             to_char(i.due_on, 'YYYY-MM-DD') AS due_on, i.payment_details, i.total, ${STATUS} AS status, i.cancel_reason,
-            i.bank_name, i.bank_account_number, i.bank_account_name, i.bank_swift, i.payment_purpose,
+            i.former_number, i.bank_name, i.bank_account_number, i.bank_account_name, i.bank_swift, i.payment_purpose,
             c.name AS created_by, i.created_at, i.paid_at, p.name AS paid_by, i.cancelled_at, x.name AS cancelled_by,
             EXISTS (SELECT 1 FROM incomes WHERE invoice_id = i.id) AS in_income,
             (SELECT coalesce(sum(amount_paid), 0) FROM incomes WHERE invoice_id = i.id AND deleted_at IS NULL) AS amount_paid
