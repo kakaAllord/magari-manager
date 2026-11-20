@@ -31,7 +31,8 @@ tani or kilo × bei kwa kilo (picked per trip), and the bank to pay into (bank, 
 name, SWIFT code, what the payment is for; each starts from the last invoice's, and they live in the
 database, not the code, migration 025), downloaded as a PDF with the total also written out in English words
 (up to trillions). Zuraja's address prints under its name (`src/lib/company.ts`). Numbers run per year
-(INV-2026-001; invoices made before November 2026 kept their ANK- numbers) and are never
+(INV-2026-001; the ANK- numbers of invoices made before 17 Nov 2026 became INV- with the same digits in
+migration 032, which keeps the old one in `former_number`: it shows on the invoice and the search finds it) and are never
 reused; a mistaken invoice is cancelled ("Imefutwa"), not edited (`invoices`, `invoice_lines`,
 migration 019), and cancelling asks for a reason, shown on the invoice and in the list
 (`invoices.cancel_reason`, migration 029; earlier cancellations have none). Saving an invoice puts each trip in Mapato as cargo income on the invoice's date,
