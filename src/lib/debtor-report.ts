@@ -117,7 +117,3 @@ export function clientOptions(names: string[]): { key: string; name: string }[] 
   }
   return [...byKey].map(([key, name]) => ({ key, name })).sort((a, b) => a.name.localeCompare(b.name));
 }
-
-// Old names, until the report uses the new ones.
-export type UnpaidJob = ClientJob;
-export const debtScopeParam = (scope: DebtScope) => (scope === "period" ? "&madeni=kipindi" : "");

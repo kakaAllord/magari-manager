@@ -8,7 +8,7 @@ import { parseReportParams, presets, toSearch } from "@/lib/report-params";
 import { CarProfit } from "@/components/car-profit";
 import { DebtorsPanel } from "@/components/debtors-panel";
 import { getDebtorReport } from "@/lib/debtor-data";
-import { debtScopeParam } from "@/lib/debtor-report";
+import { debtFilterEntries, debtFilterSearch } from "@/lib/debtor-report";
 import { getExpenses, getIncomes, listCars, moneyByCar, sourceLabel, summarise, summariseIncome, todayInTanzania } from "@/lib/reports";
 
 // The reports page, shared by both managers, the mhasibu and directors. `base` is the page's own path.
@@ -31,9 +31,10 @@ export async function ReportView({
   const search = toSearch(params);
   // Spending, income and debts share one card; the tab lives in the URL so filtering keeps it.
   const tab = searchParams.tab === "mapato" || searchParams.tab === "madeni" ? searchParams.tab : "matumizi";
-  const scope = debtScopeParam(debts.scope);
-  const tabSearch = (key: string) => (key === "matumizi" ? search : key === "madeni" ? `${search}&tab=madeni${scope}` : `${search}&tab=${key}`);
-  const debtorsPdf = `${base}/export?${search}&format=debtors${scope}`;
+  const debtSearch = debtFilterSearch(debts.filters);
+  const tabSearch = (key: string) => (key === "matumizi" ? search : key === "madeni" ? `${search}&tab=madeni${debtSearch}` : `${search}&tab=${key}`);
+  const debtorsPdf = `${base}/export?${search}&format=debtors${debtSearch}`;
+  const forClient = (client: string) => `${search}${debtFilterSearch({ ...debts.filters, client })}`;
 
   return (
       <main className="page">
@@ -51,11 +52,17 @@ export async function ReportView({
           cars={cars}
           today={today}
           tab={tab}
-          keep={debts.scope === "period" ? { madeni: "kipindi" } : {}}
+          keep={tab === "madeni" ? {} : debtFilterEntries(debts.filters)}
+          debt={tab === "madeni" ? { filters: debts.filters, clients: debts.clients } : undefined}
           downloads={[
             { label: "PDF", hint: t("Tayari kuchapisha au kutuma", "Ready to print or send"), href: `${base}/export?${search}&format=pdf`, icon: "pdf" },
             { label: "Excel", hint: t("Fomula, chati na majedwali ya kuchuja", "Formulas, charts and filterable tables"), href: `${base}/export?${search}`, icon: "sheet" },
-            { label: t("Madeni (PDF)", "Debtors (PDF)"), hint: debts.scopeLabel, href: debtorsPdf, icon: "wallet" },
+            {
+              label: debts.filters.withPaid ? t("Hesabu ya wateja (PDF)", "Client accounts (PDF)") : t("Madeni (PDF)", "Debtors (PDF)"),
+              hint: debts.clientName ? `${debts.clientName} · ${debts.scopeLabel}` : debts.scopeLabel,
+              href: debtorsPdf,
+              icon: "wallet",
+            },
           ]}
         />
 
@@ -124,8 +131,8 @@ export async function ReportView({
             <DebtorsPanel
               report={debts}
               pdfHref={debtorsPdf}
-              allHref={`?${search}&tab=madeni`}
-              periodHref={`?${search}&tab=madeni&madeni=kipindi`}
+              clientPdfHref={(key) => `${base}/export?${forClient(key)}&format=debtors`}
+              clientHref={(key) => `?${forClient(key)}&tab=madeni`}
             />
           ) : tab === "matumizi" ? (
             <>

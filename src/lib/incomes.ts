@@ -1,7 +1,7 @@
 import "server-only";
 import { query } from "@/lib/db";
 import { TIME_ZONE } from "@/lib/time";
-import type { UnpaidJob } from "@/lib/debtor-report";
+import type { ClientJob } from "@/lib/debtor-report";
 
 // How long after recording an entry its manager may still delete it.
 export const DELETE_WINDOW_HOURS = 24;
@@ -138,20 +138,32 @@ export function listDebtors() {
   );
 }
 
-// Every job a client still owes on, for the debtors report: oldest first, narrowed to the picked cars
-// (none means all) and, with a range, to jobs dated in it (Tanzanian time). Amounts come back as numbers.
-export async function listUnpaidJobs(opts: { carIds: number[]; range?: { from: string; to: string } }): Promise<UnpaidJob[]> {
-  const rows = await query<Omit<UnpaidJob, "amount" | "paid"> & { amount: string; paid: string }>(
+// Jobs for the debtors report, oldest first: every job a client still owes on and, with `withPaid`,
+// every named client's jobs paid in full too. Narrowed to the picked cars (none means all) and, with
+// a range, to jobs dated in it (Tanzanian time). Amounts come back as numbers. The client filter is
+// applied by the caller, by clientKey.
+export async function listClientJobs(opts: { carIds: number[]; range?: { from: string; to: string }; withPaid?: boolean }): Promise<ClientJob[]> {
+  const rows = await query<Omit<ClientJob, "amount" | "paid"> & { amount: string; paid: string }>(
     `SELECT i.id, to_char(i.created_at AT TIME ZONE $1, 'YYYY-MM-DD') AS at, i.customer_name AS customer,
             c.plate, c.name AS car, inv.number AS invoice_number, i.description, i.rate_per_tonne, i.tonnes, i.unit,
             i.destination, i.amount, i.amount_paid AS paid,
             ((now() AT TIME ZONE $1)::date - (i.created_at AT TIME ZONE $1)::date) AS days
        FROM incomes i LEFT JOIN cars c ON c.id = i.car_id LEFT JOIN invoices inv ON inv.id = i.invoice_id
-      WHERE i.deleted_at IS NULL AND i.amount_paid < i.amount
+      WHERE i.deleted_at IS NULL AND (i.amount_paid < i.amount OR ($5 AND i.customer_name IS NOT NULL))
         AND (cardinality($2::int[]) = 0 OR i.car_id = ANY($2::int[]))
         AND ($3::date IS NULL OR (i.created_at AT TIME ZONE $1)::date BETWEEN $3::date AND $4::date)
       ORDER BY i.created_at, i.id`,
-    [TIME_ZONE, opts.carIds, opts.range?.from ?? null, opts.range?.to ?? null],
+    [TIME_ZONE, opts.carIds, opts.range?.from ?? null, opts.range?.to ?? null, opts.withPaid ?? false],
   );
   return rows.map((r) => ({ ...r, amount: Number(r.amount), paid: Number(r.paid) }));
+}
+
+// Every client name on a live entry, newest first, for the Madeni client dropdown (see clientOptions).
+export async function listClientNames(): Promise<string[]> {
+  const rows = await query<{ name: string }>(
+    `SELECT customer_name AS name FROM incomes
+      WHERE deleted_at IS NULL AND customer_name IS NOT NULL
+      GROUP BY customer_name ORDER BY max(created_at) DESC`,
+  );
+  return rows.map((r) => r.name);
 }

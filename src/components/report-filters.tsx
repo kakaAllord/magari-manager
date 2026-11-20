@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "@/components/dialog";
 import { Icon, type IconName } from "@/components/icons";
+import type { DebtFilters } from "@/lib/debtor-report";
 import { formatDay, type Grouping, type ReportParams } from "@/lib/report-params";
 import type { CarOption } from "@/lib/reports";
 
@@ -20,6 +21,8 @@ const groupings = (t: Tr): { value: Grouping; label: string }[] => [
 const CUSTOM = "custom";
 
 export type Download = { label: string; hint: string; href: string; icon: IconName };
+// The Madeni tab's own filters, shown in the dialog on that tab only.
+type DebtChoice = { filters: DebtFilters; clients: { key: string; name: string }[] };
 
 // One row: a Chuja button with the active filters as chips beside it, and a round download button.
 // The filters themselves live in a dialog, applied together with Onyesha.
@@ -30,6 +33,7 @@ export function ReportToolbar({
   today,
   tab,
   keep = {},
+  debt,
   downloads,
 }: {
   presets: Preset[];
@@ -39,6 +43,7 @@ export function ReportToolbar({
   tab: string;
   // Other URL values the filter must carry over, such as the Madeni tab's scope.
   keep?: Record<string, string>;
+  debt?: DebtChoice;
   downloads: Download[];
 }) {
   const t = useT();
@@ -52,6 +57,13 @@ export function ReportToolbar({
         ? (cars.find((c) => c.id === params.carIds[0])?.plate ?? t("Gari 1", "1 car"))
         : t(`Magari ${params.carIds.length}`, `${params.carIds.length} cars`),
     groupings(t).find((g) => g.value === params.group)!.label,
+    ...(debt
+      ? [
+          debt.filters.client ? (debt.clients.find((c) => c.key === debt.filters.client)?.name ?? debt.filters.client) : t("Wateja wote", "Every client"),
+          debt.filters.withPaid ? t("Pamoja na zilizolipwa", "Paid ones too") : t("Zinazodaiwa tu", "Only what is owed"),
+          debt.filters.scope === "period" ? t("Kazi za kipindi hiki", "This period's jobs") : t("Hadi leo", "Up to today"),
+        ]
+      : []),
   ];
 
   return (
@@ -75,7 +87,7 @@ export function ReportToolbar({
       <DownloadMenu downloads={downloads} />
 
       <Dialog open={open} onClose={() => setOpen(false)} title={t("Chuja ripoti", "Filter the report")}>
-        <FilterForm presets={presets} params={params} cars={cars} today={today} tab={tab} keep={keep} match={match} />
+        <FilterForm presets={presets} params={params} cars={cars} today={today} tab={tab} keep={keep} debt={debt} match={match} />
       </Dialog>
     </div>
   );
@@ -88,6 +100,7 @@ function FilterForm({
   today,
   tab,
   keep,
+  debt,
   match,
 }: {
   presets: Preset[];
@@ -96,6 +109,7 @@ function FilterForm({
   today: string;
   tab: string;
   keep: Record<string, string>;
+  debt?: DebtChoice;
   match: Preset | undefined;
 }) {
   const t = useT();
@@ -171,6 +185,37 @@ function FilterForm({
           ))}
         </div>
       </fieldset>
+
+      {debt && (
+        <fieldset className="grid gap-3">
+          <legend className="label">{t("Madeni", "Debts")}</legend>
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted">{t("Mteja", "Client")}</span>
+            <select name="mteja" defaultValue={debt.filters.client ?? ""} className="input">
+              <option value="">{t("Wateja wote", "Every client")}</option>
+              {debt.clients.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted">{t("Kazi zipi", "Which jobs")}</span>
+            <select name="hali" defaultValue={debt.filters.withPaid ? "zote" : ""} className="input">
+              <option value="">{t("Zinazodaiwa tu (deni lililobaki)", "Only what is still owed")}</option>
+              <option value="zote">{t("Zote, pamoja na zilizolipwa", "All, paid ones included")}</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted">{t("Tarehe za kazi", "Job dates")}</span>
+            <select name="madeni" defaultValue={debt.filters.scope === "period" ? "kipindi" : ""} className="input">
+              <option value="">{t("Zote hadi leo", "Everything up to today")}</option>
+              <option value="kipindi">{t("Za kipindi hiki tu", "This period only")}</option>
+            </select>
+          </label>
+        </fieldset>
+      )}
 
       <label className="block">
         <span className="label">{t("Panga", "Group")}</span>
