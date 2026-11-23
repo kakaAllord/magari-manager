@@ -352,15 +352,20 @@ export function parseCancelReason(input: string, t: Tr = sw): { reason: string }
   return { reason };
 }
 
-// An invoice: the customer, its dates, the bank to pay into, and up to 20 trips, each priced per
-// tonne or per kilo. Lines left completely empty are skipped. Errors on a line are keyed by its index as sent.
+// An invoice: the customer, its dates, the bank to pay into, and up to 20 lines. A line is a trip
+// priced per tonne or per kilo, or "mengineyo" (a car hired out, a job not weighed): a description,
+// a quantity and a price each. Lines left completely empty are skipped. Errors on a line are keyed
+// by its index as sent.
 export const MAX_INVOICE_LINES = 20;
 export const MAX_INVOICE_TEXT = 500;
 export const BANK_LIMITS = { name: 80, accountNumber: 40, accountName: 120, swift: 20, purpose: 160 } as const;
 
 export type InvoiceBankInput = { name: string; accountNumber: string; accountName: string; swift: string; purpose: string };
 export type InvoiceBank = { name: string; accountNumber: string; accountName: string; swift: string | null; purpose: string | null };
-export type InvoiceLineInput = { description: string; plate: string; quantity: string; unit: CargoUnit; rate: string };
+// 'other' is a mengineyo line; anything unknown (or nothing, from a page opened before units) is tonnes.
+export type InvoiceUnit = CargoUnit | "other";
+export const invoiceUnit = (input: string): InvoiceUnit => (input === "other" ? "other" : cargoUnit(input));
+export type InvoiceLineInput = { description: string; plate: string; quantity: string; unit: InvoiceUnit; rate: string };
 export type InvoiceInput = {
   customer: string;
   contact: string;
@@ -383,10 +388,11 @@ export type InvoiceErrors = {
   lines?: string;
   line?: Record<number, InvoiceLineErrors>;
 };
+// A mengineyo line keeps its quantity in `tonnes` and its price each in `ratePerTonne`, as saved.
 export type InvoiceLine = {
   description: string;
   plate: string | null;
-  unit: CargoUnit;
+  unit: InvoiceUnit;
   tonnes: number;
   ratePerTonne: number;
   amount: number;
@@ -422,6 +428,35 @@ function parseBank(input: InvoiceBankInput, t: Tr) {
   return { bank, errors };
 }
 
+// A mengineyo line: a quantity (left empty it is 1, a lump sum) with up to two decimals, and the price
+// of one in shillings, cents allowed. The amount is their product in whole shillings.
+export function parseOtherLine(
+  rateInput: string,
+  quantityInput: string,
+  t: Tr = sw,
+): { tonnes: number; ratePerTonne: number; amount: number } | { errors: { rate?: string; quantity?: string } } {
+  const errors: { rate?: string; quantity?: string } = {};
+  const rate = parseDecimal(rateInput);
+  if (!rateInput.trim()) errors.rate = t("Andika bei.", "Write the price.");
+  else if (rate === null) errors.rate = t("Andika bei kwa namba, mfano 1,500,000.", "Write the price as a number, e.g. 1,500,000.");
+  else if (rate < 1) errors.rate = t("Bei lazima iwe angalau shilingi moja.", "The price must be at least one shilling.");
+  else if (rate > MAX_AMOUNT) errors.rate = t("Bei ni kubwa mno.", "The price is too high.");
+  const quantity = quantityInput.trim() ? parseDecimal(quantityInput) : 1;
+  if (quantity === null) errors.quantity = t("Andika idadi kwa namba, mfano 1 au 3.", "Write the quantity as a number, e.g. 1 or 3.");
+  else if (quantity <= 0) errors.quantity = t("Idadi lazima iwe zaidi ya sifuri.", "The quantity must be more than zero.");
+  else if (quantity > 10_000) errors.quantity = t("Idadi ni kubwa mno.", "The quantity is too large.");
+  if (errors.rate || errors.quantity || rate === null || quantity === null) return { errors };
+  const amount = cargoAmount(rate, quantity);
+  if (amount > MAX_AMOUNT) return { errors: { quantity: t("Jumla ni kubwa mno. Gawa kwenye mistari miwili.", "The total is too large. Split it into two lines.") } };
+  if (amount <= 0) return { errors: { quantity: t("Jumla ni chini ya shilingi moja.", "The total is under one shilling.") } };
+  return { tonnes: quantity, ratePerTonne: rate, amount };
+}
+
+// One invoice line's figures, by the tonne, the kilo or as mengineyo.
+export function parseInvoiceLine(l: Pick<InvoiceLineInput, "rate" | "quantity" | "unit">, t: Tr = sw) {
+  return l.unit === "other" ? parseOtherLine(l.rate, l.quantity, t) : parseCargo(l.rate, l.quantity, l.unit, "", t);
+}
+
 export function parseInvoice(input: InvoiceInput, today: string, t: Tr = sw): { ok: true; invoice: Invoice } | { ok: false; errors: InvoiceErrors } {
   const errors: InvoiceErrors = {};
   const customer = input.customer.trim();
@@ -449,14 +484,18 @@ export function parseInvoice(input: InvoiceInput, today: string, t: Tr = sw): { 
     if (![l.description, l.plate, l.quantity, l.rate].some((v) => v.trim())) return;
     const e: InvoiceLineErrors = {};
     const description = l.description.trim();
-    if (description.length < 2) e.description = t("Andika safari, mfano Dar es Salaam - Mwanza.", "Write the trip, e.g. Dar es Salaam - Mwanza.");
+    if (description.length < 2)
+      e.description =
+        l.unit === "other"
+          ? t("Andika maelezo, mfano Kukodi gari siku 3.", "Write what it is for, e.g. Car hire, 3 days.")
+          : t("Andika safari, mfano Dar es Salaam - Mwanza.", "Write the trip, e.g. Dar es Salaam - Mwanza.");
     else if (description.length > 160) e.description = t("Isizidi herufi 160.", "At most 160 characters.");
-    const cargo = parseCargo(l.rate, l.quantity, l.unit, "", t);
-    if ("errors" in cargo) Object.assign(e, { rate: cargo.errors.rate, quantity: cargo.errors.quantity });
+    const figures = parseInvoiceLine(l, t);
+    if ("errors" in figures) Object.assign(e, { rate: figures.errors.rate, quantity: figures.errors.quantity });
     if (e.description || e.rate || e.quantity) lineErrors[i] = e;
-    else if ("amount" in cargo) {
-      const { unit, tonnes, ratePerTonne, amount } = cargo;
-      lines.push({ description, plate: normalizePlate(l.plate) || null, unit, tonnes, ratePerTonne, amount });
+    else if ("amount" in figures) {
+      const { tonnes, ratePerTonne, amount } = figures;
+      lines.push({ description, plate: normalizePlate(l.plate) || null, unit: l.unit, tonnes, ratePerTonne, amount });
     }
   });
   if (Object.keys(lineErrors).length) errors.line = lineErrors;

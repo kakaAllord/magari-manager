@@ -17,6 +17,8 @@ import {
   parseFeedback,
   parseIncome,
   parseInvoice,
+  parseOtherLine,
+  invoiceUnit,
   parseMoneyRequest,
   parseFuelOrder,
   parseFuelPrice,
@@ -315,6 +317,41 @@ test("an invoice adds up its trips, skips empty lines and checks each one", () =
   const trip = [{ description: "Kibaha", plate: "", quantity: "1", unit: "tonne" as const, rate: "40000" }];
   const early = parseInvoice({ ...base, dueOn: "2026-10-01", lines: trip }, today);
   assert.ok(!early.ok && early.errors.dueOn);
+});
+
+test("a mengineyo line is a description, a quantity (1 when empty) and a price each", () => {
+  const today = "2026-10-06";
+  const bank = { name: "CRDB", accountNumber: "0150", accountName: "Zuraja Transport", swift: "", purpose: "" };
+  const base = { customer: "Kilimanjaro Traders", contact: "", issuedOn: today, dueOn: today, bank, payment: "" };
+  const ok = parseInvoice(
+    {
+      ...base,
+      lines: [
+        { description: " Kukodi gari ", plate: "t 456 bcd", quantity: "", unit: "other", rate: "1,500,000" },
+        { description: "Kukodi gari siku", plate: "", quantity: "3", unit: "other", rate: "200000" },
+        { description: "Kibaha", plate: "", quantity: "2", unit: "tonne", rate: "40000" },
+      ],
+    },
+    today,
+  );
+  assert.ok(ok.ok);
+  if (ok.ok) {
+    assert.deepEqual(ok.invoice.lines, [
+      { description: "Kukodi gari", plate: "T456BCD", unit: "other", tonnes: 1, ratePerTonne: 1500000, amount: 1500000 },
+      { description: "Kukodi gari siku", plate: null, unit: "other", tonnes: 3, ratePerTonne: 200000, amount: 600000 },
+      { description: "Kibaha", plate: null, unit: "tonne", tonnes: 2, ratePerTonne: 40000, amount: 80000 },
+    ]);
+    assert.equal(ok.invoice.total, 2180000);
+  }
+  // A price under the tonne's TSh 100 floor is fine for mengineyo; a missing or bad one is not.
+  assert.deepEqual(parseOtherLine("50", "2"), { tonnes: 2, ratePerTonne: 50, amount: 100 });
+  const bad = parseOtherLine("", "abc", en);
+  assert.ok("errors" in bad && bad.errors.rate && bad.errors.quantity);
+  const big = parseOtherLine("99,999,999", "2", en);
+  assert.ok("errors" in big && big.errors.quantity);
+  assert.equal(invoiceUnit("other"), "other");
+  assert.equal(invoiceUnit("kg"), "kg");
+  assert.equal(invoiceUnit(""), "tonne");
 });
 
 test("a new invoice needs a due date and the bank, account number and account name", () => {
