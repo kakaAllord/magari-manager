@@ -57,10 +57,13 @@ export const formatQuantity = (c: Cargo) => twoDecimals.format(Number(c.tonnes) 
 // The price for one tonne or one kilo: "TSh 45,000", "TSh 52.25".
 export const formatUnitPrice = (c: Cargo) => price.format(Number(c.rate_per_tonne) / (inKilos(c) ? 1000 : 1));
 export const unitName = (c: Cargo, t: Tr = sw) => (inKilos(c) ? t("Kilo", "kg") : t("Tani", "tonnes"));
+// A mengineyo invoice line (unit 'other') has no unit to name: "3 × TSh 200,000".
 export const cargoSum = (c: Cargo, t: Tr = sw) =>
-  t(`${unitName(c, t)} ${formatQuantity(c)}`, `${formatQuantity(c)} ${unitName(c, t)}`) + ` × ${formatUnitPrice(c)}`;
-// Null for income that isn't cargo.
+  (c.unit === "other" ? formatQuantity(c) : t(`${unitName(c, t)} ${formatQuantity(c)}`, `${formatQuantity(c)} ${unitName(c, t)}`)) +
+  ` × ${formatUnitPrice(c)}`;
+// What an income was for: the cargo and where it went, or, for a mengineyo line of an invoice, its
+// description (kept in `destination`). Null for other income, which only ever has a description.
 export const cargoLine = (c: { tonnes: string | null; rate_per_tonne: string | null; unit: string; destination: string | null }, t: Tr = sw) =>
   c.tonnes === null || c.rate_per_tonne === null
-    ? null
+    ? c.destination
     : `${cargoSum({ tonnes: c.tonnes, rate_per_tonne: c.rate_per_tonne, unit: c.unit }, t)}${c.destination ? ` · ${c.destination}` : ""}`;
