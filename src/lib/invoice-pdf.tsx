@@ -35,22 +35,31 @@ const s = StyleSheet.create({
 
 const pdfText = (text: string) => text.replaceAll("→", "-");
 
-// The invoice is in the language of whoever downloads it. Trips all priced the same way are headed
-// "Tani" / "Bei kwa tani" (or kilo); an invoice mixing the two heads them "Uzito" / "Bei" and says
-// the unit on each line.
+// The invoice is in the language of whoever downloads it. Lines all priced the same way are headed
+// "Tani" / "Bei kwa tani" (or kilo, or "Idadi" / "Bei kwa kimoja" for mengineyo); an invoice mixing
+// them heads them "Kiasi" / "Bei" and says the unit on each trip. With any mengineyo line, the
+// description column is "Maelezo" rather than "Safari".
 function tableColumns(lines: InvoiceDetail["lines"], t: Tr) {
   const units = new Set(lines.map((l) => l.unit));
   const only = units.size === 1 ? [...units][0] : null;
+  const quantity =
+    only === "kg" ? t("Kilo", "Kilos") : only === "other" ? t("Idadi", "Qty") : only ? t("Tani", "Tonnes") : units.has("other") ? t("Idadi", "Qty") : t("Uzito", "Weight");
+  const price =
+    only === "kg" ? t("Bei kwa kilo", "Price per kilo") : only === "other" ? t("Bei kwa kimoja", "Price each") : only ? t("Bei kwa tani", "Price per tonne") : t("Bei", "Price");
   const columns = [
     { label: t("Na.", "No."), width: 6, num: false },
-    { label: t("Safari", "Trip"), width: 36, num: false },
+    { label: units.has("other") ? t("Maelezo", "Description") : t("Safari", "Trip"), width: 36, num: false },
     { label: t("Gari", "Vehicle"), width: 12, num: false },
-    { label: only === "kg" ? t("Kilo", "Kilos") : only ? t("Tani", "Tonnes") : t("Uzito", "Weight"), width: 12, num: true },
-    { label: only === "kg" ? t("Bei kwa kilo", "Price per kilo") : only ? t("Bei kwa tani", "Price per tonne") : t("Bei", "Price"), width: 16, num: true },
+    { label: quantity, width: 12, num: true },
+    { label: price, width: 16, num: true },
     { label: t("Kiasi", "Amount"), width: 18, num: true },
   ];
   return { columns, mixed: !only };
 }
+
+// The unit after a figure on a mixed invoice: " kg", " t", or nothing for mengineyo.
+const unitMark = (unit: string) => (unit === "kg" ? " kg" : unit === "other" ? "" : " t");
+const perUnit = (unit: string) => (unit === "kg" ? "/kg" : unit === "other" ? "" : "/t");
 
 function InvoicePdf({ invoice: inv, t }: { invoice: InvoiceDetail; t: Tr }) {
   const { columns, mixed } = tableColumns(inv.lines, t);
@@ -100,8 +109,8 @@ function InvoicePdf({ invoice: inv, t }: { invoice: InvoiceDetail; t: Tr }) {
                 String(l.position),
                 pdfText(l.description),
                 l.plate ?? "",
-                mixed ? `${formatQuantity(l)} ${l.unit === "kg" ? "kg" : "t"}` : formatQuantity(l),
-                mixed ? `${formatUnitPrice(l)}/${l.unit === "kg" ? "kg" : "t"}` : formatUnitPrice(l),
+                mixed ? `${formatQuantity(l)}${unitMark(l.unit)}` : formatQuantity(l),
+                mixed ? `${formatUnitPrice(l)}${perUnit(l.unit)}` : formatUnitPrice(l),
                 formatMoney(l.amount),
               ].map((value, i) => (
                 <Text key={i} style={[columns[i].num ? s.num : s.cell, { width: `${columns[i].width}%` }]}>
