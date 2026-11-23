@@ -8,7 +8,7 @@ import { MANAGERS_CHANNEL, notify } from "@/lib/realtime";
 import { todayInTanzania, WITHOUT_CAR } from "@/lib/reports";
 import { requireWriter } from "@/lib/session";
 import { TIME_ZONE } from "@/lib/time";
-import { cargoUnit, parseCancelReason, parseInvoice, type InvoiceErrors, type InvoiceInput } from "@/lib/validation";
+import { invoiceUnit, parseCancelReason, parseInvoice, type InvoiceErrors, type InvoiceInput } from "@/lib/validation";
 
 export type InvoiceFormState = { ok: false; errors: InvoiceErrors; values: InvoiceInput } | undefined;
 
@@ -16,8 +16,9 @@ const text = (formData: FormData, name: string) => String(formData.get(name) ?? 
 
 // Saves a new invoice and opens it. Its number is the next one for the year of its date: a lock
 // held until the end of the transaction keeps two managers from taking the same number.
-// Each trip also goes into Mapato as cargo income on the invoice's date, nothing paid yet, so the
-// client owes it on Madeni until the invoice is paid. A past date is history, as on Mapato.
+// Each line also goes into Mapato on the invoice's date, nothing paid yet, so the client owes it on
+// Madeni until the invoice is paid. A trip goes in as cargo; a mengineyo line has no tonnes or rate,
+// so tonne totals stay true, and keeps its description in `destination`. A past date is history.
 export async function createInvoice(_prev: InvoiceFormState, formData: FormData): Promise<InvoiceFormState> {
   const manager = await requireWriter("manager");
   const column = (name: string) => formData.getAll(name).map(String);
@@ -46,7 +47,7 @@ export async function createInvoice(_prev: InvoiceFormState, formData: FormData)
       description,
       plate: plates[i] ?? "",
       quantity: quantities[i] ?? "",
-      unit: cargoUnit(units[i] ?? ""),
+      unit: invoiceUnit(units[i] ?? ""),
       rate: rates[i] ?? "",
     })),
   };
@@ -72,6 +73,7 @@ export async function createInvoice(_prev: InvoiceFormState, formData: FormData)
     );
     const invoiceId = inserted.rows[0].id;
     for (const [i, l] of inv.lines.entries()) {
+      const cargo = l.unit !== "other";
       await client.query(
         `INSERT INTO invoice_lines (invoice_id, position, description, plate, unit, tonnes, rate_per_tonne, amount)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -87,7 +89,8 @@ export async function createInvoice(_prev: InvoiceFormState, formData: FormData)
            FROM (SELECT 1) one LEFT JOIN cars c ON c.plate = $1`,
         [
           l.plate, WITHOUT_CAR, l.amount, `Invoice ${number}`, manager.id, inv.issuedOn === todayInTanzania(), inv.issuedOn,
-          TIME_ZONE, l.ratePerTonne, l.tonnes, l.description, inv.customer, invoiceId, l.unit,
+          TIME_ZONE, cargo ? l.ratePerTonne : null, cargo ? l.tonnes : null, l.description, inv.customer, invoiceId,
+          cargo ? l.unit : "tonne",
         ],
       );
     }

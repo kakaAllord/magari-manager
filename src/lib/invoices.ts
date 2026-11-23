@@ -38,7 +38,8 @@ export type InvoiceDetail = InvoiceSummary & {
   in_income: boolean;
   // What the client has paid on its trips so far, on Madeni or by marking it paid.
   amount_paid: string;
-  // Each trip is kept in tonnes; `unit` says whether it was priced by the tonne or the kilo.
+  // Each trip is kept in tonnes; `unit` says whether it was priced by the tonne or the kilo. A
+  // mengineyo line (unit 'other') keeps its quantity in `tonnes` and its price each in `rate_per_tonne`.
   lines: { position: number; description: string; plate: string | null; unit: string; tonnes: string; rate_per_tonne: string; amount: string }[];
 };
 
