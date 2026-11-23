@@ -27,7 +27,9 @@ switched off earlier can be switched back on), reads the same reports and Mafuta
 spending, the balance, each car's faida or hasara and fuel. Long lists (requests,
 payouts, income) live on their own Historia pages, 25 per page.
 The logistics manager makes invoices on the Invoice tab: a customer, a due date, trips priced as tani × bei kwa
-tani or kilo × bei kwa kilo (picked per trip), and the bank to pay into (bank, account number and
+tani or kilo × bei kwa kilo (picked per trip), or "Mengineyo" lines for work not measured by weight, such as a car
+hired out (a description, a quantity that defaults to 1, and a price each; kept as unit `other` in `invoice_lines`, with
+no tonnes on its Mapato entry, which keeps the description in `destination`, migration 033), and the bank to pay into (bank, account number and
 name, SWIFT code, what the payment is for; each starts from the last invoice's, and they live in the
 database, not the code, migration 025), downloaded as a PDF with the total also written out in English words
 (up to trillions). Zuraja's address prints under its name (`src/lib/company.ts`). Numbers run per year
