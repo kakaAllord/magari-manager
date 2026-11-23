@@ -10,19 +10,42 @@ import { formatMoney } from "@/lib/format";
 import type { CarOption } from "@/lib/reports";
 import {
   BANK_LIMITS,
-  cargoUnit,
+  invoiceUnit,
   MAX_INVOICE_LINES,
   MAX_INVOICE_TEXT,
-  parseCargo,
+  parseInvoiceLine,
   type InvoiceBankInput,
   type InvoiceLineInput,
 } from "@/lib/validation";
 
 const blank: InvoiceLineInput = { description: "", plate: "", quantity: "", unit: "tonne", rate: "" };
 const lineAmount = (l: InvoiceLineInput) => {
-  const cargo = parseCargo(l.rate, l.quantity, l.unit, "");
-  return "amount" in cargo ? cargo.amount : null;
+  const figures = parseInvoiceLine(l);
+  return "amount" in figures ? figures.amount : null;
 };
+
+// What each field of a line is called: a trip by the tonne or the kilo, or mengineyo (car hire, a job
+// not weighed), which is a description, a quantity and a price each.
+const lineWords = (unit: InvoiceLineInput["unit"], i: number, t: Tr) =>
+  unit === "other"
+    ? {
+        legend: t(`Mengineyo ${i + 1}`, `Other item ${i + 1}`),
+        description: t("Maelezo", "Description"),
+        descriptionPlaceholder: t("Kukodi gari siku 3", "Car hire, 3 days"),
+        quantity: t("Idadi", "Quantity"),
+        quantityPlaceholder: "1",
+        rate: t("Bei kwa kimoja", "Price each"),
+        ratePlaceholder: "1,500,000",
+      }
+    : {
+        legend: t(`Safari ${i + 1}`, `Trip ${i + 1}`),
+        description: t("Kutoka - kwenda", "From - to"),
+        descriptionPlaceholder: "Dar es Salaam - Mwanza",
+        quantity: t("Uzito", "Weight"),
+        quantityPlaceholder: unit === "kg" ? "1,250" : "30",
+        rate: unit === "kg" ? t("Bei kwa kilo", "Price per kilo") : t("Bei kwa tani", "Price per tonne"),
+        ratePlaceholder: unit === "kg" ? "52.5" : "45,000",
+      };
 
 // The bank block, one field per line of the invoice's bank details.
 const bankFields = (t: Tr): { key: keyof InvoiceBankInput; name: string; label: string; optional?: boolean; placeholder: string }[] => [
@@ -87,32 +110,38 @@ export function InvoiceForm({ cars, today, bank }: { cars: CarOption[]; today: s
       <section className="card grid gap-4">
         <div>
           <h2 className="text-lg font-semibold">{t("Safari", "Trips")}</h2>
-          <p className="text-sm text-muted">{t("Kila safari: tani × bei kwa tani, au kilo × bei kwa kilo.", "Each trip: tonnes × price per tonne, or kilos × price per kilo.")}</p>
+          <p className="text-sm text-muted">
+            {t(
+              "Kila safari: tani × bei kwa tani, au kilo × bei kwa kilo. Kwa kukodi gari au kazi isiyopimwa kwa uzito, chagua Mengineyo: idadi × bei kwa kimoja.",
+              "Each trip: tonnes × price per tonne, or kilos × price per kilo. For car hire or work not measured by weight, pick Other: quantity × price each.",
+            )}
+          </p>
         </div>
         {lines.map((l, i) => {
           const le = e?.line?.[i];
           const amount = lineAmount(l);
+          const w = lineWords(l.unit, i, t);
           return (
             <fieldset key={l.key} className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-6">
               <div className="flex items-center justify-between sm:col-span-6">
-                <legend className="text-sm font-medium">{t(`Safari ${i + 1}`, `Trip ${i + 1}`)}</legend>
+                <legend className="text-sm font-medium">{w.legend}</legend>
                 {lines.length > 1 && (
                   <button
                     type="button"
                     onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}
                     className="btn btn-ghost size-11 p-0 sm:size-9"
-                    aria-label={t(`Ondoa safari ${i + 1}`, `Remove trip ${i + 1}`)}
+                    aria-label={t(`Ondoa ${w.legend}`, `Remove ${w.legend}`)}
                   >
                     <Icon name="close" className="size-4" />
                   </button>
                 )}
               </div>
               <label className="block sm:col-span-4">
-                <span className="label">{t("Kutoka - kwenda", "From - to")}</span>
+                <span className="label">{w.description}</span>
                 <input
                   name="description"
                   maxLength={160}
-                  placeholder="Dar es Salaam - Mwanza"
+                  placeholder={w.descriptionPlaceholder}
                   value={l.description}
                   onChange={(ev) => set(l.key, "description", ev.target.value)}
                   className="input"
@@ -134,14 +163,14 @@ export function InvoiceForm({ cars, today, bank }: { cars: CarOption[]; today: s
               </label>
               <div className="sm:col-span-2">
                 <label htmlFor={`quantity-${l.key}`} className="label">
-                  {t("Uzito", "Weight")}
+                  {w.quantity}
                 </label>
                 <div className="flex gap-2">
                   <input
                     id={`quantity-${l.key}`}
                     name="quantity"
                     inputMode="decimal"
-                    placeholder={l.unit === "kg" ? "1,250" : "30"}
+                    placeholder={w.quantityPlaceholder}
                     value={l.quantity}
                     onChange={(ev) => set(l.key, "quantity", ev.target.value)}
                     className="input min-w-0 flex-1 tabular-nums"
@@ -149,24 +178,25 @@ export function InvoiceForm({ cars, today, bank }: { cars: CarOption[]; today: s
                   <select
                     name="unit"
                     value={l.unit}
-                    onChange={(ev) => set(l.key, "unit", cargoUnit(ev.target.value))}
-                    aria-label={t(`Kipimo cha safari ${i + 1}`, `Unit of trip ${i + 1}`)}
+                    onChange={(ev) => set(l.key, "unit", invoiceUnit(ev.target.value))}
+                    aria-label={t(`Kipimo cha ${w.legend}`, `Unit of ${w.legend}`)}
                     className="input w-auto shrink-0"
                   >
                     <option value="tonne">{t("Tani", "Tonnes")}</option>
                     <option value="kg">{t("Kilo", "Kilos")}</option>
+                    <option value="other">{t("Mengineyo", "Other")}</option>
                   </select>
                 </div>
                 {le?.quantity && <p className="mt-1 text-sm text-danger">{le.quantity}</p>}
               </div>
               <label className="block sm:col-span-2">
-                <span className="label">{l.unit === "kg" ? t("Bei kwa kilo", "Price per kilo") : t("Bei kwa tani", "Price per tonne")}</span>
+                <span className="label">{w.rate}</span>
                 <div className="relative">
                   <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">TSh</span>
                   <input
                     name="rate"
                     inputMode="decimal"
-                    placeholder={l.unit === "kg" ? "52.5" : "45,000"}
+                    placeholder={w.ratePlaceholder}
                     value={l.rate}
                     onChange={(ev) => set(l.key, "rate", ev.target.value)}
                     className="input pl-12 tabular-nums"
@@ -230,8 +260,8 @@ export function InvoiceForm({ cars, today, bank }: { cars: CarOption[]; today: s
       <section className="card grid gap-3">
         <p className="text-sm text-muted">
           {t(
-            "Ukihifadhi, kila safari inaingia Mapato kama deni la mteja. Akilipa, bonyeza Imelipwa kwenye invoice au Pokea malipo kwenye Madeni.",
-            "Once saved, each trip goes into Income as the client's debt. When they pay, press Paid on the invoice or Take payment on Debts.",
+            "Ukihifadhi, kila mstari unaingia Mapato kama deni la mteja. Akilipa, bonyeza Imelipwa kwenye invoice au Pokea malipo kwenye Madeni.",
+            "Once saved, each line goes into Income as the client's debt. When they pay, press Paid on the invoice or Take payment on Debts.",
           )}
         </p>
         <button type="submit" disabled={pending} className="btn btn-primary w-full sm:w-auto sm:justify-self-start">
