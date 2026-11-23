@@ -6,3 +6,9 @@
 -- carries the line's description in `destination`. Every line already saved is cargo and keeps its unit.
 ALTER TABLE invoice_lines DROP CONSTRAINT invoice_lines_unit_check;
 ALTER TABLE invoice_lines ADD CONSTRAINT invoice_lines_unit_check CHECK (unit IN ('tonne', 'kg', 'other'));
+
+-- Destination was cargo's only (016). A mengineyo line's entry in Mapato is not cargo but carries its
+-- description there; such entries belong to an invoice and change only through it. Income typed on
+-- Mapato keeps the old rule.
+ALTER TABLE incomes DROP CONSTRAINT incomes_destination_for_cargo;
+ALTER TABLE incomes ADD CONSTRAINT incomes_destination_for_cargo CHECK (destination IS NULL OR tonnes IS NOT NULL OR invoice_id IS NOT NULL);
